@@ -1,0 +1,274 @@
+ src/config.ts             |   4 +-
+ src/merge.ts              |  81 +++++++++++++++++++++++++++++++
+ test/merge-config.test.ts |  34 +++++++++++++
+ test/merge.test.ts        | 118 ++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 236 insertions(+), 1 deletion(-)
+
+diff --git a/src/config.ts b/src/config.ts
+index 769023e..c3d2bf9 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,3 +1,5 @@
++import { deepMerge } from "./merge.ts";
++
+ export type Config = Record<string, unknown>;
+ 
+ export const DEFAULTS: Config = {
+@@ -8,5 +10,5 @@ export const DEFAULTS: Config = {
+ 
+ /** Layer overrides over the defaults, later layers winning. */
+ export function loadConfig(...layers: Array<Config | undefined>): Config {
+-  return Object.assign({}, DEFAULTS, ...layers.filter((layer) => layer !== undefined));
++  return deepMerge(DEFAULTS, ...layers) as Config;
+ }
+diff --git a/src/merge.ts b/src/merge.ts
+new file mode 100644
+index 0000000..e7c2f73
+--- /dev/null
++++ b/src/merge.ts
+@@ -0,0 +1,81 @@
++type PlainObject = Record<string, unknown>;
++
++const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
++
++function isPlainObject(value: unknown): value is PlainObject {
++  if (value === null || typeof value !== "object") return false;
++  const proto: unknown = Object.getPrototypeOf(value);
++  return proto === Object.prototype || proto === null;
++}
++
++/**
++ * Merge sources over target, left to right, recursively merging plain
++ * objects. Arrays replace by default; nothing is mutated and plain
++ * objects in the result are always fresh.
++ */
++export function deepMerge(target: unknown, ...sources: Array<unknown>): unknown {
++  return mergeAll(target, sources, "replace");
++}
++
++/** Same as deepMerge, with merge options. */
++export function deepMergeWith(
++  options: { arrays?: "replace" | "concat" },
++  target: unknown,
++  ...sources: Array<unknown>
++): unknown {
++  const arrays = options.arrays ?? "replace";
++  if (arrays !== "replace" && arrays !== "concat") {
++    throw new RangeError(`arrays must be "replace" or "concat", got ${String(arrays)}`);
++  }
++  return mergeAll(target, sources, arrays);
++}
++
++function mergeAll(target: unknown, sources: Array<unknown>, arrays: "replace" | "concat"): unknown {
++  if (!isPlainObject(target)) {
++    throw new TypeError(`target must be a plain object, got ${describe(target)}`);
++  }
++  for (const source of sources) {
++    if (source === null || source === undefined) continue;
++    if (!isPlainObject(source)) {
++      throw new TypeError(`source must be a plain object, got ${describe(source)}`);
++    }
++  }
++  let result = mergeInto({}, target, arrays);
++  for (const source of sources) {
++    if (source === null || source === undefined) continue;
++    result = mergeInto(result as PlainObject, source, arrays);
++  }
++  return result;
++}
++
++function mergeInto(
++  into: PlainObject,
++  from: PlainObject,
++  arrays: "replace" | "concat",
++): PlainObject {
++  const out = into;
++  for (const key of Object.keys(from)) {
++    if (UNSAFE_KEYS.has(key)) continue;
++    const value: unknown = (from as PlainObject)[key];
++    if (value === undefined) continue;
++    const existing: unknown = (out as PlainObject)[key];
++    if (isPlainObject(value) && isPlainObject(existing)) {
++      out[key] = mergeInto(existing as PlainObject, value, arrays);
++    } else if (arrays === "concat" && Array.isArray(value) && Array.isArray(existing)) {
++      out[key] = [...existing, ...value];
++    } else if (Array.isArray(value)) {
++      out[key] = [...value];
++    } else if (isPlainObject(value)) {
++      out[key] = mergeInto({}, value, arrays);
++    } else {
++      out[key] = value;
++    }
++  }
++  return out;
++}
++
++function describe(value: unknown): string {
++  if (value === null) return "null";
++  if (Array.isArray(value)) return "array";
++  return typeof value;
++}
+diff --git a/test/merge-config.test.ts b/test/merge-config.test.ts
+new file mode 100644
+index 0000000..918802a
+--- /dev/null
++++ b/test/merge-config.test.ts
+@@ -0,0 +1,34 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { DEFAULTS, loadConfig } from "../src/config.ts";
++
++test("a db override keeps the other db settings", () => {
++  const config = loadConfig({ db: { pool: 20 } });
++  assert.deepEqual(config.db, { host: "localhost", port: 5432, pool: 20 });
++});
++
++test("a nested override keeps service and features defaults", () => {
++  const config = loadConfig({ service: { port: 3000 } });
++  assert.deepEqual(config.service, { name: "api", port: 3000 });
++  assert.deepEqual(config.features, ["metrics"]);
++});
++
++test("later layers win for the same nested key", () => {
++  const config = loadConfig({ db: { host: "a" } }, { db: { host: "b" } });
++  assert.equal((config.db as any).host, "b");
++});
++
++test("loadConfig does not mutate DEFAULTS", () => {
++  loadConfig({ db: { pool: 20 }, service: { name: "changed" }, features: ["x"] });
++  assert.deepEqual(DEFAULTS, {
++    service: { name: "api", port: 8080 },
++    db: { host: "localhost", port: 5432, pool: 5 },
++    features: ["metrics"],
++  });
++});
++
++test("undefined layers are ignored", () => {
++  assert.deepEqual(loadConfig(undefined), DEFAULTS);
++  const config = loadConfig(undefined, { db: { pool: 1 } });
++  assert.equal((config.db as any).pool, 1);
++});
+diff --git a/test/merge.test.ts b/test/merge.test.ts
+new file mode 100644
+index 0000000..ee1a31a
+--- /dev/null
++++ b/test/merge.test.ts
+@@ -0,0 +1,118 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { deepMerge, deepMergeWith } from "../src/merge.ts";
++
++test("merges nested objects instead of replacing them", () => {
++  const target = { db: { host: "a", port: 1 }, other: true };
++  const result = deepMerge(target, { db: { pool: 20 } }) as any;
++  assert.equal(result.db.host, "a");
++  assert.equal(result.db.pool, 20);
++  assert.equal(result.other, true);
++});
++
++test("applies sources left to right", () => {
++  assert.deepEqual(deepMerge({ x: 1 }, { x: 2 }, { x: 3 }), { x: 3 });
++});
++
++test("plain objects in the result are fresh, even untouched ones", () => {
++  const target = { a: { b: 1 } };
++  const result = deepMerge(target, { c: 2 }) as any;
++  assert.notEqual(result, target);
++  assert.notEqual(result.a, target.a);
++  assert.deepEqual(result.a, { b: 1 });
++  result.a.b = 99;
++  assert.equal(target.a.b, 1);
++});
++
++test("inputs are never mutated", () => {
++  const target = { a: { b: 1 } };
++  const source = { a: { c: 2 } };
++  deepMerge(target, source);
++  assert.deepEqual(target, { a: { b: 1 } });
++  assert.deepEqual(source, { a: { c: 2 } });
++});
++
++test("arrays replace by default, with fresh arrays", () => {
++  const target = { list: [1, 2] };
++  const source = { list: [3] };
++  const result = deepMerge(target, source) as any;
++  assert.deepEqual(result.list, [3]);
++  assert.notEqual(result.list, source.list);
++  result.list.push(4);
++  assert.deepEqual(target.list, [1, 2]);
++});
++
++test("concat option joins arrays", () => {
++  const result = deepMergeWith({ arrays: "concat" }, { list: [1] }, { list: [2, 3] });
++  assert.deepEqual(result, { list: [1, 2, 3] });
++  const replaced = deepMergeWith({ arrays: "replace" }, { list: [1] }, { list: [2] });
++  assert.deepEqual(replaced, { list: [2] });
++});
++
++test("non-plain objects are used as-is by reference", () => {
++  const when = new Date();
++  const map = new Map();
++  class Thing {}
++  const thing = new Thing();
++  const fn = () => {};
++  const result = deepMerge({}, { when, map, thing, fn }) as any;
++  assert.equal(result.when, when);
++  assert.equal(result.map, map);
++  assert.equal(result.thing, thing);
++  assert.equal(result.fn, fn);
++});
++
++test("undefined source values are ignored; null is a normal value", () => {
++  assert.deepEqual(deepMerge({ a: 1, b: 2 }, { a: undefined, b: null }), { a: 1, b: null });
++  assert.deepEqual(deepMerge({ a: 1 }, { extra: undefined }), { a: 1 });
++});
++
++test("reads only own enumerable string keys; skips unsafe keys", () => {
++  const inheritedOnly = Object.create({ inherited: 1 });
++  assert.throws(() => deepMerge({}, inheritedOnly), TypeError); // not a plain object
++
++  const source = Object.create(null) as any;
++  source.own = 2;
++  const result = deepMerge({}, source) as any;
++  assert.deepEqual(result, { own: 2 });
++
++  const unsafe = deepMerge({}, JSON.parse('{"__proto__": {"x": 1}, "constructor": 2}')) as any;
++  assert.equal(Object.keys(unsafe).length, 0);
++  assert.deepEqual(deepMerge({ a: {} }, { a: { __proto__: 1, b: 2 } }), { a: { b: 2 } });
++});
++
++test("key order: target keys first, then new source keys", () => {
++  const result = deepMerge({ a: 1, b: 2 }, { c: 3, a: 4 }, { d: 5, b: 6 }) as any;
++  assert.deepEqual(Object.keys(result), ["a", "b", "c", "d"]);
++});
++
++test("null and undefined sources are skipped", () => {
++  const target = { a: 1 };
++  assert.deepEqual(deepMerge(target, null, undefined, { b: 2 }), { a: 1, b: 2 });
++});
++
++test("throws TypeError for bad target or source", () => {
++  assert.throws(() => deepMerge(null as any, {}), TypeError);
++  assert.throws(() => deepMerge(undefined as any, {}), TypeError);
++  assert.throws(() => deepMerge([], {}), TypeError);
++  assert.throws(() => deepMerge("x" as any, {}), TypeError);
++  assert.throws(() => deepMerge({}, 5), TypeError);
++  assert.throws(() => deepMerge({}, [1]), TypeError);
++  const badSource = Object.create(null) as any;
++  badSource.x = 1;
++  assert.doesNotThrow(() => deepMerge({}, badSource)); // null-prototype source is fine
++});
++
++test("throws RangeError for a bad arrays option", () => {
++  assert.throws(() => deepMergeWith({ arrays: "merge" as any }, {}, {}), RangeError);
++});
++
++test("deepMergeWith defaults to replace", () => {
++  assert.deepEqual(deepMergeWith({}, { list: [1] }, { list: [2] }), { list: [2] });
++});
++
++test("prototype pollution via nested __proto__ keys is blocked", () => {
++  const source = JSON.parse('{"nested": {"__proto__": {"polluted": true}}}');
++  deepMerge({}, source);
++  assert.equal(({} as any).polluted, undefined);
++});

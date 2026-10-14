@@ -1,0 +1,20 @@
+[2026-10-14T16:49:16.825Z] run started {'budget_usd': 200.0, 'max_hours': 14.0}
+  1 js-debounce-bugs             B       PASS $1.4207   64.3s completed     {'strong': 21} 
+  2 js-debounce-bugs             A       PASS $0.6789   40.2s completed      
+  3 py-flatten-records-csv       B       PASS $0.3883   90.4s completed     {'balanced': 13} 
+  4 py-flatten-records-csv       A       PASS $0.5235   24.1s completed      
+  5 ts-deep-merge                B       PASS $0.3459  436.1s completed     {'balanced': 5, 'fast': 11} 
+  6 ts-deep-merge                A       FAIL $0.8020   43.2s completed      
+  7 ts-todo-query                A       FAIL $1.2885   67.3s completed      
+  8 ts-todo-query                B       FAIL $0.0138 1200.6s wall_limit    {'balanced': 12} 
+Traceback (most recent call last):
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 698, in <module>
+    main()
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 688, in main
+    run(args)
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 644, in run
+    record = execute(run_dir, manifest, item, keys)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 525, in execute
+    time.sleep(1)
+KeyboardInterrupt

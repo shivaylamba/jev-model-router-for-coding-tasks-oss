@@ -1,0 +1,173 @@
+ README.md            |  3 ++-
+ csvexport.py         | 63 ++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_export.py | 67 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 131 insertions(+), 2 deletions(-)
+
+diff --git a/README.md b/README.md
+index 8eb79ed..f3d8090 100644
+--- a/README.md
++++ b/README.md
+@@ -4,7 +4,8 @@ Exports audit events from our API (JSON documents) for people who want to open
+ them in a spreadsheet.
+ 
+ - `loader.py` - reads newline-delimited JSON files into a list of dicts
+-- `csvexport.py` - CSV output
++- `csvexport.py` - CSV output; `records_to_csv(records)` flattens parsed records
++  (nested dicts become dot-separated columns) into spreadsheet-ready CSV
+ 
+ Standard library only (Python 3.11). Run the tests with
+ `python3 -m unittest discover -s tests -t .`
+diff --git a/csvexport.py b/csvexport.py
+index 948f361..f3bc174 100644
+--- a/csvexport.py
++++ b/csvexport.py
+@@ -11,3 +11,66 @@ def rows_to_csv(header, rows):
+     writer.writerow(header)
+     writer.writerows(rows)
+     return buffer.getvalue()
++
++
++def records_to_csv(records):
++    """Flatten records (dicts, as from loader.parse_ndjson) and render them as CSV text.
++
++    Nested dicts become dot-separated columns, named in first-seen order;
++    lists and tuples become ';'-joined cells. An empty list of records yields "".
++    """
++    columns = []
++    seen = set()
++    flat_records = []
++    for position, record in enumerate(records):
++        if not isinstance(record, dict):
++            raise TypeError(
++                f"record {position} is a {type(record).__name__}, expected a dict"
++            )
++        values = {}
++        for name, value in _flatten(record):
++            if name in values:
++                raise ValueError(
++                    f"record {position}: multiple keys flatten to column {name!r}"
++                )
++            values[name] = value
++            if name not in seen:
++                seen.add(name)
++                columns.append(name)
++        flat_records.append(values)
++    if not flat_records:
++        return ""
++    rows = [[_cell(values.get(name)) for name in columns] for values in flat_records]
++    return rows_to_csv(columns, rows)
++
++
++def _flatten(mapping, prefix=""):
++    """Return (column, value) pairs for a mapping, descending into nested dicts.
++
++    Names are joined with '.'; an empty nested dict contributes nothing.
++    """
++    pairs = []
++    for key, value in mapping.items():
++        name = f"{prefix}{key}"
++        if isinstance(value, dict):
++            if value:
++                pairs.extend(_flatten(value, f"{name}."))
++        else:
++            pairs.append((name, value))
++    return pairs
++
++
++def _cell(value):
++    """Render one flattened value: lists and tuples as ';'-joined items, else a scalar."""
++    if isinstance(value, (list, tuple)):
++        return ";".join(_scalar(item) for item in value)
++    return _scalar(value)
++
++
++def _scalar(value):
++    """Render None as an empty cell, booleans as true/false, anything else with str()."""
++    if value is None:
++        return ""
++    if isinstance(value, bool):
++        return "true" if value else "false"
++    return str(value)
+diff --git a/tests/test_export.py b/tests/test_export.py
+index 224b61a..7cb3fb9 100644
+--- a/tests/test_export.py
++++ b/tests/test_export.py
+@@ -1,6 +1,7 @@
++import copy
+ import unittest
+ 
+-from csvexport import rows_to_csv
++from csvexport import records_to_csv, rows_to_csv
+ from loader import parse_ndjson
+ 
+ 
+@@ -18,5 +19,69 @@ class RowsToCsvTest(unittest.TestCase):
+         self.assertEqual(rows_to_csv(["a", "b"], [["1", "x,y"]]), 'a,b\r\n1,"x,y"\r\n')
+ 
+ 
++class RecordsToCsvTest(unittest.TestCase):
++    def test_flattens_nested_dicts_at_any_depth(self):
++        records = [{"event": {"user": {"name": "ada"}}, "action": "login"}]
++        self.assertEqual(
++            records_to_csv(records),
++            "event.user.name,action\r\nada,login\r\n",
++        )
++
++    def test_column_order_is_first_seen_and_missing_columns_are_empty(self):
++        records = [{"b": 1}, {"a": {"x": 1}, "b": 2}]
++        self.assertEqual(records_to_csv(records), "b,a.x\r\n1,\r\n2,1\r\n")
++
++    def test_columns_follow_key_order_descending_where_dicts_appear(self):
++        records = [{"x": 5, "user": {"name": "ada", "roles": ["admin"]}, "y": 6}]
++        self.assertEqual(
++            records_to_csv(records),
++            "x,user.name,user.roles,y\r\n5,ada,admin,6\r\n",
++        )
++
++    def test_plain_value_and_dict_for_same_key_coexist(self):
++        records = [{"a": 5}, {"a": {"b": 7}}]
++        self.assertEqual(records_to_csv(records), "a,a.b\r\n5,\r\n,7\r\n")
++
++    def test_empty_nested_dict_contributes_no_column(self):
++        records = [{"a": {}}, {"a": 1}]
++        # the empty record renders as '""': the csv module quotes a row whose
++        # single field is empty so it is not read back as a blank line
++        self.assertEqual(records_to_csv(records), 'a\r\n""\r\n1\r\n')
++
++    def test_cell_conversions(self):
++        records = [{
++            "n": None, "t": True, "f": False, "i": 2, "s": "x",
++            "l": [True, None, 2], "e": [], "tup": (1, 2),
++        }]
++        self.assertEqual(
++            records_to_csv(records),
++            "n,t,f,i,s,l,e,tup\r\n,true,false,2,x,true;;2,,1;2\r\n",
++        )
++
++    def test_csv_quoting(self):
++        records = [{"a": "x,y"}, {"b": 'say "hi"'}]
++        self.assertEqual(
++            records_to_csv(records),
++            'a,b\r\n"x,y",\r\n,"say ""hi"""\r\n',
++        )
++
++    def test_empty_record_list_returns_empty_string(self):
++        self.assertEqual(records_to_csv([]), "")
++
++    def test_colliding_keys_in_one_record_raise_value_error(self):
++        with self.assertRaises(ValueError):
++            records_to_csv([{"a.b": 1, "a": {"b": 2}}])
++
++    def test_non_dict_record_raises_type_error(self):
++        with self.assertRaises(TypeError):
++            records_to_csv([{"a": 1}, "nope"])
++
++    def test_input_not_modified(self):
++        records = [{"user": {"name": "ada"}, "tags": [1, 2]}, {"user": {"name": "ben"}}]
++        before = copy.deepcopy(records)
++        records_to_csv(records)
++        self.assertEqual(records, before)
++
++
+ if __name__ == "__main__":
+     unittest.main()

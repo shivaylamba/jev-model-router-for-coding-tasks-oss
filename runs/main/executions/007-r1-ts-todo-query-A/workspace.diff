@@ -1,0 +1,377 @@
+ src/http.ts        |  26 +++++++++++-
+ src/todos.ts       | 112 ++++++++++++++++++++++++++++++++++++++++++++++++
+ test/query.test.ts | 122 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ verify.ts          |  69 ++++++++++++++++++++++++++++++
+ 4 files changed, 327 insertions(+), 2 deletions(-)
+
+diff --git a/src/http.ts b/src/http.ts
+index 2344733..1dbd5a3 100644
+--- a/src/http.ts
++++ b/src/http.ts
+@@ -1,4 +1,5 @@
+ import type { TodoService } from "./todos.ts";
++import type { TodoQuery } from "./todos.ts";
+ 
+ export interface Response {
+   status: number;
+@@ -11,6 +12,27 @@ export function handleTodos(service: TodoService, url: string): Response {
+   if (parsed.pathname !== "/todos") {
+     return { status: 404, body: { error: "not found" } };
+   }
+-  const items = service.list();
+-  return { status: 200, body: { items, count: items.length } };
++
++  const params = parsed.searchParams;
++
++  // Build a TodoQuery only from parameters that are present; unknown
++  // parameters are ignored and an absent parameter means "use the default".
++  const query: TodoQuery = {};
++  if (params.has("status")) query.status = params.get("status") as TodoQuery["status"];
++  const tags = params.getAll("tag").filter((t) => t.trim() !== "");
++  if (tags.length > 0) query.tags = tags;
++  if (params.has("q")) query.text = params.get("q")!;
++  if (params.has("dueBefore")) query.dueBefore = params.get("dueBefore")!;
++  if (params.has("sort")) query.sort = params.get("sort") as TodoQuery["sort"];
++  if (params.has("order")) query.order = params.get("order") as TodoQuery["order"];
++
++  try {
++    const items = service.query(query);
++    return { status: 200, body: { items, count: items.length } };
++  } catch (err) {
++    if (err instanceof RangeError) {
++      return { status: 400, body: { error: err.message } };
++    }
++    throw err;
++  }
+ }
+diff --git a/src/todos.ts b/src/todos.ts
+index 786f66d..efcc616 100644
+--- a/src/todos.ts
++++ b/src/todos.ts
+@@ -17,6 +17,15 @@ export interface NewTodo {
+   due?: string | null;
+ }
+ 
++export interface TodoQuery {
++  status?: "open" | "done" | "all";      // default "all"
++  tags?: string[];                       // default: no tag filter
++  text?: string;                         // default: no text filter
++  dueBefore?: string;                    // "YYYY-MM-DD"
++  sort?: "id" | "created" | "due" | "title"; // default "id"
++  order?: "asc" | "desc";                // default "asc"
++}
++
+ export class TodoService {
+   private todos: Todo[] = [];
+   private nextId = 1;
+@@ -52,4 +61,107 @@ export class TodoService {
+   list(): Todo[] {
+     return [...this.todos];
+   }
++
++  /**
++   * Filter and sort todos per the agreed design in docs/query.md.
++   *
++   * Throws RangeError for:
++   *  - a status, sort, or order value not in the allowed list
++   *  - a dueBefore that is not a real calendar date in "YYYY-MM-DD" form
++   */
++  query(q?: TodoQuery): Todo[] {
++    const status = q?.status ?? "all";
++    const tags = q?.tags ?? [];
++    const text = q?.text ?? "";
++    const dueBefore = q?.dueBefore;
++    const sort = q?.sort ?? "id";
++    const order = q?.order ?? "asc";
++
++    // ---- validation ----
++    if (!["open", "done", "all"].includes(status)) {
++      throw new RangeError(`invalid status: ${status}`);
++    }
++    if (!["id", "created", "due", "title"].includes(sort)) {
++      throw new RangeError(`invalid sort: ${sort}`);
++    }
++    if (!["asc", "desc"].includes(order)) {
++      throw new RangeError(`invalid order: ${order}`);
++    }
++    if (dueBefore !== undefined) {
++      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dueBefore);
++      if (!m) throw new RangeError(`invalid dueBefore date: ${dueBefore}`);
++      const [, y, mo, d] = m;
++      const date = new Date(`${y}-${mo}-${d}T00:00:00Z`);
++      // round-trip check: catches Feb 30, month 13, etc.
++      if (
++        date.getUTCFullYear() !== Number(y) ||
++        date.getUTCMonth() + 1 !== Number(mo) ||
++        date.getUTCDate() !== Number(d)
++      ) {
++        throw new RangeError(`invalid dueBefore date: ${dueBefore}`);
++      }
++    }
++
++    // ---- filtering ----
++    let result = [...this.todos];
++
++    if (status !== "all") {
++      result = result.filter((t) => t.status === status);
++    }
++
++    if (tags.length > 0) {
++      const wanted = tags.map((t) => t.toLowerCase());
++      result = result.filter((todo) => {
++        const have = todo.tags.map((t) => t.toLowerCase());
++        return wanted.every((w) => have.includes(w));
++      });
++    }
++
++    const trimmedText = text.trim();
++    if (trimmedText !== "") {
++      const needle = trimmedText.toLowerCase();
++      result = result.filter((t) => t.title.toLowerCase().includes(needle));
++    }
++
++    if (dueBefore !== undefined) {
++      // keeps todos due on or before that date; nulls never match
++      result = result.filter((t) => t.due !== null && t.due <= dueBefore);
++    }
++
++    // ---- sorting ----
++    // todos without a due date always go last when sorting by due, both orders
++    const compare = (a: Todo, b: Todo): number => {
++      let cmp = 0;
++      switch (sort) {
++        case "id":
++          cmp = a.id - b.id;
++          break;
++        case "created":
++          cmp = a.createdAt - b.createdAt;
++          break;
++        case "title":
++          const at = a.title.toLowerCase();
++          const bt = b.title.toLowerCase();
++          cmp = at < bt ? -1 : at > bt ? 1 : 0;
++          break;
++        case "due":
++          if (a.due === null && b.due === null) cmp = 0;
++          else if (a.due === null) cmp = 1;  // null due always last
++          else if (b.due === null) cmp = -1;
++          else cmp = a.due < b.due ? -1 : a.due > b.due ? 1 : 0;
++          break;
++      }
++      // apply order to the primary key only; ties break by id ascending regardless
++      if (cmp !== 0) {
++        return order === "desc" ? -cmp : cmp;
++      }
++      // tie-break: id ascending, whatever the order
++      // (covers equal keys and due=null pairs, where cmp stays 0)
++      if (sort === "id") return 0; // id is unique; ties impossible
++      return a.id - b.id;
++    };
++
++    result.sort(compare);
++    return result;
++  }
+ }
+diff --git a/test/query.test.ts b/test/query.test.ts
+new file mode 100644
+index 0000000..e1cc16c
+--- /dev/null
++++ b/test/query.test.ts
+@@ -0,0 +1,122 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { TodoService, type TodoQuery } from "../src/todos.ts";
++import { handleTodos } from "../src/http.ts";
++
++function fixedClock(start: number) {
++  let now = start;
++  return () => now++;
++}
++
++function makeService(): TodoService {
++  const service = new TodoService(fixedClock(0));
++  service.add({ title: "Buy milk", tags: ["home", "urgent"], due: "2026-10-20" }); // id 1
++  service.add({ title: "Write report", tags: ["work"], due: "2026-10-15" }); //       id 2
++  service.add({ title: "Buy bread", tags: ["home"], due: null }); //                 id 3
++  service.add({ title: "Call plumber", tags: ["home"], due: "2026-10-18" }); //       id 4
++  service.complete(4);
++  return service;
++}
++
++const ids = (todos: { id: number }[]) => todos.map((t) => t.id);
++
++test("query with no argument returns all todos in id order", () => {
++  assert.deepEqual(ids(makeService().query()), [1, 2, 3, 4]);
++});
++
++test("status filter", () => {
++  const service = makeService();
++  assert.deepEqual(ids(service.query({ status: "open" })), [1, 2, 3]);
++  assert.deepEqual(ids(service.query({ status: "done" })), [4]);
++  assert.deepEqual(ids(service.query({ status: "all" })), [1, 2, 3, 4]);
++});
++
++test("tags filter requires every tag, case-insensitive", () => {
++  const service = makeService();
++  assert.deepEqual(ids(service.query({ tags: ["HOME"] })), [1, 3, 4]);
++  assert.deepEqual(ids(service.query({ tags: ["home", "URGENT"] })), [1]);
++  assert.deepEqual(ids(service.query({ tags: [] })), [1, 2, 3, 4]);
++});
++
++test("text filter is trimmed, case-insensitive substring; blank means no filter", () => {
++  const service = makeService();
++  assert.deepEqual(ids(service.query({ text: " BUY " })), [1, 3]);
++  assert.deepEqual(ids(service.query({ text: "   " })), [1, 2, 3, 4]);
++});
++
++test("dueBefore keeps todos due on or before the date; undated todos never match", () => {
++  const service = makeService();
++  assert.deepEqual(ids(service.query({ dueBefore: "2026-10-18" })), [2, 4]);
++  assert.deepEqual(ids(service.query({ dueBefore: "2026-10-15" })), [2]);
++});
++
++test("sorting by due puts undated todos last in both orders", () => {
++  const service = makeService();
++  assert.deepEqual(ids(service.query({ sort: "due", order: "asc" })), [2, 4, 1, 3]);
++  assert.deepEqual(ids(service.query({ sort: "due", order: "desc" })), [1, 4, 2, 3]);
++});
++
++test("sorting by title uses lowercased plain string comparison", () => {
++  const service = makeService();
++  assert.deepEqual(ids(service.query({ sort: "title", order: "asc" })), [1, 3, 4, 2]);
++  assert.deepEqual(ids(service.query({ sort: "title", order: "desc" })), [2, 4, 3, 1]);
++});
++
++test("ties are broken by id ascending whatever the order", () => {
++  const service = new TodoService(() => 5); // identical createdAt for all
++  service.add({ title: "x" });
++  service.add({ title: "y" });
++  service.add({ title: "z" });
++  assert.deepEqual(ids(service.query({ sort: "created", order: "asc" })), [1, 2, 3]);
++  assert.deepEqual(ids(service.query({ sort: "created", order: "desc" })), [1, 2, 3]);
++  assert.deepEqual(ids(service.query({ sort: "due", order: "desc" })), [1, 2, 3]); // all undated
++});
++
++test("query does not reorder the service's own list and returns a new array", () => {
++  const service = makeService();
++  const result = service.query({ sort: "title" });
++  assert.deepEqual(ids(service.list()), [1, 2, 3, 4]);
++  assert.notEqual(result, service.list());
++});
++
++test("query throws RangeError on invalid values", () => {
++  const service = makeService();
++  assert.throws(() => service.query({ status: "nope" as TodoQuery["status"] }), RangeError);
++  assert.throws(() => service.query({ sort: "nope" as TodoQuery["sort"] }), RangeError);
++  assert.throws(() => service.query({ order: "nope" as TodoQuery["order"] }), RangeError);
++  assert.throws(() => service.query({ dueBefore: "2026-02-30" }), RangeError);
++  assert.throws(() => service.query({ dueBefore: "2026-2-3" }), RangeError);
++  assert.doesNotThrow(() => service.query({ dueBefore: "2026-10-18" }));
++});
++
++test("GET /todos applies filters and sorting from the query string", () => {
++  const service = makeService();
++  const res = handleTodos(service, "/todos?status=open&sort=due&order=desc");
++  assert.equal(res.status, 200);
++  const body = res.body as { items: { id: number }[]; count: number };
++  assert.deepEqual(ids(body.items), [1, 2, 3]);
++  assert.equal(body.count, body.items.length);
++});
++
++test("GET /todos reads tag (repeated), q, dueBefore and ignores unknown params", () => {
++  const service = makeService();
++  const byTags = handleTodos(service, "/todos?tag=home&tag=Urgent").body as { items: { id: number }[] };
++  assert.deepEqual(ids(byTags.items), [1]);
++  const emptyTags = handleTodos(service, "/todos?tag=").body as { items: { id: number }[] };
++  assert.deepEqual(ids(emptyTags.items), [1, 2, 3, 4]);
++  const byText = handleTodos(service, "/todos?q=buy").body as { items: { id: number }[] };
++  assert.deepEqual(ids(byText.items), [1, 3]);
++  const byDue = handleTodos(service, "/todos?dueBefore=2026-10-18").body as { items: { id: number }[] };
++  assert.deepEqual(ids(byDue.items), [2, 4]);
++  const unknown = handleTodos(service, "/todos?whatever=1").body as { items: { id: number }[] };
++  assert.deepEqual(ids(unknown.items), [1, 2, 3, 4]);
++});
++
++test("GET /todos answers 400 with an error string on invalid values", () => {
++  const service = makeService();
++  for (const url of ["/todos?status=nope", "/todos?sort=nope", "/todos?order=nope", "/todos?dueBefore=2026-02-30"]) {
++    const res = handleTodos(service, url);
++    assert.equal(res.status, 400, url);
++    assert.equal(typeof (res.body as { error: unknown }).error, "string", url);
++  }
++});
+diff --git a/verify.ts b/verify.ts
+new file mode 100644
+index 0000000..29a1821
+--- /dev/null
++++ b/verify.ts
+@@ -0,0 +1,69 @@
++import assert from "node:assert/strict";
++import { TodoService } from "./src/todos.ts";
++import { handleTodos } from "./src/http.ts";
++
++const s = new TodoService((() => { let i = 0; return () => i++; })());
++s.add({ title: "Buy milk", tags: ["Home", "urgent"], due: "2026-03-01" }); // 1
++s.add({ title: "File taxes", tags: ["home"], due: "2026-04-15" });         // 2
++s.add({ title: "call mum", tags: ["home", "URGENT"], due: null });         // 3
++s.add({ title: "Zoo trip", due: "2026-01-01" });                           // 4
++s.complete(2);
++
++const ids = (q?: Parameters<TodoService["query"]>[0]) => s.query(q).map(t => t.id);
++const httpIds = (u: string) => (handleTodos(s, u).body as { items: { id: number }[] }).items.map(t => t.id);
++
++// filters
++assert.deepEqual(ids(), [1, 2, 3, 4]);
++assert.deepEqual(ids({ status: "open" }), [1, 3, 4]);
++assert.deepEqual(ids({ status: "done" }), [2]);
++assert.deepEqual(ids({ status: "all" }), [1, 2, 3, 4]);
++assert.deepEqual(ids({ tags: ["HOME", "Urgent"] }), [1, 3]); // every tag, case-insensitive
++assert.deepEqual(ids({ tags: [] }), [1, 2, 3, 4]);
++assert.deepEqual(ids({ text: "  MUM " }), [3]);
++assert.deepEqual(ids({ text: "  " }), [1, 2, 3, 4]);
++assert.deepEqual(ids({ dueBefore: "2026-03-01" }), [1, 4]); // on-or-before, null excluded
++
++// sorting
++assert.deepEqual(ids({ sort: "due" }), [4, 1, 2, 3]); // null last asc
++assert.deepEqual(ids({ sort: "due", order: "desc" }), [2, 1, 4, 3]); // null last desc
++assert.deepEqual(ids({ sort: "title" }), [1, 3, 2, 4]);
++assert.deepEqual(ids({ sort: "title", order: "desc" }), [4, 2, 3, 1]);
++assert.deepEqual(ids({ sort: "created", order: "desc" }), [4, 3, 2, 1]);
++
++// ties broken by id ascending regardless of order
++const s2 = new TodoService(() => 42);
++s2.add({ title: "b", due: null }); s2.add({ title: "a", due: null }); s2.add({ title: "c", due: "2026-01-01" });
++assert.deepEqual(s2.query({ sort: "created", order: "desc" }).map(t => t.id), [1, 2, 3]);
++assert.deepEqual(s2.query({ sort: "due", order: "desc" }).map(t => t.id), [3, 1, 2]); // null dues last, id-asc among themselves
++
++// internal list never reordered; new array returned
++const before = s2.list().map(t => t.id).join(",");
++assert.notEqual(s2.query({ sort: "title" }), s2.list());
++assert.equal(s2.list().map(t => t.id).join(","), before);
++
++// RangeError validation
++for (const q of [
++  { status: "later" }, { sort: "size" }, { order: "up" },
++  { dueBefore: "2026-02-30" }, { dueBefore: "2026-2-3" }, { dueBefore: "not-a-date" },
++] as const) {
++  assert.throws(() => s.query(q as never), RangeError);
++}
++assert.doesNotThrow(() => s.query({ dueBefore: "2026-02-28" }));
++
++// HTTP
++assert.equal(handleTodos(s, "/todos").status, 200);
++assert.deepEqual(httpIds("/todos"), [1, 2, 3, 4]);
++assert.deepEqual(httpIds("/todos?status=done"), [2]);
++assert.deepEqual(httpIds("/todos?tag=home&tag=Urgent"), [1, 3]);
++assert.deepEqual(httpIds("/todos?tag="), [1, 2, 3, 4]);
++assert.deepEqual(httpIds("/todos?q=milk"), [1]);
++assert.deepEqual(httpIds("/todos?dueBefore=2026-03-01"), [1, 4]);
++assert.deepEqual(httpIds("/todos?sort=title&order=desc"), [4, 2, 3, 1]);
++assert.deepEqual(httpIds("/todos?bogus=1"), [1, 2, 3, 4]);
++const bad = handleTodos(s, "/todos?sort=nope");
++assert.equal(bad.status, 400);
++assert.equal(typeof (bad.body as { error: unknown }).error, "string");
++assert.equal(handleTodos(s, "/todos?dueBefore=2026-13-01").status, 400);
++assert.equal(handleTodos(s, "/nope").status, 404);
++
++console.log("all checks passed");

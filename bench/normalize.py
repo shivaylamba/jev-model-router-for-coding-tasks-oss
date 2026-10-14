@@ -61,6 +61,7 @@ def claude_stream_metrics(path: Path, started_ms: int) -> dict:
     """What Claude Code saw: model calls, tool calls and failures, time to first output."""
     message_ids, tool_uses, tool_names = [], {}, Counter()
     tool_errors = 0
+    output_limit_resumes = 0
     first_text_ms = first_event_ms = first_assistant_ms = first_output_ms = None
     result = init = None
     for wrapped in _json_lines(path):
@@ -94,7 +95,15 @@ def claude_stream_metrics(path: Path, started_ms: int) -> dict:
                 if first_assistant_ms is None and block.get("type") == "text" and block.get("text", "").strip():
                     first_assistant_ms = t
         elif kind == "user":
-            for block in event.get("message", {}).get("content", []) or []:
+            content = event.get("message", {}).get("content", [])
+            if isinstance(content, str):
+                # Claude Code's own message when a reply hits the output-token limit.
+                if content.startswith("Output token limit hit"):
+                    output_limit_resumes += 1
+                content = []
+            for block in content or []:
+                if isinstance(block, dict) and block.get("type") == "text" and block.get("text", "").startswith("Output token limit hit"):
+                    output_limit_resumes += 1
                 if isinstance(block, dict) and block.get("type") == "tool_result" and block.get("is_error"):
                     tool_errors += 1
         elif kind == "result":
@@ -111,6 +120,7 @@ def claude_stream_metrics(path: Path, started_ms: int) -> dict:
         "tool_calls": len(tool_uses),
         "tool_calls_by_name": dict(tool_names),
         "tool_errors": tool_errors,
+        "output_limit_resumes": output_limit_resumes,
         "ttft_visible_s": since(first_text_ms),
         "first_output_s": since(first_output_ms),
         "first_assistant_text_s": since(first_assistant_ms),
@@ -363,6 +373,7 @@ def normalize(exec_dir: Path, manifest: dict) -> dict:
         "foreground_models": sorted(set(upstream["agent_request_models"]) - {None}),
         **debug,
         **stderr,
+        "jev_task_decisions": len(jev_task),
         "jev_decision_ms": jev_task[0]["ms"] if jev_task else None,
         "jev_decision_choice": jev_task[0]["choice"] if jev_task else None,
         "jev_model_version": jev_task[0]["response_model"] if jev_task else None,

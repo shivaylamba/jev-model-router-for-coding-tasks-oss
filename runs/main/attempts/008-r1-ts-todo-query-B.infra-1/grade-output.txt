@@ -1,0 +1,339 @@
+TAP version 13
+# Subtest: no query returns everything in id order
+not ok 1 - no query returns everything in id order
+  ---
+  duration_ms: 0.672625
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:24:1'
+  failureType: 'testCodeFailure'
+  error: 'board(...).query is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:25:32)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.start (node:internal/test_runner/test:1191:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17)
+  ...
+# Subtest: status filter
+not ok 2 - status filter
+  ---
+  duration_ms: 0.101333
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:29:1'
+  failureType: 'testCodeFailure'
+  error: 'service.query is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:31:32)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)
+  ...
+# Subtest: tags must all match, case-insensitively
+not ok 3 - tags must all match, case-insensitively
+  ---
+  duration_ms: 0.0815
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:36:1'
+  failureType: 'testCodeFailure'
+  error: 'service.query is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:38:32)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: text filter is a trimmed, case-insensitive substring
+not ok 4 - text filter is a trimmed, case-insensitive substring
+  ---
+  duration_ms: 0.072083
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:44:1'
+  failureType: 'testCodeFailure'
+  error: 'service.query is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:46:32)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: dueBefore is inclusive and excludes todos without a due date
+not ok 5 - dueBefore is inclusive and excludes todos without a due date
+  ---
+  duration_ms: 0.081167
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:50:1'
+  failureType: 'testCodeFailure'
+  error: 'service.query is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:52:32)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: filters combine
+not ok 6 - filters combine
+  ---
+  duration_ms: 0.064834
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:56:1'
+  failureType: 'testCodeFailure'
+  error: 'board(...).query is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:57:32)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: sort by due: nulls last in both orders, ties by id ascending
+not ok 7 - sort by due: nulls last in both orders, ties by id ascending
+  ---
+  duration_ms: 0.06025
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:60:1'
+  failureType: 'testCodeFailure'
+  error: 'service.query is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:62:32)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: sort by created with ties by id ascending
+not ok 8 - sort by created with ties by id ascending
+  ---
+  duration_ms: 0.063417
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:66:1'
+  failureType: 'testCodeFailure'
+  error: 'service.query is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:68:32)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: sort by title ignores case
+not ok 9 - sort by title ignores case
+  ---
+  duration_ms: 0.074667
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:72:1'
+  failureType: 'testCodeFailure'
+  error: 'service.query is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:74:32)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: invalid queries throw RangeError
+not ok 10 - invalid queries throw RangeError
+  ---
+  duration_ms: 1.107292
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:78:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The error is expected to be an instance of "RangeError". Received "TypeError"
+    
+    Error message:
+    
+    service.query is not a function
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:80:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: query does not reorder the service's list
+not ok 11 - query does not reorder the service's list
+  ---
+  duration_ms: 0.082833
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:87:1'
+  failureType: 'testCodeFailure'
+  error: 'service.query is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:89:11)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: HTTP: query-string parameters
+not ok 12 - HTTP: query-string parameters
+  ---
+  duration_ms: 0.815625
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:93:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+    +   1,
+    +   2,
+    +   3,
+    +   4,
+        5,
+    +   6
+    -   1
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 5
+    1: 1
+  actual:
+    0: 1
+    1: 2
+    2: 3
+    3: 4
+    4: 5
+    5: 6
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:97:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: HTTP: repeated tag parameters and dueBefore
+not ok 13 - HTTP: repeated tag parameters and dueBefore
+  ---
+  duration_ms: 0.173
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:101:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+    +   1,
+    +   2,
+    +   3,
+    +   4,
+    +   5,
+        6
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 6
+  actual:
+    0: 1
+    1: 2
+    2: 3
+    3: 4
+    4: 5
+    5: 6
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:103:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: HTTP: no parameters lists everything
+ok 14 - HTTP: no parameters lists everything
+  ---
+  duration_ms: 0.105291
+  type: 'test'
+  ...
+# Subtest: HTTP: invalid values give 400 with an error string
+not ok 15 - HTTP: invalid values give 400 with an error string
+  ---
+  duration_ms: 0.145625
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:114:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    status=closed
+    
+    200 !== 400
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 400
+  actual: 200
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-heeb0hxo/ws/acceptance_tests/todo-query.test.ts:117:12)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 1
+# fail 14
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 102.75275
+

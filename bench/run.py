@@ -593,6 +593,87 @@ def execute(run_dir: Path, manifest: dict, item: dict, keys: dict) -> dict:
     return record
 
 
+# ---------------------------------------------------------------- provider health and infrastructure failures
+# Amendment 1 (docs/PROTOCOL.md): added after a GLM 5.3 outage, before results beyond execution 8.
+
+HEALTH_MODELS = ["moonshotai/Kimi-K3", "zai-org/GLM-5.3", "zai-org/GLM-5.3-Flash"]
+HEALTH_WAIT_S = 300
+INFRA_TAIL = 3
+INFRA_RERUNS = 2
+
+
+def probe(model: str, key: str, timeout: int = 30) -> tuple[bool, str]:
+    """One tiny request straight to Nebius. Not part of any task's cost; logged as overhead."""
+    import urllib.error
+    import urllib.request
+    body = json.dumps({"model": model, "max_tokens": 8, "messages": [{"role": "user", "content": "Reply with OK"}]}).encode()
+    request = urllib.request.Request(f"{NEBIUS_ORIGIN_BASE}/chat/completions", data=body, method="POST",
+                                     headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    started = time.time()
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            response.read()
+            return response.status == 200, f"{response.status} in {time.time() - started:.1f}s"
+    except urllib.error.HTTPError as err:
+        return False, f"HTTP {err.code}"
+    except Exception as err:  # timeouts, resets
+        return False, type(err).__name__
+
+
+def wait_until_healthy(run_dir: Path, key: str, deadline: float) -> bool:
+    while True:
+        results = {model: probe(model, key) for model in HEALTH_MODELS}
+        bad = {m: r[1] for m, r in results.items() if not r[0]}
+        if not bad:
+            return True
+        log_event(run_dir, "provider unhealthy; waiting", models=bad, wait_s=HEALTH_WAIT_S)
+        if time.time() + HEALTH_WAIT_S > deadline:
+            return False
+        time.sleep(HEALTH_WAIT_S)
+
+
+def infra_failure(run_dir: Path, record: dict) -> str | None:
+    """Failed, and the provider answered none of the last INFRA_TAIL model requests."""
+    if record["passed"]:
+        return None
+    exec_dir = next((run_dir / "executions").glob(f"{record['seq']:03d}-*"), None)
+    if exec_dir is None:
+        return None
+    requests = [json.loads(line) for line in (exec_dir / "recorder.jsonl").read_text().splitlines() if line.strip()]
+    model_requests = [r for r in requests if r.get("kind") in ("agent", "toolless")]
+    tail = model_requests[-INFRA_TAIL:]
+    if len(tail) < INFRA_TAIL or any(r.get("status") == 200 and r.get("usage") for r in tail):
+        return None
+    failed = sum(1 for r in model_requests if not (r.get("status") == 200 and r.get("usage")))
+    models = sorted({r.get("model") for r in tail})
+    return (f"the last {INFRA_TAIL} model requests ({', '.join(models)}) got no provider response; "
+            f"{failed} of {len(model_requests)} model requests failed")
+
+
+def quarantine(run_dir: Path, record: dict, reason: str) -> None:
+    """Keep the evidence, take the execution out of the primary results, so the loop re-runs it."""
+    exec_dir = next((run_dir / "executions").glob(f"{record['seq']:03d}-*"))
+    attempts = run_dir / "attempts"
+    attempts.mkdir(exist_ok=True)
+    n = len(list(attempts.glob(f"{exec_dir.name}.infra-*"))) + 1
+    exec_dir.rename(attempts / f"{exec_dir.name}.infra-{n}")
+    results = load_results(run_dir)
+    keep = [r for r in results if r["seq"] != record["seq"]]
+    (run_dir / "results.jsonl").write_text("".join(json.dumps(r) + "\n" for r in keep))
+    with (run_dir / "excluded.jsonl").open("a") as handle:
+        handle.write(json.dumps({**record, "excluded_reason": "infrastructure failure: " + reason,
+                                 "excluded_at": now_iso(), "kept_at": f"attempts/{exec_dir.name}.infra-{n}"}) + "\n")
+    log_event(run_dir, "infrastructure failure: excluded and queued for re-run", execution=exec_dir.name, reason=reason)
+
+
+def requeue_infra(args) -> None:
+    run_dir = RUNS / args.run_id
+    for record in load_results(run_dir):
+        reason = infra_failure(run_dir, record)
+        if reason:
+            quarantine(run_dir, record, reason)
+
+
 # ---------------------------------------------------------------- run loop
 
 def load_results(run_dir: Path) -> list[dict]:
@@ -641,7 +722,18 @@ def run(args, run_dir: Path | None = None) -> None:
         if (time.time() - started) / 3600 >= max_hours:
             log_event(run_dir, "stopped: runtime cap reached", hours=max_hours)
             return
+        if not wait_until_healthy(run_dir, keys["NEBIUS_API_KEY"], started + max_hours * 3600):
+            log_event(run_dir, "stopped: provider still unhealthy at the runtime cap")
+            return
         record = execute(run_dir, manifest, item, keys)
+        reruns = 0
+        while (reason := infra_failure(run_dir, record)) and reruns < INFRA_RERUNS:
+            quarantine(run_dir, record, reason)
+            reruns += 1
+            if not wait_until_healthy(run_dir, keys["NEBIUS_API_KEY"], started + max_hours * 3600):
+                log_event(run_dir, "stopped: provider still unhealthy at the runtime cap")
+                return
+            record = execute(run_dir, manifest, item, keys)
         print(f"{item['seq']:3d} {item['task_id']:28} {item['condition']:7} "
               f"{'PASS' if record['passed'] else 'FAIL':4} ${record['cost_total_usd']:.4f} "
               f"{record['duration_s']:6.1f}s {record['termination']:13} "
@@ -674,6 +766,8 @@ def main() -> None:
     r.add_argument("--run-id", required=True)
     r.add_argument("--budget-usd", type=float)
     r.add_argument("--max-hours", type=float)
+    q = sub.add_parser("requeue-infra", help="exclude and queue for re-run any recorded infrastructure failure")
+    q.add_argument("--run-id", required=True)
     s = sub.add_parser("status")
     s.add_argument("--run-id", required=True)
     sm = sub.add_parser("smoke", help="prepare and run the excluded smoke tasks")
@@ -688,6 +782,8 @@ def main() -> None:
         run(args)
     elif args.command == "status":
         status(args)
+    elif args.command == "requeue-infra":
+        requeue_infra(args)
     elif args.command == "smoke":
         args.suite, args.repetitions, args.tasks = "smoke", 1, ""
         run_dir = prepare(args)

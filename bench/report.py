@@ -156,6 +156,10 @@ def routing_section(summary: dict) -> str:
     out += ["",
             f"- Model requests by tier: {json.dumps(r['tier_request_counts'])}; by reason: {json.dumps(r['reason_counts'])}.",
             f"- Tasks that escalated: {r['tasks_with_escalation']}; tasks that reached the strong tier at some point: {r['tasks_reaching_strong']}.",
+            f"- Tasks that moved down a tier mid-task: {r.get('tasks_with_downshift')}; tasks where Jev was asked more than once: "
+            f"{r.get('tasks_with_repeat_jev_decisions')}; tasks where Claude Code resumed after hitting the output-token limit: "
+            f"{r.get('tasks_with_output_limit_resumes')}. (nconnect treats Claude Code's \"Output token limit hit\" message as a new "
+            "prompt, asks Jev about it, and re-routes the rest of the task.)",
             f"- Jev calls: {r['jev_calls']} (task decisions plus one warm-up per session), cost {money(r['jev_cost_usd'])}; "
             f"decision latency median {num(r['jev_decision_ms_median'])} ms, p95 {num(r['jev_decision_ms_p95'])} ms.",
             f"- Jev gave no answer (keyword rules used instead): {r['decider_no_answer']} of {r['decider_events']} decider events; "

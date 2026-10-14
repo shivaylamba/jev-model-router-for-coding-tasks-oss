@@ -1,0 +1,79 @@
+ src/debounce.js | 28 ++++++++++++++++------------
+ 1 file changed, 16 insertions(+), 12 deletions(-)
+
+diff --git a/src/debounce.js b/src/debounce.js
+index bbfdcea..33cdb12 100644
+--- a/src/debounce.js
++++ b/src/debounce.js
+@@ -54,23 +54,29 @@ export function debounce(fn, wait, options = {}) {
+   let pendingThis;
+   let result;
+ 
++  function clearMaxTimer() {
++    if (maxTimer !== null) {
++      scheduler.clearTimeout(maxTimer);
++      maxTimer = null;
++    }
++  }
++
+   function invoke() {
+     const args = pendingArgs;
+     const thisArg = pendingThis;
+     pendingArgs = null;
+     pendingThis = undefined;
++    clearMaxTimer();
+     result = fn.apply(thisArg, args);
+     return result;
+   }
+ 
+   function onWait() {
+     waitTimer = null;
+-    if (maxTimer !== null) {
+-      scheduler.clearTimeout(maxTimer);
+-      maxTimer = null;
+-    }
+     if (trailing && pendingArgs !== null) invoke();
++    clearMaxTimer();
+     pendingArgs = null;
++    pendingThis = undefined;
+   }
+ 
+   function onMaxWait() {
+@@ -83,14 +89,12 @@ export function debounce(fn, wait, options = {}) {
+     if (waitTimer !== null) scheduler.clearTimeout(waitTimer);
+     waitTimer = scheduler.setTimeout(onWait, wait);
+ 
+-    if (pendingArgs === null) {
+-      pendingArgs = args;
+-      pendingThis = this;
+-    }
+     if (startsBurst && leading) {
+       result = fn.apply(this, args);
+       return result;
+     }
++    pendingArgs = args;
++    pendingThis = this;
+     if (maxWait !== undefined && maxTimer === null) {
+       maxTimer = scheduler.setTimeout(onMaxWait, maxWait);
+     }
+@@ -100,16 +104,16 @@ export function debounce(fn, wait, options = {}) {
+   debounced.cancel = () => {
+     if (waitTimer !== null) scheduler.clearTimeout(waitTimer);
+     waitTimer = null;
++    clearMaxTimer();
++    pendingArgs = null;
++    pendingThis = undefined;
+   };
+ 
+   debounced.flush = () => {
+     if (waitTimer !== null) scheduler.clearTimeout(waitTimer);
+     waitTimer = null;
+-    if (maxTimer !== null) {
+-      scheduler.clearTimeout(maxTimer);
+-      maxTimer = null;
+-    }
+     if (pendingArgs !== null) invoke();
++    clearMaxTimer();
+     return result;
+   };
+ 

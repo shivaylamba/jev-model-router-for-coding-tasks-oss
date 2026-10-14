@@ -1,0 +1,62 @@
+ __pycache__/csvexport.cpython-311.pyc | Bin 0 -> 3732 bytes
+ csvexport.py                          |  46 ++++++++++++++++++++++++++++++++++
+ 2 files changed, 46 insertions(+)
+
+diff --git a/__pycache__/csvexport.cpython-311.pyc b/__pycache__/csvexport.cpython-311.pyc
+new file mode 100644
+index 0000000..e80bf12
+Binary files /dev/null and b/__pycache__/csvexport.cpython-311.pyc differ
+diff --git a/csvexport.py b/csvexport.py
+index 948f361..6fe53a8 100644
+--- a/csvexport.py
++++ b/csvexport.py
+@@ -11,3 +11,49 @@ def rows_to_csv(header, rows):
+     writer.writerow(header)
+     writer.writerows(rows)
+     return buffer.getvalue()
++
++
++def _flatten(mapping, prefix, out):
++    for key, value in mapping.items():
++        name = f"{prefix}.{key}" if prefix else key
++        if isinstance(value, dict):
++            _flatten(value, name, out)
++        else:
++            if name in out:
++                raise ValueError(f"duplicate column: {name}")
++            out[name] = value
++
++
++def _render(value):
++    if value is None:
++        return ""
++    if isinstance(value, bool):
++        return "true" if value else "false"
++    if isinstance(value, (list, tuple)):
++        return ";".join(_render(item) for item in value)
++    return str(value)
++
++
++def records_to_csv(records):
++    """Render a list of records (as from loader.parse_ndjson) as CSV text.
++
++    Nested dicts flatten into dot-separated column names; columns appear in
++    first-seen order. An empty records list returns "".
++    """
++    if not records:
++        return ""
++    flattened = []
++    columns = []
++    seen = set()
++    for record in records:
++        if not isinstance(record, dict):
++            raise TypeError(f"expected dict, got {type(record).__name__}")
++        row = {}
++        _flatten(record, "", row)
++        for name in row:
++            if name not in seen:
++                seen.add(name)
++                columns.append(name)
++        flattened.append(row)
++    rows = [[_render(row.get(column)) for column in columns] for row in flattened]
++    return rows_to_csv(columns, rows)

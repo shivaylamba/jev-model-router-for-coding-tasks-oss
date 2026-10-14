@@ -126,3 +126,27 @@ Three excluded tasks (`smoke/`) validated execution, grading, telemetry and cost
 accounting before the benchmark. A pipeline-only condition (`B_rules`, Auto with
 keyword rules) tested Auto's telemetry while the Jev key was unavailable; it is
 never part of the benchmark.
+
+## Amendments
+
+### Amendment 1: provider outages (2026-10-14, 17:25 UTC, after 8 of 100 executions)
+
+**What happened.** During execution 8 (`ts-todo-query`, condition B), Nebius stopped responding for `zai-org/GLM-5.3`, the balanced-tier model:
+
+- 22 of 23 requests got no response headers within nconnect's 45 s limit.
+- The session ran into the 20-minute wall limit.
+- A direct probe a minute later also got no answer within 60 s, while Kimi K3 and GLM 5.3 Flash answered in about 1 s.
+- Cross-model fallback is off by design, so the task never reached a model.
+
+That measures the outage, not the routing policy.
+
+**The rule added**, applied identically to both conditions and blind to which condition the execution belonged to:
+
+1. Before every execution, the runner sends one tiny request to each of Kimi K3, GLM 5.3 and GLM 5.3 Flash. If any fails to answer within 30 s, it waits 5 minutes and tries again. The probes are not charged to any task, and every wait is logged in `events.jsonl`.
+2. An execution is an **infrastructure failure** when it failed and the provider answered none of its last three model requests. Such an execution is:
+   - kept as evidence in `attempts/<name>.infra-N`;
+   - moved from `results.jsonl` to `excluded.jsonl`, with the reason;
+   - re-run once the endpoints are healthy, up to twice.
+3. The report lists every infrastructure failure. A sensitivity analysis counts each excluded execution as a failed task at the cost it incurred.
+
+Nothing about the tasks, prompts, scoring, tier mappings or the conditions themselves changed. At the time, results stood at A 2 of 4 passed and B 3 of 3 passed.

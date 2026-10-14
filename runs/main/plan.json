@@ -1,0 +1,702 @@
+[
+  {
+    "seq": 1,
+    "repetition": 1,
+    "task_id": "js-debounce-bugs",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 2,
+    "repetition": 1,
+    "task_id": "js-debounce-bugs",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 3,
+    "repetition": 1,
+    "task_id": "py-flatten-records-csv",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 4,
+    "repetition": 1,
+    "task_id": "py-flatten-records-csv",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 5,
+    "repetition": 1,
+    "task_id": "ts-deep-merge",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 6,
+    "repetition": 1,
+    "task_id": "ts-deep-merge",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 7,
+    "repetition": 1,
+    "task_id": "ts-todo-query",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 8,
+    "repetition": 1,
+    "task_id": "ts-todo-query",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 9,
+    "repetition": 1,
+    "task_id": "py-memoize",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 10,
+    "repetition": 1,
+    "task_id": "py-memoize",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 11,
+    "repetition": 1,
+    "task_id": "py-parse-query",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 12,
+    "repetition": 1,
+    "task_id": "py-parse-query",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 13,
+    "repetition": 1,
+    "task_id": "ts-signup-validate",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 14,
+    "repetition": 1,
+    "task_id": "ts-signup-validate",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 15,
+    "repetition": 1,
+    "task_id": "js-score-sort",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 16,
+    "repetition": 1,
+    "task_id": "js-score-sort",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 17,
+    "repetition": 1,
+    "task_id": "ts-semver-range",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 18,
+    "repetition": 1,
+    "task_id": "ts-semver-range",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 19,
+    "repetition": 1,
+    "task_id": "ts-paginate-off-by-one",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 20,
+    "repetition": 1,
+    "task_id": "ts-paginate-off-by-one",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 21,
+    "repetition": 1,
+    "task_id": "ts-config-promise",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 22,
+    "repetition": 1,
+    "task_id": "ts-config-promise",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 23,
+    "repetition": 1,
+    "task_id": "js-parse-ini",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 24,
+    "repetition": 1,
+    "task_id": "js-parse-ini",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 25,
+    "repetition": 1,
+    "task_id": "py-weekly-report-bugs",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 26,
+    "repetition": 1,
+    "task_id": "py-weekly-report-bugs",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 27,
+    "repetition": 1,
+    "task_id": "py-async-rate-limiter",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 28,
+    "repetition": 1,
+    "task_id": "py-async-rate-limiter",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 29,
+    "repetition": 1,
+    "task_id": "py-card-iban",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 30,
+    "repetition": 1,
+    "task_id": "py-card-iban",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 31,
+    "repetition": 1,
+    "task_id": "js-pluralize",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 32,
+    "repetition": 1,
+    "task_id": "js-pluralize",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 33,
+    "repetition": 1,
+    "task_id": "py-expr-eval",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 34,
+    "repetition": 1,
+    "task_id": "py-expr-eval",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 35,
+    "repetition": 1,
+    "task_id": "ts-singleflight-cache",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 36,
+    "repetition": 1,
+    "task_id": "ts-singleflight-cache",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 37,
+    "repetition": 1,
+    "task_id": "py-cursor-pagination",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 38,
+    "repetition": 1,
+    "task_id": "py-cursor-pagination",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 39,
+    "repetition": 1,
+    "task_id": "py-format-phone",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 40,
+    "repetition": 1,
+    "task_id": "py-format-phone",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 41,
+    "repetition": 1,
+    "task_id": "py-validate-username",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 42,
+    "repetition": 1,
+    "task_id": "py-validate-username",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 43,
+    "repetition": 1,
+    "task_id": "ts-schema-validator",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 44,
+    "repetition": 1,
+    "task_id": "ts-schema-validator",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 45,
+    "repetition": 1,
+    "task_id": "ts-parse-clock",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 46,
+    "repetition": 1,
+    "task_id": "ts-parse-clock",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 47,
+    "repetition": 1,
+    "task_id": "js-human-duration",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 48,
+    "repetition": 1,
+    "task_id": "js-human-duration",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 49,
+    "repetition": 1,
+    "task_id": "py-extract-validators",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 50,
+    "repetition": 1,
+    "task_id": "py-extract-validators",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 51,
+    "repetition": 1,
+    "task_id": "py-chunk-evenly",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 52,
+    "repetition": 1,
+    "task_id": "py-chunk-evenly",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 53,
+    "repetition": 1,
+    "task_id": "py-shipping-constants",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 54,
+    "repetition": 1,
+    "task_id": "py-shipping-constants",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 55,
+    "repetition": 1,
+    "task_id": "js-client-options",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 56,
+    "repetition": 1,
+    "task_id": "js-client-options",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 57,
+    "repetition": 1,
+    "task_id": "py-retry-backoff",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 58,
+    "repetition": 1,
+    "task_id": "py-retry-backoff",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 59,
+    "repetition": 1,
+    "task_id": "ts-clamp-range",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 60,
+    "repetition": 1,
+    "task_id": "ts-clamp-range",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 61,
+    "repetition": 1,
+    "task_id": "js-email-list",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 62,
+    "repetition": 1,
+    "task_id": "js-email-list",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 63,
+    "repetition": 1,
+    "task_id": "ts-notify-many",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 64,
+    "repetition": 1,
+    "task_id": "ts-notify-many",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 65,
+    "repetition": 1,
+    "task_id": "ts-emitter-bugs",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 66,
+    "repetition": 1,
+    "task_id": "ts-emitter-bugs",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 67,
+    "repetition": 1,
+    "task_id": "js-pick-omit",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 68,
+    "repetition": 1,
+    "task_id": "js-pick-omit",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 69,
+    "repetition": 1,
+    "task_id": "ts-pricing-rules",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 70,
+    "repetition": 1,
+    "task_id": "ts-pricing-rules",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 71,
+    "repetition": 1,
+    "task_id": "py-parse-kv",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 72,
+    "repetition": 1,
+    "task_id": "py-parse-kv",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 73,
+    "repetition": 1,
+    "task_id": "py-cron-next",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 74,
+    "repetition": 1,
+    "task_id": "py-cron-next",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 75,
+    "repetition": 1,
+    "task_id": "ts-weighted-lru",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 76,
+    "repetition": 1,
+    "task_id": "ts-weighted-lru",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 77,
+    "repetition": 1,
+    "task_id": "ts-hex-color",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 78,
+    "repetition": 1,
+    "task_id": "ts-hex-color",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 79,
+    "repetition": 1,
+    "task_id": "py-order-state-machine",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 80,
+    "repetition": 1,
+    "task_id": "py-order-state-machine",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 81,
+    "repetition": 1,
+    "task_id": "py-shared-default-tags",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 82,
+    "repetition": 1,
+    "task_id": "py-shared-default-tags",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 83,
+    "repetition": 1,
+    "task_id": "py-user-stats-dataclass",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 84,
+    "repetition": 1,
+    "task_id": "py-user-stats-dataclass",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 85,
+    "repetition": 1,
+    "task_id": "ts-table-wrap",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 86,
+    "repetition": 1,
+    "task_id": "ts-table-wrap",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 87,
+    "repetition": 1,
+    "task_id": "py-top-n-reverse",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 88,
+    "repetition": 1,
+    "task_id": "py-top-n-reverse",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 89,
+    "repetition": 1,
+    "task_id": "py-inventory-reservations",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 90,
+    "repetition": 1,
+    "task_id": "py-inventory-reservations",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 91,
+    "repetition": 1,
+    "task_id": "ts-format-money",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 92,
+    "repetition": 1,
+    "task_id": "ts-format-money",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 93,
+    "repetition": 1,
+    "task_id": "py-report-csv-export",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 94,
+    "repetition": 1,
+    "task_id": "py-report-csv-export",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 95,
+    "repetition": 1,
+    "task_id": "ts-undo-redo",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 96,
+    "repetition": 1,
+    "task_id": "ts-undo-redo",
+    "condition": "B",
+    "pair_position": "second"
+  },
+  {
+    "seq": 97,
+    "repetition": 1,
+    "task_id": "js-cli-json-flag",
+    "condition": "B",
+    "pair_position": "first"
+  },
+  {
+    "seq": 98,
+    "repetition": 1,
+    "task_id": "js-cli-json-flag",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 99,
+    "repetition": 1,
+    "task_id": "js-site-plugins",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 100,
+    "repetition": 1,
+    "task_id": "js-site-plugins",
+    "condition": "B",
+    "pair_position": "second"
+  }
+]

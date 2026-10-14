@@ -1,0 +1,18 @@
+
+test_collision_within_a_record (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_collision_within_a_record) ... ok
+test_empty_input (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_empty_input) ... ok
+test_empty_nested_dict_adds_no_column (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_empty_nested_dict_adds_no_column) ... ok
+test_first_seen_column_order_and_missing_cells (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_first_seen_column_order_and_missing_cells) ... ok
+test_flat_records (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_flat_records) ... ok
+test_input_not_modified (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_input_not_modified) ... ok
+test_lists_are_joined (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_lists_are_joined) ... ok
+test_nested_dicts_become_dot_paths (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_nested_dicts_become_dot_paths) ... ok
+test_non_dict_record (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_non_dict_record) ... ok
+test_none_and_booleans (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_none_and_booleans) ... ok
+test_quoting (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_quoting) ... ok
+test_scalar_and_nested_under_same_key_in_different_records (acceptance_tests.test_records_to_csv.RecordsToCsvTest.test_scalar_and_nested_under_same_key_in_different_records) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.000s
+
+OK

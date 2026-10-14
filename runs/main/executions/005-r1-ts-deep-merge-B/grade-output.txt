@@ -1,0 +1,95 @@
+TAP version 13
+# Subtest: plain objects merge recursively, later sources win
+ok 1 - plain objects merge recursively, later sources win
+  ---
+  duration_ms: 0.976708
+  type: 'test'
+  ...
+# Subtest: null-prototype objects count as plain
+ok 2 - null-prototype objects count as plain
+  ---
+  duration_ms: 0.112083
+  type: 'test'
+  ...
+# Subtest: result objects are new and inputs are untouched
+ok 3 - result objects are new and inputs are untouched
+  ---
+  duration_ms: 0.11825
+  type: 'test'
+  ...
+# Subtest: arrays replace by default, with a new array holding the same items
+ok 4 - arrays replace by default, with a new array holding the same items
+  ---
+  duration_ms: 0.102375
+  type: 'test'
+  ...
+# Subtest: arrays concat when asked
+ok 5 - arrays concat when asked
+  ---
+  duration_ms: 0.131417
+  type: 'test'
+  ...
+# Subtest: non-plain values are used by reference
+ok 6 - non-plain values are used by reference
+  ---
+  duration_ms: 0.103833
+  type: 'test'
+  ...
+# Subtest: a plain object replaces a non-plain value and vice versa
+ok 7 - a plain object replaces a non-plain value and vice versa
+  ---
+  duration_ms: 0.625666
+  type: 'test'
+  ...
+# Subtest: undefined is ignored, null is a value
+ok 8 - undefined is ignored, null is a value
+  ---
+  duration_ms: 0.103042
+  type: 'test'
+  ...
+# Subtest: dangerous keys are skipped at every depth
+ok 9 - dangerous keys are skipped at every depth
+  ---
+  duration_ms: 0.1085
+  type: 'test'
+  ...
+# Subtest: key order: target keys first, then new keys as introduced
+ok 10 - key order: target keys first, then new keys as introduced
+  ---
+  duration_ms: 0.142042
+  type: 'test'
+  ...
+# Subtest: only own enumerable string keys are read
+ok 11 - only own enumerable string keys are read
+  ---
+  duration_ms: 0.087667
+  type: 'test'
+  ...
+# Subtest: null and undefined sources are skipped
+ok 12 - null and undefined sources are skipped
+  ---
+  duration_ms: 0.056333
+  type: 'test'
+  ...
+# Subtest: errors
+ok 13 - errors
+  ---
+  duration_ms: 0.289917
+  type: 'test'
+  ...
+# Subtest: loadConfig deep-merges its layers
+ok 14 - loadConfig deep-merges its layers
+  ---
+  duration_ms: 0.090084
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 100.000292
+

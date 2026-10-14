@@ -1,0 +1,273 @@
+ src/debounce.js                 |  65 +++++++++++++-----
+ test/debounce-scenarios.test.js | 144 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 192 insertions(+), 17 deletions(-)
+
+diff --git a/src/debounce.js b/src/debounce.js
+index bbfdcea..c87618d 100644
+--- a/src/debounce.js
++++ b/src/debounce.js
+@@ -48,12 +48,31 @@ const realScheduler = {
+  */
+ export function debounce(fn, wait, options = {}) {
+   const { leading = false, trailing = true, maxWait, scheduler = realScheduler } = options;
++
++  // Timer handles.
+   let waitTimer = null;
+   let maxTimer = null;
++
++  // Arguments of the most recent call that has not yet been passed to `fn`
++  // (null when nothing is owed), plus the `this` that belongs with them.
+   let pendingArgs = null;
+   let pendingThis;
++
++  // Whether `fn` has already been invoked during the current burst (leading
++  // or a maxWait pass). The trailing invocation is skipped when nothing is
++  // left owed to `fn`.
+   let result;
+ 
++  function clearWait() {
++    if (waitTimer !== null) scheduler.clearTimeout(waitTimer);
++    waitTimer = null;
++  }
++
++  function clearMax() {
++    if (maxTimer !== null) scheduler.clearTimeout(maxTimer);
++    maxTimer = null;
++  }
++
+   function invoke() {
+     const args = pendingArgs;
+     const thisArg = pendingThis;
+@@ -63,34 +82,43 @@ export function debounce(fn, wait, options = {}) {
+     return result;
+   }
+ 
++  // End of a burst: `wait` ms passed with no new call.
+   function onWait() {
+     waitTimer = null;
+-    if (maxTimer !== null) {
+-      scheduler.clearTimeout(maxTimer);
+-      maxTimer = null;
+-    }
++    clearMax();
+     if (trailing && pendingArgs !== null) invoke();
++    // Burst is over either way; drop whatever is left so the next call
++    // starts a fresh burst instead of resurrecting stale arguments.
+     pendingArgs = null;
++    pendingThis = undefined;
+   }
+ 
++  // maxWait came due while the burst is still going.
+   function onMaxWait() {
+     maxTimer = null;
+     if (pendingArgs !== null) invoke();
++    // The burst continues as before: the wait timer is untouched, and the
++    // next un-served call (if any) will schedule a fresh maxWait.
+   }
+ 
+   function debounced(...args) {
+     const startsBurst = waitTimer === null;
+-    if (waitTimer !== null) scheduler.clearTimeout(waitTimer);
++    clearWait();
+     waitTimer = scheduler.setTimeout(onWait, wait);
+ 
+-    if (pendingArgs === null) {
+-      pendingArgs = args;
+-      pendingThis = this;
+-    }
++    // Every call of the burst re-arms the "most recent" snapshot.
++    pendingArgs = args;
++    pendingThis = this;
++
+     if (startsBurst && leading) {
++      // Served immediately: nothing is owed for the trailing edge anymore,
++      // unless later calls arrive within this same burst.
++      pendingArgs = null;
++      pendingThis = undefined;
+       result = fn.apply(this, args);
+       return result;
+     }
++
+     if (maxWait !== undefined && maxTimer === null) {
+       maxTimer = scheduler.setTimeout(onMaxWait, maxWait);
+     }
+@@ -98,18 +126,21 @@ export function debounce(fn, wait, options = {}) {
+   }
+ 
+   debounced.cancel = () => {
+-    if (waitTimer !== null) scheduler.clearTimeout(waitTimer);
+-    waitTimer = null;
++    clearWait();
++    clearMax();
++    // Drop any invocation that has not happened yet, including the snapshot;
++    // the next call must not inherit arguments from before the cancel.
++    pendingArgs = null;
++    pendingThis = undefined;
+   };
+ 
+   debounced.flush = () => {
+-    if (waitTimer !== null) scheduler.clearTimeout(waitTimer);
+-    waitTimer = null;
+-    if (maxTimer !== null) {
+-      scheduler.clearTimeout(maxTimer);
+-      maxTimer = null;
+-    }
++    clearWait();
++    clearMax();
+     if (pendingArgs !== null) invoke();
++    // Ends the burst regardless.
++    pendingArgs = null;
++    pendingThis = undefined;
+     return result;
+   };
+ 
+diff --git a/test/debounce-scenarios.test.js b/test/debounce-scenarios.test.js
+new file mode 100644
+index 0000000..3578403
+--- /dev/null
++++ b/test/debounce-scenarios.test.js
+@@ -0,0 +1,144 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { debounce } from "../src/debounce.js";
++import { createFakeScheduler } from "./fake-scheduler.js";
++
++test("burst of typing sends the latest query on trailing edge", () => {
++  const s = createFakeScheduler();
++  const calls = [];
++  const d = debounce((q) => calls.push(q), 250, { maxWait: 1000, scheduler: s });
++  d("c");
++  s.advance(120);
++  d("ca");
++  s.advance(120);
++  d("cat");
++  s.advance(249);
++  assert.deepEqual(calls, []);
++  s.advance(1);
++  assert.deepEqual(calls, ["cat"]);
++});
++
++test("long typing run: maxWait fires with the latest args each time; trailing sends the newest", () => {
++  const s = createFakeScheduler();
++  const calls = [];
++  const d = debounce((q) => calls.push(q), 250, { maxWait: 1000, scheduler: s });
++  d("c");
++  for (let i = 1; i <= 12; i++) {
++    s.advance(200);
++    d("q" + i);
++  }
++  // typing spans 2400ms -> two maxWait passes (t=1000 with "q4", t=2000 with "q9")
++  assert.equal(calls.length, 2);
++  assert.equal(calls[0], "q4");
++  assert.equal(calls[1], "q9");
++  s.advance(249);
++  assert.equal(calls.length, 2);
++  s.advance(1);
++  assert.equal(calls[2], "q12"); // trailing edge carries the very latest query
++});
++
++test("leading: a single click invokes exactly once", () => {
++  const s = createFakeScheduler();
++  const calls = [];
++  const d = debounce((q) => { calls.push(q); return q; }, 100, { leading: true, scheduler: s });
++  const r = d("click");
++  assert.equal(r, "click");
++  assert.deepEqual(calls, ["click"]);
++  s.advance(500);
++  assert.deepEqual(calls, ["click"]);
++});
++
++test("cancel(): no trailing, no maxWait ghost, next burst is clean", () => {
++  const s = createFakeScheduler();
++  const calls = [];
++  const d = debounce((q) => calls.push(q), 250, { maxWait: 1000, scheduler: s });
++  d("cat");
++  s.advance(100);
++  d("cats"); // still inside the burst
++  d.cancel();
++  s.advance(5000);
++  assert.deepEqual(calls, []); // burst dropped mid-flight: no trailing, no maxWait later
++  assert.equal(s.pending(), 0);
++  d("dog");
++  s.advance(249);
++  assert.deepEqual(calls, []);
++  s.advance(1);
++  assert.deepEqual(calls, ["dog"]); // new burst knows nothing of the cancelled one
++});
++
++test("flush(): serves pending args now, returns latest result, ends burst", () => {
++  const s = createFakeScheduler();
++  const calls = [];
++  const d = debounce((q) => { calls.push(q); return q.toUpperCase(); }, 250, { maxWait: 1000, scheduler: s });
++  d("cat");
++  s.advance(100);
++  d("cats");
++  const r = d.flush();
++  assert.equal(r, "CATS");
++  assert.deepEqual(calls, ["cats"]);
++  s.advance(5000);
++  assert.deepEqual(calls, ["cats"]);
++  assert.equal(s.pending(), 0);
++});
++
++test("fn receives `this` of the call whose args it gets", () => {
++  const s = createFakeScheduler();
++  const seen = [];
++  const d = debounce(function () { seen.push(this && this.tag); }, 100, { scheduler: s });
++  const ctx = { tag: "box-1" };
++  d.call(ctx);
++  s.advance(100);
++  assert.deepEqual(seen, ["box-1"]);
++});
++
++test("every call returns the latest invocation result so far", () => {
++  const s = createFakeScheduler();
++  const calls = [];
++  const d = debounce((q) => { calls.push(q); return calls.length; }, 100, { scheduler: s });
++  assert.equal(d("a"), undefined);
++  s.advance(100);
++  assert.equal(d("b"), 1);
++  s.advance(100);
++  assert.equal(d("c"), 2);
++});
++
++test("maxWait fires even with trailing: false, with the latest args", () => {
++  const s = createFakeScheduler();
++  const calls = [];
++  const d = debounce((q) => calls.push(q), 100, { maxWait: 150, trailing: false, scheduler: s });
++  d("a");
++  s.advance(80);
++  d("b");
++  s.advance(70); // t=150 -> maxWait with "b"
++  assert.deepEqual(calls, ["b"]);
++  s.advance(500); // burst ends silently: no trailing
++  assert.deepEqual(calls, ["b"]);
++});
++
++test("leading + trailing in one burst: leading fires first call, trailing fires once with the latest", () => {
++  const s = createFakeScheduler();
++  const calls = [];
++  const d = debounce((q) => calls.push(q), 100, { leading: true, scheduler: s });
++  d("a");
++  s.advance(50);
++  d("b");
++  s.advance(50);
++  d("c");
++  s.advance(100);
++  assert.deepEqual(calls, ["a", "c"]);
++});
++
++test("after a maxWait pass the next un-served call arms a fresh maxWait", () => {
++  const s = createFakeScheduler();
++  const calls = [];
++  const d = debounce((q) => calls.push(q), 1000, { maxWait: 400, scheduler: s });
++  d("a");
++  s.advance(300); d("b");
++  s.advance(100);           // t=400 -> maxWait fires with "b"
++  assert.deepEqual(calls, ["b"]);
++  s.advance(300); d("c");   // t=700 — new un-served call re-arms maxWait for t=1100
++  s.advance(400);           // t=1100 -> second maxWait with "c"
++  assert.deepEqual(calls, ["b", "c"]);
++  s.advance(1000);          // burst ends; nothing left owed
++  assert.deepEqual(calls, ["b", "c"]);
++});

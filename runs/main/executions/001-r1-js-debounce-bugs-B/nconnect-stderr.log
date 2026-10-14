@@ -1,0 +1,6 @@
+NConnect ▸ Routing Claude Code → Nebius Token Factory (Auto). Not Anthropic.
+[nconnect proxy] daemon: http://127.0.0.1:7897
+[nconnect proxy] session: http://127.0.0.1:7897/session/nconnect-Y9hEQED8mEVFKc8Ct-I_4dVI4MtOOstK
+[nconnect claude] model: nebius-auto
+[claude-code:unrecognized_model] {"model":"nebius-auto[1m]","query_source":"sdk"}
+[nconnect cost] session total: $1.4206 (413,477 in incl 383,616 cached, 12,013 out)

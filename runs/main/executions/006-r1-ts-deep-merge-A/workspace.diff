@@ -1,0 +1,113 @@
+ src/config.ts |  4 ++-
+ src/merge.ts  | 86 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 89 insertions(+), 1 deletion(-)
+
+diff --git a/src/config.ts b/src/config.ts
+index 769023e..c2b6e3b 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,3 +1,5 @@
++import { deepMerge } from "./merge.ts";
++
+ export type Config = Record<string, unknown>;
+ 
+ export const DEFAULTS: Config = {
+@@ -8,5 +10,5 @@ export const DEFAULTS: Config = {
+ 
+ /** Layer overrides over the defaults, later layers winning. */
+ export function loadConfig(...layers: Array<Config | undefined>): Config {
+-  return Object.assign({}, DEFAULTS, ...layers.filter((layer) => layer !== undefined));
++  return deepMerge(DEFAULTS, ...layers);
+ }
+diff --git a/src/merge.ts b/src/merge.ts
+new file mode 100644
+index 0000000..7db473b
+--- /dev/null
++++ b/src/merge.ts
+@@ -0,0 +1,86 @@
++export type MergeOptions = {
++  arrays?: "replace" | "concat";
++};
++
++type PlainObject = Record<string, unknown>;
++
++const SKIPPED_KEYS = new Set(["__proto__", "constructor", "prototype"]);
++
++function isPlainObject(value: unknown): value is PlainObject {
++  if (typeof value !== "object" || value === null) return false;
++  const proto = Object.getPrototypeOf(value);
++  return proto === Object.prototype || proto === null;
++}
++
++function clonePlainObject(source: PlainObject): PlainObject {
++  const result: PlainObject = {};
++  for (const key of Object.keys(source)) {
++    if (SKIPPED_KEYS.has(key)) continue;
++    result[key] = copyValue(source[key]);
++  }
++  return result;
++}
++
++function copyValue(value: unknown): unknown {
++  if (isPlainObject(value)) return clonePlainObject(value);
++  // Arrays and other objects (Date, Map, class instances, functions) are
++  // carried by reference as-is.
++  return value;
++}
++
++function mergeInto(target: PlainObject, source: PlainObject, options: MergeOptions): PlainObject {
++  for (const key of Object.keys(source)) {
++    if (SKIPPED_KEYS.has(key)) continue;
++    const sourceValue = source[key];
++    // A source value of undefined is ignored entirely.
++    if (sourceValue === undefined) continue;
++
++    const targetValue = target[key];
++
++    if (Array.isArray(sourceValue) && options.arrays === "concat") {
++      target[key] = Array.isArray(targetValue)
++        ? [...targetValue, ...sourceValue]
++        : [...sourceValue];
++    } else if (isPlainObject(sourceValue)) {
++      target[key] = isPlainObject(targetValue)
++        ? mergeInto(clonePlainObject(targetValue), sourceValue, options)
++        : clonePlainObject(sourceValue);
++    } else {
++      target[key] = sourceValue;
++    }
++  }
++  return target;
++}
++
++/** Same as deepMerge, with options (arrays: "replace" default, or "concat"). */
++export function deepMergeWith(
++  options: MergeOptions,
++  target: unknown,
++  ...sources: unknown[]
++): PlainObject {
++  const arraysMode = options.arrays ?? "replace";
++  if (arraysMode !== "replace" && arraysMode !== "concat") {
++    throw new RangeError(`Invalid arrays option: ${String(options.arrays)}`);
++  }
++
++  if (!isPlainObject(target)) {
++    throw new TypeError("Target must be a plain object");
++  }
++
++  const result = clonePlainObject(target);
++
++  for (const source of sources) {
++    if (source === null || source === undefined) continue;
++    if (!isPlainObject(source)) {
++      throw new TypeError("Source must be a plain object, null, or undefined");
++    }
++    mergeInto(result, source, options);
++  }
++
++  return result;
++}
++
++/** Merge sources over target, left to right, returning a new object. */
++export function deepMerge(target: unknown, ...sources: unknown[]): PlainObject {
++  return deepMergeWith({}, target, ...sources);
++}

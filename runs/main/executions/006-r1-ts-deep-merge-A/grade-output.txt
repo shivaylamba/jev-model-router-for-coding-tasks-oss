@@ -1,0 +1,123 @@
+TAP version 13
+# Subtest: plain objects merge recursively, later sources win
+ok 1 - plain objects merge recursively, later sources win
+  ---
+  duration_ms: 1.051792
+  type: 'test'
+  ...
+# Subtest: null-prototype objects count as plain
+ok 2 - null-prototype objects count as plain
+  ---
+  duration_ms: 0.204375
+  type: 'test'
+  ...
+# Subtest: result objects are new and inputs are untouched
+ok 3 - result objects are new and inputs are untouched
+  ---
+  duration_ms: 0.171334
+  type: 'test'
+  ...
+# Subtest: arrays replace by default, with a new array holding the same items
+not ok 4 - arrays replace by default, with a new array holding the same items
+  ---
+  duration_ms: 0.60525
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-namchw5e/ws/acceptance_tests/merge.test.ts:34:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected "actual" not to be reference-equal to "expected":
+    
+    [
+      {
+        id: 1
+      }
+    ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0:
+      id: 1
+  actual:
+    0:
+      id: 1
+  operator: 'notStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-namchw5e/ws/acceptance_tests/merge.test.ts:39:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: arrays concat when asked
+ok 5 - arrays concat when asked
+  ---
+  duration_ms: 0.138292
+  type: 'test'
+  ...
+# Subtest: non-plain values are used by reference
+ok 6 - non-plain values are used by reference
+  ---
+  duration_ms: 0.139416
+  type: 'test'
+  ...
+# Subtest: a plain object replaces a non-plain value and vice versa
+ok 7 - a plain object replaces a non-plain value and vice versa
+  ---
+  duration_ms: 0.084416
+  type: 'test'
+  ...
+# Subtest: undefined is ignored, null is a value
+ok 8 - undefined is ignored, null is a value
+  ---
+  duration_ms: 0.173958
+  type: 'test'
+  ...
+# Subtest: dangerous keys are skipped at every depth
+ok 9 - dangerous keys are skipped at every depth
+  ---
+  duration_ms: 0.149167
+  type: 'test'
+  ...
+# Subtest: key order: target keys first, then new keys as introduced
+ok 10 - key order: target keys first, then new keys as introduced
+  ---
+  duration_ms: 0.130125
+  type: 'test'
+  ...
+# Subtest: only own enumerable string keys are read
+ok 11 - only own enumerable string keys are read
+  ---
+  duration_ms: 0.097125
+  type: 'test'
+  ...
+# Subtest: null and undefined sources are skipped
+ok 12 - null and undefined sources are skipped
+  ---
+  duration_ms: 0.060834
+  type: 'test'
+  ...
+# Subtest: errors
+ok 13 - errors
+  ---
+  duration_ms: 0.307792
+  type: 'test'
+  ...
+# Subtest: loadConfig deep-merges its layers
+ok 14 - loadConfig deep-merges its layers
+  ---
+  duration_ms: 0.13425
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 13
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 102.336042
+
