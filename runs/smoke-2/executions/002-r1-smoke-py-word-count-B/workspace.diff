@@ -1,0 +1,25 @@
+ __pycache__/textstats.cpython-311.pyc | Bin 0 -> 733 bytes
+ textstats.py                          |  11 +++++++++++
+ 2 files changed, 11 insertions(+)
+
+diff --git a/__pycache__/textstats.cpython-311.pyc b/__pycache__/textstats.cpython-311.pyc
+new file mode 100644
+index 0000000..de285a4
+Binary files /dev/null and b/__pycache__/textstats.cpython-311.pyc differ
+diff --git a/textstats.py b/textstats.py
+index 083c1e0..7d883a2 100644
+--- a/textstats.py
++++ b/textstats.py
+@@ -1 +1,12 @@
+ """Text statistics."""
++
++import re
++
++
++def word_counts(text):
++    """Return a dict mapping each lowercase word to its count."""
++    words = re.findall(r"[a-z0-9']+", text.lower())
++    counts = {}
++    for word in words:
++        counts[word] = counts.get(word, 0) + 1
++    return counts

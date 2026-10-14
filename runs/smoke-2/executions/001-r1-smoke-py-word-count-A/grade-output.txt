@@ -1,0 +1,11 @@
+
+test_apostrophe (acceptance_tests.test_word_counts.T.test_apostrophe) ... ok
+test_basic (acceptance_tests.test_word_counts.T.test_basic) ... ok
+test_case (acceptance_tests.test_word_counts.T.test_case) ... ok
+test_empty (acceptance_tests.test_word_counts.T.test_empty) ... ok
+test_punctuation (acceptance_tests.test_word_counts.T.test_punctuation) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK

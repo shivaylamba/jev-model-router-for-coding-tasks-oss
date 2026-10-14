@@ -74,6 +74,13 @@ def log_event(run_dir: Path, message: str, **extra) -> None:
 # ---------------------------------------------------------------- secrets
 
 def secret(name: str) -> str | None:
+    """The project's .env.local wins, so a benchmark key is never silently swapped for a personal one."""
+    local = ROOT / ".env.local"
+    if local.exists():
+        for line in local.read_text().splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() == name and value.strip():
+                return value.strip().strip('"').strip("'")
     value = os.environ.get(name, "").strip()
     if value:
         return value
@@ -81,12 +88,6 @@ def secret(name: str) -> str | None:
         config = Path.home() / ".nconnect" / "config.json"
         if config.exists():
             return (json.loads(config.read_text()).get("apiKey") or "").strip() or None
-    local = ROOT / ".env.local"
-    if local.exists():
-        for line in local.read_text().splitlines():
-            key, _, value = line.partition("=")
-            if key.strip() == name and value.strip():
-                return value.strip().strip('"').strip("'")
     return None
 
 

@@ -1,0 +1,35 @@
+TAP version 13
+# Subtest: spaces and hyphens
+ok 1 - spaces and hyphens
+  ---
+  duration_ms: 0.592917
+  type: 'test'
+  ...
+# Subtest: uppercase
+ok 2 - uppercase
+  ---
+  duration_ms: 0.115458
+  type: 'test'
+  ...
+# Subtest: extra spaces
+ok 3 - extra spaces
+  ---
+  duration_ms: 0.073584
+  type: 'test'
+  ...
+# Subtest: blank
+ok 4 - blank
+  ---
+  duration_ms: 0.061333
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 92.79925
+

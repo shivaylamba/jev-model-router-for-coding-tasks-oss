@@ -1,0 +1,16 @@
+ sensors.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sensors.py b/sensors.py
+index 9d80b88..51233b9 100644
+--- a/sensors.py
++++ b/sensors.py
+@@ -2,7 +2,7 @@
+ 
+ 
+ def average_reading(readings):
+-    values = [r for r in readings[:-1] if r is not None]
++    values = [r for r in readings if r is not None]
+     if not values:
+         return None
+     return sum(values) / len(values)
