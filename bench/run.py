@@ -603,21 +603,17 @@ INFRA_RERUNS = 2
 
 
 def probe(model: str, key: str, timeout: int = 30) -> tuple[bool, str]:
-    """One tiny request straight to Nebius. Not part of any task's cost; logged as overhead."""
-    import urllib.error
-    import urllib.request
-    body = json.dumps({"model": model, "max_tokens": 8, "messages": [{"role": "user", "content": "Reply with OK"}]}).encode()
-    request = urllib.request.Request(f"{NEBIUS_ORIGIN_BASE}/chat/completions", data=body, method="POST",
-                                     headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    """One tiny request straight to Nebius (via curl; the key goes on stdin, never argv).
+    Not part of any task's cost; logged as overhead."""
+    body = json.dumps({"model": model, "max_tokens": 8, "messages": [{"role": "user", "content": "Reply with OK"}]})
     started = time.time()
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            response.read()
-            return response.status == 200, f"{response.status} in {time.time() - started:.1f}s"
-    except urllib.error.HTTPError as err:
-        return False, f"HTTP {err.code}"
-    except Exception as err:  # timeouts, resets
-        return False, type(err).__name__
+    proc = subprocess.run(["curl", "-sS", "-m", str(timeout), "-o", "/dev/null", "-w", "%{http_code}", "-K", "-",
+                           "-H", "content-type: application/json", f"{NEBIUS_ORIGIN_BASE}/chat/completions", "-d", body],
+                          input=f'header = "Authorization: Bearer {key}"\n', capture_output=True, text=True)
+    code = proc.stdout.strip()
+    if code == "200":
+        return True, f"200 in {time.time() - started:.1f}s"
+    return False, f"HTTP {code}" if code and code != "000" else (proc.stderr.strip()[:60] or "no response")
 
 
 def wait_until_healthy(run_dir: Path, key: str, deadline: float) -> bool:

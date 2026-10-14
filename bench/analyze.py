@@ -510,6 +510,13 @@ def main() -> None:
     manifest, records = load_records(run_dir, args.use_results)
     conditions = sorted({r["condition"] for r in records})
     pairs = pairs_of(records)
+    excluded_path = run_dir / "excluded.jsonl"
+    excluded = [json.loads(l) for l in excluded_path.read_text().splitlines() if l.strip()] if excluded_path.exists() else []
+    # Sensitivity (Amendment 1): the first, outage-hit attempt stands in for its re-run.
+    first_attempt = {}
+    for r in excluded:
+        first_attempt.setdefault((r["repetition"], r["task_id"], r["condition"]), r)
+    sensitivity_records = [first_attempt.get((r["repetition"], r["task_id"], r["condition"]), r) for r in records]
 
     summary = {
         "run_id": args.run_id,
@@ -523,6 +530,11 @@ def main() -> None:
         "paired": paired_summary(pairs),
         "paired_by_difficulty": {d: paired_summary([(a, b) for a, b in pairs if a["difficulty"] == d])
                                  for d in DIFFICULTIES},
+        "infrastructure_failures": [
+            {"task_id": r["task_id"], "condition": r["condition"], "seq": r["seq"], "reason": r["excluded_reason"],
+             "cost_usd": r["cost_total_usd"], "duration_s": r["duration_s"], "kept_at": r.get("kept_at")}
+            for r in excluded],
+        "paired_counting_outages_as_failures": paired_summary(pairs_of(sensitivity_records)) if excluded else None,
         "model_shares": {c: model_shares([r for r in records if r["condition"] == c]) for c in conditions},
         "auto_routing": auto_routing([r for r in records if r["condition"] == AUTO]) if AUTO in conditions else {},
         "spend_by_difficulty": {c: {d: sum(r["cost_total_usd"] for r in records if r["condition"] == c and r["difficulty"] == d)

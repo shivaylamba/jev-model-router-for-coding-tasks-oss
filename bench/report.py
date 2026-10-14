@@ -54,6 +54,23 @@ def limits(s: dict) -> str:
     return ", ".join(f"{k}: {v}" for k, v in stopped.items()) or "none"
 
 
+def outages(summary: dict) -> str:
+    failures = summary.get("infrastructure_failures") or []
+    if not failures:
+        return "No execution met the infrastructure-failure rule."
+    out = ["Executions excluded as infrastructure failures and re-run (evidence kept):", "",
+           "| Task | Condition | Execution | Cost | Duration | Reason | Evidence |", "|---|---|---|---|---|---|---|"]
+    for f in failures:
+        out.append(f"| {f['task_id']} | {f['condition']} | {f['seq']:03d} | {money(f['cost_usd'])} | {secs(f['duration_s'])} | "
+                   f"{f['reason']} | `{f['kept_at']}` |")
+    s = summary.get("paired_counting_outages_as_failures") or {}
+    if s:
+        out += ["", f"Sensitivity, counting each outage-hit attempt as the result instead of its re-run: quality difference "
+                f"{s['quality_difference_pp']:+.1f} pp, cost savings {s['cost_savings_pct']:.1f}%, speedup by total time "
+                f"{ratio(s['speedup_total_time'])}."]
+    return "\n".join(out)
+
+
 def scorecard(summary: dict) -> str:
     a, b = summary["overall"].get(FIXED, {}), summary["overall"].get(AUTO, {})
     rows = [
@@ -259,6 +276,10 @@ Generated from `runs/{args.run_id}/` by `bench/analyze.py` and `bench/report.py`
 ## Headline (paired tasks)
 
 {headline(summary)}
+
+## Provider outages (Amendment 1)
+
+{outages(summary)}
 
 ## Scorecard
 

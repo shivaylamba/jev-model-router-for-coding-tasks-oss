@@ -1,3 +1,5 @@
 {"at": "2026-10-14T16:49:13.525Z", "event": "prepared", "tasks": 50, "executions": 100, "conditions": ["A", "B"]}
 {"at": "2026-10-14T16:49:16.825Z", "event": "run started", "budget_usd": 200.0, "max_hours": 14.0}
 {"at": "2026-10-14T17:24:42.453Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "008-r1-ts-todo-query-B", "reason": "the last 3 model requests (zai-org/GLM-5.3) got no provider response; 22 of 23 model requests failed"}
+{"at": "2026-10-14T17:24:58.495Z", "event": "run started", "budget_usd": 200.0, "max_hours": 14.0}
+{"at": "2026-10-14T17:24:59.643Z", "event": "provider unhealthy; waiting", "models": {"moonshotai/Kimi-K3": "URLError", "zai-org/GLM-5.3": "URLError", "zai-org/GLM-5.3-Flash": "URLError"}, "wait_s": 300}

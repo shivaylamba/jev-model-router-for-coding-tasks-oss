@@ -18,3 +18,16 @@ Traceback (most recent call last):
   File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 525, in execute
     time.sleep(1)
 KeyboardInterrupt
+[2026-10-14T17:24:58.495Z] run started {'budget_usd': 200.0, 'max_hours': 14.0}
+[2026-10-14T17:24:59.643Z] provider unhealthy; waiting {'models': {'moonshotai/Kimi-K3': 'URLError', 'zai-org/GLM-5.3': 'URLError', 'zai-org/GLM-5.3-Flash': 'URLError'}, 'wait_s': 300}
+Traceback (most recent call last):
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 794, in <module>
+    main()
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 782, in main
+    run(args)
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 725, in run
+    if not wait_until_healthy(run_dir, keys["NEBIUS_API_KEY"], started + max_hours * 3600):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 632, in wait_until_healthy
+    time.sleep(HEALTH_WAIT_S)
+KeyboardInterrupt
