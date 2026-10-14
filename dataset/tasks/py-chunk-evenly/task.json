@@ -1,0 +1,11 @@
+{
+  "id": "py-chunk-evenly",
+  "title": "Split a list into near-equal chunks",
+  "category": "utility",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "In listutil.py, add a function chunk_evenly(items, n) that splits a list into exactly n consecutive chunks whose lengths differ by at most one, with the longer chunks first. For example chunk_evenly([1, 2, 3, 4, 5], 3) returns [[1, 2], [3, 4], [5]]. If n is larger than the number of items, the extra chunks are empty lists. It should raise ValueError when n is less than 1, and it must not modify the input list.",
+  "acceptance": "Exact chunking for even and uneven splits, longer chunks first, n larger than len(items) gives trailing empty lists, n == 1, empty input, ValueError for n < 1, input list unchanged, works for tuples' list conversion is not required.",
+  "difficulty_rationale": "One function with a clear specification and a handful of edge cases.",
+  "estimated_human_minutes": 8
+}

@@ -1,0 +1,11 @@
+{
+  "id": "py-top-n-reverse",
+  "title": "Add reverse= to top_n",
+  "category": "api-change",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "I'd like top_n in ranking.py to also give the bottom of a ranking. Add a keyword-only parameter reverse=False: top_n(items, n, key=None, *, reverse=False). With reverse=True it returns the n smallest items, smallest first (so top_n([4, 9, 1, 7], 2, reverse=True) is [1, 4]). Everything else about top_n stays as documented in its docstring: key works like sorted()'s key, items that compare equal keep their original relative order in both directions, n larger than the number of items returns all of them, n == 0 gives [], and the input is never modified. Existing callers that pass key positionally must keep working, and reverse must not be accepted positionally. Right now a negative n quietly returns a strange slice; make top_n raise ValueError when n is negative instead. While you're there, switch fastest() in latency.py to use top_n with reverse=True.",
+  "acceptance": "reverse=True gives smallest first, with and without key; default unchanged; key still positional; reverse keyword-only (TypeError positionally); stable ties in both directions; n > len; n == 0; ValueError for negative n in both modes; input untouched; podium/slowest/fastest callers.",
+  "difficulty_rationale": "One function signature change with a few stated edge cases.",
+  "estimated_human_minutes": 10
+}

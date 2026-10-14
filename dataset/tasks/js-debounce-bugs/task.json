@@ -1,0 +1,11 @@
+{
+  "id": "js-debounce-bugs",
+  "title": "Debounce sends stale and duplicate searches",
+  "category": "bugfix",
+  "difficulty": "medium",
+  "language": "javascript",
+  "prompt": "The search box is misbehaving, and it looks like the cause is debounce in src/debounce.js rather than src/searchbox.js. What we see:\n\n- Typing \"c\", \"ca\", \"cat\" in a row sends a search for \"c\" instead of \"cat\". During long typing runs the periodic maxWait search also sends an old query.\n- With { leading: true } (we use it on the filter dropdown), one single click calls the handler twice: once right away and again when the wait runs out.\n- Clearing the box calls cancel(), but the search still fires later when maxWait comes due, and the next thing the user types is sometimes searched with the text from before the clear.\n\nThe doc comment on debounce describes the intended behaviour of bursts, leading, trailing, maxWait, cancel(), flush(), the return value and this. Please fix debounce so it matches that comment, keeping its signature, the options and the injectable scheduler (tests drive time with test/fake-scheduler.js; there should be no real timers in tests).",
+  "acceptance": "Trailing call uses the latest arguments and this; separate bursts; leading+trailing invokes once for a single call and first+last for a burst; leading-only; maxWait invocations with latest arguments, followed by a trailing call, and without trailing; cancel drops pending calls and the maxWait timer and the next call starts a fresh burst; flush invokes now and returns the latest result; return values; the search box end to end.",
+  "difficulty_rationale": "Three symptoms from interacting state (pending arguments, two timers, leading invocation) in a stateful function, driven through an injected scheduler.",
+  "estimated_human_minutes": 35
+}

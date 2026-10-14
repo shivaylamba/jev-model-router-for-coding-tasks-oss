@@ -1,0 +1,5 @@
+{
+  "name": "catalog-gateway",
+  "private": true,
+  "type": "module"
+}

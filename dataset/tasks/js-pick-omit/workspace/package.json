@@ -1,0 +1,8 @@
+{
+  "name": "objkit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

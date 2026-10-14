@@ -1,0 +1,11 @@
+{
+  "id": "py-report-csv-export",
+  "title": "CSV export for reports",
+  "category": "feature",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "Finance wants to pull our reports into spreadsheets, so please add a CSV output format to the reports package (README.md describes the layout and how exporters work). Add an exporter with name \"csv\" and extension \".csv\", register it so get_exporter(\"csv\") returns it and --list-formats shows it, and make `python3 -m reports.cli --format csv REPORT.json` work, both to stdout and with --output.\n\nThe CSV is for machines, not people, so it must not use the display formatting in reports/formatting.py. The rules:\n\n- First line is the header: the column labels in column order. Then one line per report row. No title line.\n- Every line, including the last, ends with \"\\n\" (no \"\\r\"), also when written to a file with --output.\n- Standard CSV quoting: a field is wrapped in double quotes only if it contains a comma, a double quote, or a line break, and double quotes inside it are doubled. Header labels follow the same rule.\n- ints: plain digits with a leading minus for negatives, no thousands separators (1204, -42).\n- floats: exactly two decimals and no separators, as format(value, \".2f\") gives (98213.50, 4410.00, -0.50).\n- booleans: true / false.\n- null or a key missing from the row: an empty field.\n- strings: written as they are, no trimming.\n\nA report with no rows is just the header line. For examples/sales.json the output should start with:\n\nRegion,Orders,Revenue,Target met\nNorth,1204,98213.50,true\n\"South, coastal\",87,4410.00,false",
+  "acceptance": "csv registered with name/extension and listed; full sales example; int/float/bool/null formatting; quoting of commas, quotes, newlines incl. header labels; strings untrimmed; no CR and no title; header-only for empty reports; CLI --format csv to stdout and --output file with identical bytes; --list-formats output; existing formats unchanged.",
+  "difficulty_rationale": "A new exporter plus registry and CLI wiring across three files, with number formatting and quoting rules that differ from the existing display formatting.",
+  "estimated_human_minutes": 30
+}

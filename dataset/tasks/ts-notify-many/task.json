@@ -1,0 +1,11 @@
+{
+  "id": "ts-notify-many",
+  "title": "notify accepts several recipients",
+  "category": "api-change",
+  "difficulty": "easy",
+  "language": "typescript",
+  "prompt": "Notifier.notify in src/notifier.ts only takes a single recipient, and we keep writing loops around it. Please change it to notify(recipients: string | readonly string[], message: string): number. A string behaves as it does today. An array sends the message to each recipient in the order given, and the method returns how many messages it actually sent (1 for a single string, 0 for an empty array). Each recipient is trimmed as now, and duplicates are only sent once: two recipients are the same if they match case-insensitively after trimming, and the first spelling is the one that gets sent. If any recipient is blank, throw the same TypeError as today, and do it before sending anything, so a bad list never results in a partial send. The existing callers in src/alerts.ts and src/digest.ts must keep working without changes in behaviour.",
+  "acceptance": "String form returns 1 and trims; array order; case-insensitive de-dup keeping first spelling; empty array returns 0; blank entry throws TypeError with nothing sent; alerts and digest callers unchanged.",
+  "difficulty_rationale": "One method with a widened signature and a few stated rules.",
+  "estimated_human_minutes": 12
+}

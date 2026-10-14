@@ -1,0 +1,11 @@
+{
+  "id": "smoke-py-average-bug",
+  "title": "Average ignores the last reading",
+  "category": "bugfix",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Our sensor report shows averages that are slightly off. average_reading in sensors.py should return the mean of all readings that are not None, or None if there are none. Please fix it.",
+  "acceptance": "Mean over all non-None readings including the last one; None when no readings.",
+  "difficulty_rationale": "One-line bug.",
+  "estimated_human_minutes": 5
+}

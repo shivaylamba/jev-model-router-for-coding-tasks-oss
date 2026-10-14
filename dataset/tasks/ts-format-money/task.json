@@ -1,0 +1,11 @@
+{
+  "id": "ts-format-money",
+  "title": "Format integer cents as money",
+  "category": "formatting",
+  "difficulty": "easy",
+  "language": "typescript",
+  "prompt": "Add an exported `formatCents(cents: number, currency: Currency): string` to src/money.ts (the `Currency` type is already there). It formats an integer amount of cents for display on invoices:\n\n- symbol first: `$` for USD, `€` for EUR, `£` for GBP\n- comma thousands separators and always exactly two decimals: `formatCents(123456, \"USD\")` is `\"$1,234.56\"`, `formatCents(5, \"USD\")` is `\"$0.05\"`, `formatCents(0, \"GBP\")` is `\"£0.00\"`\n- negative amounts get a leading minus before the symbol: `formatCents(-123456, \"USD\")` is `\"-$1,234.56\"`\n- if `cents` is not an integer (including NaN, Infinity or a non-number at runtime) throw a `TypeError`\n- if `currency` is not one of the three supported codes at runtime, throw a `RangeError`\n\nThe output must be exactly in this format regardless of the machine's locale.",
+  "acceptance": "Two decimals and zero padding for small amounts, comma grouping at thousands and beyond, each currency symbol, minus before the symbol for negatives, TypeError for fractional/NaN/Infinity/non-number cents, RangeError for an unsupported currency.",
+  "difficulty_rationale": "One function whose output format is fully given by examples.",
+  "estimated_human_minutes": 10
+}

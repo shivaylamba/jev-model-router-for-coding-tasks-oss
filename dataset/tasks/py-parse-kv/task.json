@@ -1,0 +1,11 @@
+{
+  "id": "py-parse-kv",
+  "title": "Parse key=value; key=value strings",
+  "category": "parsing",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "kv.py has format_kv() but nothing to read those strings back. Please add parse_kv(text) to kv.py that turns a string like \"a=1; b = two\" into a dict, here {\"a\": \"1\", \"b\": \"two\"}.\n\nRules:\n- Segments are separated by \";\". Segments that are empty or only whitespace are skipped, so an empty string gives {}.\n- Each segment is split on its first \"=\" only, so \"query=x=1\" gives {\"query\": \"x=1\"}.\n- Keys and values are stripped of surrounding whitespace and values stay strings (no number conversion). An empty value is fine: \"a=\" gives {\"a\": \"\"}.\n- If a key appears more than once, the last value wins.\n- Raise ValueError for a non-empty segment that has no \"=\", and for a segment whose key is empty after stripping (like \" = 2\").",
+  "acceptance": "Example from the prompt, trimming, values kept as strings, empty segments and empty input, last duplicate wins, split on first '=', empty value allowed, ValueError for a segment without '=' and for an empty key, round trip with format_kv.",
+  "difficulty_rationale": "One function with a short list of stated rules.",
+  "estimated_human_minutes": 8
+}

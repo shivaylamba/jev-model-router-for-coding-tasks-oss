@@ -1,0 +1,11 @@
+{
+  "id": "ts-semver-range",
+  "title": "Check versions against dependency ranges",
+  "category": "parsing",
+  "difficulty": "medium",
+  "language": "typescript",
+  "prompt": "The plugin registry needs to resolve dependency ranges. Please add an exported satisfies(version: string, range: string): boolean to src/semver.ts, using the range syntax in docs/RANGES.md: exact versions, =, <, <=, >, >=, ^, ~, hyphen ranges, x-ranges and partial versions, space-separated comparator sets that all must hold, and || alternatives. We only publish release versions, so there is no prerelease handling at all.\n\nA few examples: satisfies(\"1.4.0\", \"^1.2.3\") is true, satisfies(\"0.3.0\", \"^0.2.3\") is false, satisfies(\"2.3.9\", \"1.2.3 - 2.3\") is true and satisfies(\"1.3.0\", \">1.2\") is true.\n\nThe version argument is validated like parseVersion does. Throw a TypeError when the version is invalid or the range doesn't fit the grammar in the doc (the doc has a list of invalid examples). Reuse parseVersion and compareVersions where it helps.",
+  "acceptance": "Exact and = matches, comparison operators with full and partial versions, ANDed comparator sets with flexible whitespace, x-ranges/missing parts/empty range/wildcards with operators, tilde and caret tables including 0.x rules, hyphen ranges with partial and * bounds, || alternatives including an empty alternative, TypeError for invalid versions and for each invalid range listed in the doc.",
+  "difficulty_rationale": "One function but many interacting rules (partial versions, caret zero handling, partial bounds per operator, hyphen ranges) described in a workspace doc.",
+  "estimated_human_minutes": 45
+}

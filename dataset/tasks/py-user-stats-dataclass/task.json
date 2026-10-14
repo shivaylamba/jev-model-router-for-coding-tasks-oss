@@ -1,0 +1,11 @@
+{
+  "id": "py-user-stats-dataclass",
+  "title": "get_user_stats returns a dataclass",
+  "category": "api-change",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "get_user_stats in stats.py returns a bare (total_events, active_days, last_seen) tuple and the callers index into it by position, which makes them unpleasant to read. Please introduce a frozen dataclass UserStats in stats.py with the fields total_events, active_days and last_seen, in that order, and make get_user_stats (and therefore get_all_user_stats) return it. A user with no events gets UserStats(0, 0, None).\n\nThere is other code outside this repo that still treats the result as a tuple, so UserStats has to keep behaving like one: it unpacks into the three values in the same order (total, days, last = get_user_stats(...) and tuple(stats) both work), len(stats) is 3, and integer indexing works as on the tuple, including negative indexes and IndexError past the end. Assigning to a field should raise dataclasses.FrozenInstanceError.\n\nAlso add two conveniences: a property events_per_active_day (total_events / active_days as a float, 0.0 when active_days is 0) and a method as_dict() returning {\"total_events\": ..., \"active_days\": ..., \"last_seen\": ...}.\n\nThen update the callers in dashboard.py and emailer.py to use the named fields instead of positions; their output must stay exactly the same.",
+  "acceptance": "UserStats is a frozen dataclass with fields in order; get_user_stats/get_all_user_stats return it; unpacking, tuple(), len, indexing incl. negative and IndexError; FrozenInstanceError on assignment; events_per_active_day incl. zero days; as_dict; dashboard and emailer outputs unchanged.",
+  "difficulty_rationale": "A return-type change that must stay tuple-compatible (iteration, len, indexing), two new members, and callers in two modules.",
+  "estimated_human_minutes": 20
+}

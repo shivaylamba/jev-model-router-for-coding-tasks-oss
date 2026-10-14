@@ -1,0 +1,11 @@
+{
+  "id": "ts-parse-clock",
+  "title": "Parse a time of day into minutes",
+  "category": "parsing",
+  "difficulty": "easy",
+  "language": "typescript",
+  "prompt": "Shift times come in from a form as text and we need them as minutes after midnight. Add an exported parseClock(input: string): number to src/clock.ts (next to formatClock) that accepts both of these forms, ignoring surrounding whitespace:\n\n- 24-hour: H:MM or HH:MM, hours 0-23, for example \"19:30\" -> 1170 and \"7:05\" -> 425.\n- 12-hour: an hour of 1-12, optionally followed by :MM, then am or pm in any letter case, with or without a space before it: \"7:30 pm\" -> 1170, \"7pm\" -> 1140, \"9 Am\" -> 540. 12am is midnight (\"12:15 am\" -> 15) and 12pm is noon (\"12pm\" -> 720).\n\nThe hour is one or two digits and minutes, when present, are always exactly two digits (00-59). A bare hour with no minutes and no am/pm, such as \"7\", is not accepted.\n\nErrors: throw a RangeError when the text has the right shape but a number is out of range (\"24:00\", \"7:60\", \"13pm\", \"0am\"), and a SyntaxError for anything else that doesn't match either form (\"\", \"7\", \"7:5\", \"noon\", \"7:30 p.m.\").",
+  "acceptance": "24-hour and 12-hour forms with the prompt's examples, 12am/12pm, case-insensitive am/pm, whitespace trimming, RangeError for out-of-range hours and minutes in both forms, SyntaxError for malformed strings.",
+  "difficulty_rationale": "One function; the 12am/12pm rule and the RangeError/SyntaxError split are the only edge cases.",
+  "estimated_human_minutes": 12
+}

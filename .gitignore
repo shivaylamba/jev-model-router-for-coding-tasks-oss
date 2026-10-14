@@ -1,0 +1,5 @@
+vendor/
+.env.local
+__pycache__/
+*.pyc
+.DS_Store

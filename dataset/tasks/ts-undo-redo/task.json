@@ -1,0 +1,11 @@
+{
+  "id": "ts-undo-redo",
+  "title": "Undo and redo for the editor",
+  "category": "feature",
+  "difficulty": "hard",
+  "language": "typescript",
+  "prompt": "The Editor class in src/editor.ts has no undo yet. Please add undo/redo as described in docs/UNDO.md. In short, Editor gets undo(), redo(), canUndo(), canRedo() and transact(fn), and the constructor's options start being used: clock (injected so grouping is testable, default Date.now) and historyLimit (default 100, RangeError when it isn't an integer >= 0).\n\nThe parts the doc is precise about and that I care most about:\n- undo and redo restore the selection as well as the text;\n- consecutive single-character typing is grouped into one step while each keystroke comes less than a second after the previous one, and the doc lists exactly what counts as typing and what closes a group;\n- a new change clears redo, but no-op edits and selection changes don't;\n- transactions (including nested ones and ones whose callback throws);\n- the history limit.\n\nPlease put the history bookkeeping in a new src/history.ts and keep editor.ts focused on editing; src/text.ts has the string and selection helpers. The existing editing behaviour of insert, deleteBackward, deleteForward and select must not change, and the Editor constructor keeps its signature (text, options).",
+  "acceptance": "Undo/redo of insert, paste, replace-selection, deleteBackward and deleteForward restoring text and selection; typing groups with the 1000 ms boundary (999 merges, 1000 does not), continuous typing, newline and multi-character inserts, groups closed by select/delete/undo/redo/transact even when nothing changes; redo cleared by new steps but not by no-op edits or select; transactions with before/after selection, nesting, no-op transactions, rollback and rethrow on error with redo intact, undo inside a transaction throws; history limit discarding oldest, limit 0, RangeError for invalid limits; boolean returns of undo/redo.",
+  "difficulty_rationale": "Stateful feature across three files with interacting rules (time-based grouping, group closing, redo invalidation, nested and failing transactions, history limit) that a first attempt rarely gets fully right.",
+  "estimated_human_minutes": 120
+}

@@ -1,0 +1,11 @@
+{
+  "id": "ts-todo-query",
+  "title": "Filtering and sorting todos",
+  "category": "feature",
+  "difficulty": "medium",
+  "language": "typescript",
+  "prompt": "The task board needs filtering and sorting, and we've agreed on the design in docs/query.md. Please build it:\n\n1. In src/todos.ts, export the TodoQuery interface described there and add TodoService.query(query?: TodoQuery): Todo[] with the filters (status, tags, text, dueBefore), the sort keys and order, the rules for todos without a due date and for ties, and the RangeError validation, all exactly as the doc says.\n2. In src/http.ts, make handleTodos read the query-string parameters listed in the doc (status, repeated tag, q, dueBefore, sort, order) and answer with { status: 200, body: { items, count } }, or { status: 400, body: { error } } when a value is invalid. Unknown parameters are ignored and GET /todos with no parameters must keep returning every todo in id order.\n\nThe existing behaviour of add, complete and list stays as it is.",
+  "acceptance": "Defaults; status/tags (all, case-insensitive)/text (trimmed)/dueBefore (inclusive, null excluded) filters and combinations; sort by id/created/due/title with asc/desc, null due last in both orders, ties by id ascending; RangeError for bad status/sort/order/dates incl. impossible dates; list() not reordered; HTTP parameter mapping with repeated and empty tag values, unknown params ignored, 400 with error string.",
+  "difficulty_rationale": "Two files and a spec with several interacting edge cases (nulls last in both orders, tie-breaks, inclusive date bound, calendar validation, query-string mapping).",
+  "estimated_human_minutes": 40
+}

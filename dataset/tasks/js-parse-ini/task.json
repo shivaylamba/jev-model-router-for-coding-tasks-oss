@@ -1,0 +1,11 @@
+{
+  "id": "js-parse-ini",
+  "title": "INI parser",
+  "category": "parsing",
+  "difficulty": "medium",
+  "language": "javascript",
+  "prompt": "We can write config files with stringifyIni() in src/ini.js but we still read them with a regex hack in each service. Please add an exported parseIni(text) to src/ini.js that implements the dialect described in docs/INI_FORMAT.md.\n\nIt returns a plain object of sections, each a plain object of string values, e.g. parseIni(\"[server]\\nport = 8080\\n\") gives { server: { port: \"8080\" } }. Please follow the doc exactly, in particular: full-line comments only, keys before the first header go in the \"\" section, duplicate sections merge (last value wins for a repeated key), quoted values with the four escapes, backslash line continuation, and both \\n and \\r\\n line endings.\n\nBad input must throw a SyntaxError with a numeric line property (1-based) pointing at the offending line, as the doc describes; the message wording is up to you. parseIni(stringifyIni(data)) should give back data for string values.",
+  "acceptance": "Sections and trimming, the \"\" section and its omission, full-line comments only, literal section names and empty sections, split on first '=', merged duplicate sections with last-wins keys and first-appearance order, quoted values and escapes, continuation joining, CRLF, round trip with stringifyIni, SyntaxError with the right line for every listed error including continuation at end of file.",
+  "difficulty_rationale": "One parser but many interacting edge cases (quoting, escapes, continuation, merging, error line numbers) spelled out in a format doc.",
+  "estimated_human_minutes": 35
+}

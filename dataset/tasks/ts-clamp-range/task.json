@@ -1,0 +1,11 @@
+{
+  "id": "ts-clamp-range",
+  "title": "clamp and a Python-style range",
+  "category": "utility",
+  "difficulty": "easy",
+  "language": "typescript",
+  "prompt": "Please add two exported functions to src/numbers.ts.\n\n1. `clamp(value: number, min: number, max: number): number` returns `value` limited to the closed interval [min, max]. `min` may equal `max`. If `min > max` it throws a `RangeError`.\n\n2. `range(start: number, stop?: number, step?: number): number[]` that behaves like Python's `range`, returning an array:\n   - `range(5)` is `[0, 1, 2, 3, 4]` (a single argument is the stop, start is 0)\n   - `range(2, 6)` is `[2, 3, 4, 5]`\n   - `range(0, 10, 3)` is `[0, 3, 6, 9]`\n   - negative steps count down: `range(5, 0, -2)` is `[5, 3, 1]`\n   - `stop` is always excluded, and when the step points away from `stop` (or start already equals stop) the result is `[]`, e.g. `range(6, 2)` and `range(0, 5, -1)`\n   - a step of 0 throws a `RangeError`\n\nThe step defaults to 1.",
+  "acceptance": "clamp inside/below/above the interval, fractional bounds, min == max, RangeError for min > max; range with one, two and three arguments, empty results for non-positive stop or a step pointing away, negative steps counting down with stop excluded, RangeError for step 0.",
+  "difficulty_rationale": "Two small functions with a clear specification; the edge cases are listed in the prompt.",
+  "estimated_human_minutes": 10
+}

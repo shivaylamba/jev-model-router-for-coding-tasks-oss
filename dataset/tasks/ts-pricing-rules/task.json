@@ -1,0 +1,11 @@
+{
+  "id": "ts-pricing-rules",
+  "title": "Split order pricing into a rule pipeline and add bundle discounts",
+  "category": "refactor",
+  "difficulty": "hard",
+  "language": "typescript",
+  "prompt": "orderTotal in src/pricing.ts has grown into one long function, and we now need to add bundle discounts to it. Before adding anything else, please restructure it as an ordered pipeline of pricing rules, then add the bundle rule.\n\ndocs/PRICING.md is the spec for both parts:\n\n- \"Rule pipeline\" describes the new src/rules.ts: the PricedLine, PricingContext and PricingRule types, merchandiseTotal, createPricer(rules), the individual rules (bundleRule(bundles), volumeRule, couponRule, shippingRule, taxRule) and defaultRules. Other teams will plug their own rules into createPricer, so the context fields and the run order need to behave exactly as written there.\n- \"Bundle discount (new)\" describes the Bundle type, BUNDLES in a new src/bundles.ts, how units are grouped into bundles, the per-line rounding, and how bundles interact with the volume discount and with the new exclusive flag on coupons (including the new \"excluded\" coupon status).\n\norderTotal(order, coupon?) must stay exported from src/pricing.ts and price with defaultRules. For orders without bundles, every result must be identical to what it returns today, including the RangeError validation. Keep src/checkout.ts working, and the tests in test/ should keep passing.",
+  "acceptance": "defaultRules names/order and BUNDLES; unchanged results without bundles (coupons, free-shipping threshold, empty order, RangeError); createPricer with no rules, validation before rules, rules run once each in order on a fresh context, context fields, custom rule placement changing shipping and tax; bundle discounts with per-line rounding, greedy formation in list order, repeated bundles, bundled counts, earliest duplicate line first; volume on unbundled units; exclusive coupon excluded before minimum check; non-exclusive coupon after bundles; free shipping lost after bundle.",
+  "difficulty_rationale": "A restructuring across four files that must preserve behaviour, plus a new rule whose unit allocation, per-line rounding, volume interaction and coupon exclusivity all interact.",
+  "estimated_human_minutes": 100
+}

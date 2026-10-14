@@ -1,0 +1,11 @@
+{
+  "id": "py-expr-eval",
+  "title": "Formula evaluator with error positions",
+  "category": "parsing",
+  "difficulty": "hard",
+  "language": "python",
+  "prompt": "The calc package is a skeleton: calc.evaluate(expr, variables=None) just raises NotImplementedError. Please implement it according to SPEC.md, which is the contract for the pricing sheet's formula column. That means a tokenizer, a parser and an evaluator; how you split them into modules inside calc/ is up to you, but evaluate and ExprError must stay importable from calc.\n\nThe parts that matter most to us:\n- precedence as in the spec, with ^ right-associative and unary minus binding less tightly than ^ (so -2^2 is -4 and 2^-1 is 0.5);\n- variables, the constants and the functions table in calc/functions.py, including its argument-count limits;\n- every failure raised as calc.ExprError with a position (0-based index into the formula) exactly as the spec defines it, both for syntax errors (including the end-of-input position) and for evaluation errors (unknown names, arity, division by zero, bad powers, failing functions);\n- the whole formula is parsed before evaluation starts, and evaluation runs left to right, so which error wins is predictable.\n\nevaluate always returns a float. Please don't use eval() or the ast module. The spec's tables have worked examples for the positions.",
+  "acceptance": "Numbers incl. exponents, precedence and associativity, right-associative ^ with unary minus below it, floored modulo, whitespace, variables/constants/override, functions; ExprError is a ValueError; exact positions for end-of-input, unexpected tokens, implicit multiplication, bad characters, '5.' and '2e', syntax errors winning over evaluation errors; positions for unknown names/functions, calling a variable, arity (checked before arguments), function failure, division and modulo by zero, invalid powers, left-to-right error order.",
+  "difficulty_rationale": "A full tokenizer, precedence-climbing parser and evaluator with an unusual unary/power rule and precise error-position rules for both phases; a quick attempt usually gets several positions or the unary/power interaction wrong.",
+  "estimated_human_minutes": 100
+}

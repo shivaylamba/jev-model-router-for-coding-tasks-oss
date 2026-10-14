@@ -1,0 +1,11 @@
+{
+  "id": "py-flatten-records-csv",
+  "title": "Flatten nested records to CSV",
+  "category": "formatting",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "People keep asking for our audit events as a spreadsheet. Please add `records_to_csv(records)` to csvexport.py. It takes a list of dicts (as returned by `loader.parse_ndjson`) and returns CSV text.\n\nColumns:\n- Nested dicts are flattened into dot-separated column names at any depth: `{\"user\": {\"name\": \"ada\"}}` gives a column `user.name`. A nested empty dict contributes no column.\n- Column order is first-seen order: walk the records in order and each record's keys in insertion order (descending into nested dicts where they appear), adding a column the first time its name is seen.\n- If two keys in the same record flatten to the same column name (e.g. a key `\"a.b\"` and `{\"a\": {\"b\": ...}}`), raise ValueError. A key that is a plain value in one record and a dict in another is fine: you just get both `a` and `a.b` columns.\n\nCells:\n- `None` becomes an empty cell, `True`/`False` become `true`/`false`, any other scalar uses `str()`.\n- Lists and tuples are joined with `;`, each item converted with the same scalar rules (so `[True, None, 2]` is `true;;2` and `[]` is an empty cell).\n- A record that lacks a column gets an empty cell.\n\nOutput: a header row, then one row per record, written with the csv module's default dialect like the existing `rows_to_csv` (`\\r\\n` line endings, fields quoted only when needed, quotes doubled). An empty list of records returns `\"\"`. Any record that isn't a dict raises TypeError. The input must not be modified.",
+  "acceptance": "Exact output for flat records; dot paths at depth; first-seen column order across records with missing cells empty; list/tuple joining with ;; None/bool conversion including inside lists; quoting of commas, quotes and newlines; empty nested dict adds no column; scalar vs dict under the same key across records; empty input; ValueError on a within-record collision; TypeError for non-dict records; input unchanged.",
+  "difficulty_rationale": "One function but several interacting rules (ordering across records, flattening, collisions, value conversion, CSV quoting).",
+  "estimated_human_minutes": 25
+}

@@ -1,0 +1,11 @@
+{
+  "id": "js-cli-json-flag",
+  "title": "--json output for tally",
+  "category": "feature",
+  "difficulty": "easy",
+  "language": "javascript",
+  "prompt": "Can you add a --json flag to the tally CLI (src/cli.js, see README.md for how it behaves today)? With --json, instead of the text table, stdout gets exactly one JSON document followed by a newline and nothing else: {\"files\": [...], \"total\": {...}}. files has one entry per file that was read, in command-line order, shaped {\"path\", \"lines\", \"words\", \"chars\"}; total is {\"lines\", \"words\", \"chars\"} summed over those files. total is always present in JSON mode, even for a single file, and with no files at all the output is {\"files\": [], \"total\": {\"lines\": 0, \"words\": 0, \"chars\": 0}}. --json may appear anywhere among the arguments. Unreadable files work as they do now: the same message on stderr, left out of files, and exit code 1. Other unknown options are still a usage error with exit code 2, and the text output without --json must not change. Please mention the flag in the usage line and the README too.",
+  "acceptance": "JSON shape for one and several files, flag position anywhere, trailing newline, nothing on stderr on success, unreadable file left out with stderr message and exit 1, no files gives zero totals, other options still exit 2, text output unchanged.",
+  "difficulty_rationale": "One flag added to a two-file CLI with a clearly stated output shape.",
+  "estimated_human_minutes": 12
+}

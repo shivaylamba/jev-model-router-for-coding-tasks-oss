@@ -1,0 +1,11 @@
+{
+  "id": "py-parse-query",
+  "title": "Parse and build URL query strings",
+  "category": "parsing",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "The link checker needs to read and rewrite query strings without losing anything, and urllib.parse.parse_qs drops bare keys, so I'd like our own pair of functions in urlbits.py.\n\nparse_query(query: str) -> dict[str, list[str | None]]\n- An optional leading \"?\" is ignored. Split on \"&\"; empty segments are skipped. Each segment splits on its first \"=\".\n- A segment with no \"=\" is a bare key and its value is None; \"x=\" gives the value \"\".\n- Keys and values are decoded: first \"+\" becomes a space, then %XX escapes (either hex case) are decoded as UTF-8 bytes. A \"%\" not followed by two hex digits is kept as-is (\"100%\" stays \"100%\"). Bytes that are not valid UTF-8 become U+FFFD.\n- Each key maps to a list of all its values in order; keys are in first-appearance order. parse_query(\"a=1&flag&a=2\") == {\"a\": [\"1\", \"2\"], \"flag\": [None]}.\n\nbuild_query(params) -> str\n- params maps str keys to a str, None, or a list of str/None. Output has no leading \"?\". Keys go in mapping order and list values in list order, each as its own pair; an empty list writes nothing for that key.\n- None writes the bare key (\"flag\"), \"\" writes \"key=\".\n- Keys and values are UTF-8 percent-encoded with uppercase hex; only A-Z a-z 0-9 - . _ ~ are left as they are, and a space becomes \"+\". So {\"q\": \"a b&c\"} gives \"q=a+b%26c\".\n- Raise TypeError for any value (or list item) that is not a str or None.\n\nThe two should round-trip: parse_query(build_query(p)) == p for any p shaped like parse_query output, and build_query(parse_query(s)) == s when s is already encoded the way build_query encodes and any repeated key's pairs are next to each other.",
+  "acceptance": "Repeated keys and key order, leading ? and empty segments, bare keys as None vs empty values, first '=' split, + and percent decoding incl. UTF-8, malformed escapes kept, invalid UTF-8 replaced; build_query pairs, None/empty/empty list, exact encoding, TypeError; round trips both ways.",
+  "difficulty_rationale": "Two functions with several interacting decoding and encoding edge cases and a round-trip requirement.",
+  "estimated_human_minutes": 30
+}

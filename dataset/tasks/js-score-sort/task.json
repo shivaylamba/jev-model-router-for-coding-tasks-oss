@@ -1,0 +1,11 @@
+{
+  "id": "js-score-sort",
+  "title": "Leaderboard order is wrong",
+  "category": "bugfix",
+  "difficulty": "easy",
+  "language": "javascript",
+  "prompt": "The arcade leaderboard has the wrong order. Last night it showed:\n\n  1. KIM          9\n  2. LEE         85\n  3. AMY        120\n  4. BOB       1000\n\nBob with 1000 should be first, then Amy, Lee, Kim. It also goes strange with negative scores from the penalty round, and the ranks next to the names are off as a result.\n\nrankPlayers in src/leaderboard.js produces the order; its doc comment describes the intended result (highest score first, ties ordered by name alphabetically, equal scores sharing a rank as 1, 2, 2, 4, a new array with the input untouched). Please fix it so it does what that comment says; render.js and topPlayers should then show the right board without changes.",
+  "acceptance": "Numeric descending order across different digit counts, negative and fractional scores, name tie-break, shared ranks with skips, input not modified, topPlayers takes the real top n.",
+  "difficulty_rationale": "One comparator compares scores as strings; the doc comment gives the intended order.",
+  "estimated_human_minutes": 8
+}

@@ -1,0 +1,69 @@
+{
+  "name": "nconnect: fixed Kimi K3 vs Jev-assisted Auto, through Claude Code",
+  "research_question": "Across these 50 tasks, how much money and time did Jev-assisted Auto save, and what happened to correctness?",
+  "seed": 20261014,
+  "conditions": {
+    "A": {
+      "label": "Router off: fixed Kimi K3",
+      "nconnect_model": "moonshotai/Kimi-K3",
+      "env": {}
+    },
+    "B": {
+      "label": "Router on: Auto with Jev",
+      "nconnect_model": "auto",
+      "env": {
+        "NCONNECT_AUTO_DECIDER": "jev",
+        "NCONNECT_AUTO_DECIDER_MODEL": "jev-1.13.0"
+      },
+      "secrets": ["TYPESAFE_API_KEY"],
+      "decider_through_recorder": true
+    }
+  },
+  "pipeline_check_conditions": {
+    "B_rules": {
+      "label": "Pipeline check only: Auto with keyword rules (no decider)",
+      "nconnect_model": "auto",
+      "env": {},
+      "smoke_only": true
+    }
+  },
+  "common_env": {
+    "NCONNECT_FALLBACK_MODEL": "off",
+    "NCONNECT_DISABLE_AUTOUPDATE": "1",
+    "NCONNECT_DEBUG": "1",
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "left_at_default": {
+    "NCONNECT_AUTO_COST_TIER": "unset (medium)",
+    "NCONNECT_AUTO_PER_TURN": "unset (off)",
+    "NCONNECT_AUTO_EFFORT": "unset (on: Auto raises reasoning effort on the first turn of a balanced or strong task)",
+    "NCONNECT_AUTO_FAST_MODEL / _BALANCED_MODEL / _STRONG_MODEL / _MODELS / _EXCLUDED_MODELS": "unset (default pools)",
+    "NCONNECT_BACKGROUND_MODEL": "unset (Claude Code's title and permission-classifier calls go to the catalog default, GLM 5.3 Flash, in both conditions)",
+    "NCONNECT_REASONING_EFFORT": "unset",
+    "NCONNECT_AUTO_DECIDER_TIMEOUT_MS": "unset (2500 ms wait; the request may finish in the background for up to 20 s)"
+  },
+  "limits": {
+    "wall_seconds_per_task": 1200,
+    "max_model_requests_per_task": 80,
+    "max_model_requests_note": "Counted as distinct assistant messages in Claude Code's stream (one per model call it makes). Claude Code 2.1.299 has no turn-limit flag, so the runner stops the session when the count is exceeded.",
+    "per_execution_cost_cap_usd": 8.0,
+    "grade_timeout_seconds": 120
+  },
+  "default_caps": {
+    "budget_usd": 45.0,
+    "max_hours": 10.0
+  },
+  "claude_code": {
+    "flags": ["--output-format", "stream-json", "--verbose", "--include-partial-messages", "--permission-mode", "acceptEdits", "--strict-mcp-config"],
+    "allowed_tools": ["Bash(python3:*)", "Bash(python:*)", "Bash(node:*)", "Bash(ls:*)", "Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(wc:*)", "Bash(grep:*)", "Bash(find:*)", "Bash(mkdir:*)", "Bash(git status:*)", "Bash(git diff:*)"],
+    "disallowed_tools": ["WebFetch", "WebSearch", "Task", "Agent", "NotebookEdit"],
+    "notes": "Reads and edits inside the workspace need no allow rule in acceptEdits mode. Subagents are disabled in both conditions: Claude Code would run them on its Haiku-tier model, which would break 'Kimi K3 for every foreground request' in condition A."
+  },
+  "nconnect_port": 7897,
+  "scoring": {
+    "success": "All hidden acceptance tests pass on the final workspace. Nothing else counts.",
+    "cost": "Estimated. Provider-reported tokens per upstream request (recorder) times the prices in the manifest. Cached input is billed at the full input rate because Nebius publishes no cached-input price; a cache-free lower bound is reported alongside. Requests without reported usage are estimated from bytes and kept separate. Jev is charged per input token at its published rate.",
+    "duration": "Wall time from launching nconnect to its exit, per task. Time to first visible output is the first non-empty text delta in Claude Code's stream.",
+    "failed_tasks": "Included in every cost total. Cost per successful task divides total spend by successful tasks."
+  }
+}

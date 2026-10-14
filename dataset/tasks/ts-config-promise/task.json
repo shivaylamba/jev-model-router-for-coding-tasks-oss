@@ -1,0 +1,11 @@
+{
+  "id": "ts-config-promise",
+  "title": "Promise-based readConfig with callback support",
+  "category": "refactor",
+  "difficulty": "easy",
+  "language": "typescript",
+  "prompt": "readConfig in src/config.ts still uses a Node-style callback, and new code wants to await it. Change it so that:\n\n- readConfig(path) with no callback returns a Promise<Config> that resolves with the same merged, validated config the callback gets today, and rejects with the same errors: the file-system error as-is (e.g. code ENOENT for a missing file), a SyntaxError for malformed JSON, or a ConfigError for bad values.\n- readConfig(path, callback) keeps working exactly as before for existing callers like src/main.ts: the callback is called exactly once, with (err) on failure or (null, config) on success, and in that case readConfig returns undefined (no promise is returned, and a failure must not also surface as an unhandled rejection).\n\nPlease type it with overloads so both forms type-check. The tests in test/ should keep passing.",
+  "acceptance": "No-callback call returns a Promise resolving to the merged config; rejects with ENOENT error, SyntaxError and ConfigError; callback form returns undefined and calls the callback exactly once with (null, config) or the matching error.",
+  "difficulty_rationale": "One function converted to a promise with a compatibility path.",
+  "estimated_human_minutes": 10
+}

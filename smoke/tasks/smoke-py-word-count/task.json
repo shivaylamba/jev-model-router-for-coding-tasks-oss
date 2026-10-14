@@ -1,0 +1,11 @@
+{
+  "id": "smoke-py-word-count",
+  "title": "Count words",
+  "category": "utility",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Add a function word_counts(text) to textstats.py that returns a dict mapping each lowercase word to how many times it appears. Words are runs of letters, digits or apostrophes; everything else separates words.",
+  "acceptance": "Lowercasing, apostrophes kept, punctuation separates, empty text gives {}.",
+  "difficulty_rationale": "One function.",
+  "estimated_human_minutes": 5
+}

@@ -1,0 +1,4 @@
+task_id,repetition,difficulty,category,language,fixed_models,auto_models,auto_tiers,auto_first_tier,jev_choice,fixed_pass,auto_pass,fixed_cost_usd,auto_cost_usd,savings_pct,fixed_time_s,auto_time_s,fixed_model_calls,auto_model_calls,notable,fixed_execution,auto_execution
+smoke-py-average-bug,1,easy,bugfix,python,Kimi K3×3,GLM 5.3 Flash×6,fast,fast,,True,True,0.087495,0.00875,90.0,6.032,15.064,3,6,Auto took 6 model calls vs 3,005,006
+smoke-py-word-count,1,easy,utility,python,Kimi K3×5,GLM 5.3 Flash×3,fast,fast,,True,True,0.146016,0.004388,97.0,8.031,7.03,5,3,,001,002
+smoke-ts-initials,1,easy,formatting,typescript,Kimi K3×5,GLM 5.3 Flash×3,fast,fast,,True,True,0.150126,0.004384,97.1,8.036,7.026,5,3,,004,003

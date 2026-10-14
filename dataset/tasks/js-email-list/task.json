@@ -1,0 +1,11 @@
+{
+  "id": "js-email-list",
+  "title": "Parse a pasted list of email addresses",
+  "category": "validation",
+  "difficulty": "easy",
+  "language": "javascript",
+  "prompt": "For the invite dialog, add src/emails.js exporting parseEmailList(text) that returns { valid: string[], invalid: string[] }.\n\nSplitting: the text is split on any run of commas, semicolons and whitespace (spaces, tabs, newlines); empty pieces are ignored. Each piece is checked as-is, no other trimming or unwrapping (so \"<ada@example.com>\" is just invalid).\n\nAn address is valid when:\n- it contains exactly one \"@\";\n- the local part (before \"@\") is 1-64 characters from A-Z a-z 0-9 . _ % + -, does not start or end with \".\", and has no \"..\";\n- the domain is two or more labels separated by \".\"; each label is 1-63 letters, digits or hyphens and does not start or end with a hyphen; the last label is letters only and at least 2 long.\n\nvalid lists valid addresses in input order, spelled as typed, without duplicates: addresses that differ only in letter case are the same, and the first spelling is the one kept. invalid lists every invalid piece in input order, including repeats.",
+  "acceptance": "Splitting on runs of commas/semicolons/whitespace, empty input, allowed local-part characters, invalid pieces in order with repeats, local-part dot rules and 64-char limit, domain label rules (hyphens, characters, empty labels, TLD letters only and >= 2, 63-char labels), case-insensitive de-duplication keeping first spelling, display names treated as invalid pieces.",
+  "difficulty_rationale": "One function with explicit validation rules and a de-duplication rule.",
+  "estimated_human_minutes": 15
+}

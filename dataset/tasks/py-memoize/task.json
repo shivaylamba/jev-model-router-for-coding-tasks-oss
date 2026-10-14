@@ -1,0 +1,11 @@
+{
+  "id": "py-memoize",
+  "title": "A memoize decorator with cache stats",
+  "category": "state",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Please add a memoize decorator to funcutil.py, next to once. Requirements:\n\n- @memoize caches the return value per distinct set of arguments, so the wrapped function runs only on the first call with given arguments. Keyword arguments are matched regardless of order (f(a=1, b=2) and f(b=2, a=1) are the same call), but positional and keyword forms are distinct entries: add(1, 2) and add(1, b=2) are cached separately.\n- None is a valid result and is cached like any other value. If the function raises, nothing is cached and the exception propagates; the call still counts as a miss.\n- Unhashable arguments raise TypeError without calling the function.\n- The wrapper keeps the original __name__ and __doc__ (functools.wraps).\n- The wrapper gets two methods: cache_info() returns a CacheInfo, a named tuple you define in funcutil.py with fields (hits, misses, size), where size is the number of cached entries; cache_clear() empties the cache and resets hits and misses to 0.\n- Each decorated function has its own cache.\n\nPlease write it yourself rather than wrapping functools.lru_cache or functools.cache.",
+  "acceptance": "Results cached per argument set; kwargs order-insensitive, positional vs keyword separate; None cached; exceptions not cached but counted as misses; TypeError for unhashable args without calling; CacheInfo(hits, misses, size) values; cache_clear resets; per-function caches; __name__/__doc__ preserved.",
+  "difficulty_rationale": "One decorator with a clear specification and a handful of edge cases.",
+  "estimated_human_minutes": 12
+}

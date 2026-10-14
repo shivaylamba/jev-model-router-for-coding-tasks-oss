@@ -1,0 +1,7 @@
+{
+  "name": "tally",
+  "private": true,
+  "type": "module",
+  "bin": { "tally": "bin/tally.js" },
+  "scripts": { "test": "node --test" }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "py-cron-next",
+  "title": "Next run time for cron expressions",
+  "category": "utility",
+  "difficulty": "hard",
+  "language": "python",
+  "prompt": "cron.py in minicron is still a stub, so `jobs.plan()` can't work yet. Please implement `next_run(expr: str, after: datetime) -> datetime` in cron.py.\n\nThe exact syntax and semantics we support are written down in SPEC.md at the repo root; please follow it to the letter. In short: standard five-field cron (minute, hour, day of month, month, day of week) with `*`, lists, ranges, steps, month and weekday names, Sunday as 0 or 7, a few `@` macros, and the classic rule that when both day fields are restricted a day matches if either one does. The result is the first matching minute strictly after `after` (seconds and microseconds zero, same tzinfo as `after`).\n\nInvalid expressions raise ValueError, and so does an expression that can never match, like `0 0 30 2 *`. SPEC.md lists every error case.\n\nIt only needs the standard library, and please don't change the signature since `jobs.plan()` already calls it.",
+  "acceptance": "Seconds dropped and strictly-after semantics; */S, N/S and A-B/S steps; lists and ranges; day, month and year rollover including 31-day months; whitespace handling; tzinfo kept; weekday and month names case-insensitive; Sunday as 0 and 7 and the 5-7 range; OR rule when both day fields are restricted, AND rule when one starts with *; month always applies; Feb 29 including the 2100 gap; all macros; ValueError for 21 malformed expressions and for never-matching dates; jobs.plan ordering.",
+  "difficulty_rationale": "Many interacting rules (day-field OR/AND rule tied to the field text, names, steps, Sunday 7, leap years, never-matching detection) where a first attempt commonly gets several wrong.",
+  "estimated_human_minutes": 90
+}

@@ -1,0 +1,11 @@
+{
+  "id": "ts-paginate-off-by-one",
+  "title": "Pagination shows the wrong orders",
+  "category": "bugfix",
+  "difficulty": "easy",
+  "language": "typescript",
+  "prompt": "The back-office order list is paginating wrong. With 25 orders and the default page size of 10:\n\n- Page 1 starts at the 11th order, so the first ten orders never appear.\n- The footer says there are 2 pages, so the last 5 orders can't be reached.\n- On the last page the Next button is still enabled (hasNext is true).\n\nThe list comes from paginate in src/paginate.ts, used by listOrders in src/orders.ts. The doc comments on paginate and the Page interface describe what it's supposed to return (1-based pages, a shorter last page, totalPages 0 for an empty list, empty items past the end). Please fix paginate so it matches them; keep the RangeError behaviour as it is.",
+  "acceptance": "Page 1 and later pages return the right slices, a shorter last page, totalPages rounds up and is 0 for an empty list, exact multiples, hasNext/hasPrev at the boundaries and past the end, input not modified, listOrders defaults.",
+  "difficulty_rationale": "One function with off-by-one errors in the slice, the page count and hasNext, described by symptoms.",
+  "estimated_human_minutes": 10
+}

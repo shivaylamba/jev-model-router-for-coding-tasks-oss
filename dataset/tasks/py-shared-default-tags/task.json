@@ -1,0 +1,11 @@
+{
+  "id": "py-shared-default-tags",
+  "title": "Tags leak from one note into the next",
+  "category": "bugfix",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Users are reporting tags showing up on notes they never tagged. Repro from a fresh session:\n\n    pinned = create_note(\"Standup\", pinned=True)\n    plain = create_note(\"Groceries\")\n    plain[\"tags\"]   # ['pinned'], expected []\n\nAlso, after add_tag(note_a, \"work\") on one untagged note, other notes created without tags show \"work\" too, and search.tag_counts counts it for every one of them. Separately, our importer passes one shared list of tags into create_note for a batch of notes, and that list comes back changed (its tags lowercased and \"pinned\" appended), which corrupts the rest of the batch.\n\nThe intended behaviour is in the create_note docstring in notes.py: every note gets its own tags list, the sequence passed in as tags (a list or a tuple) is never modified, and tags are normalized with \"pinned\" added for pinned notes. Please fix it without changing the function's signature or return shape.",
+  "acceptance": "Untagged note after a pinned one has no tags; untagged notes do not share a list (add_tag on one leaves the other alone); the caller's list is unchanged after normalization and pinning; tuples are accepted; normalization and the pinned tag still work; tag_counts reflects only real tags.",
+  "difficulty_rationale": "A single-function bug (a shared mutable default plus in-place modification of the argument) with a clear docstring.",
+  "estimated_human_minutes": 10
+}

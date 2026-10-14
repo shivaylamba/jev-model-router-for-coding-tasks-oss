@@ -1,0 +1,11 @@
+{
+  "id": "ts-hex-color",
+  "title": "Normalize hex colour strings",
+  "category": "validation",
+  "difficulty": "easy",
+  "language": "typescript",
+  "prompt": "The theme editor stores colours in one canonical form, but people paste all sorts of hex strings. Please add an exported normalizeHexColor(input: string): string | null to src/color.ts.\n\nAccepted input is a \"#\" followed by exactly 3, 4, 6 or 8 hex digits, in any letter case, with surrounding whitespace ignored. The result is always lowercase with the \"#\":\n- 6 or 8 digits are returned lowercased: \"#FF8800\" -> \"#ff8800\", \"#11223344\" stays \"#11223344\".\n- 3 or 4 digits are expanded by doubling each digit: \"#AbC\" -> \"#aabbcc\", \"#abcd\" -> \"#aabbccdd\".\n- An alpha channel is always kept, even when it is ff.\n\nReturn null for anything else: a missing \"#\" (\"ff8800\"), more than one \"#\", any other digit count (1, 2, 5, 7, 9, ...), non-hex characters, whitespace inside the value, named colours, or an empty string.",
+  "acceptance": "6 and 8 digits lowercased (alpha kept), 3 and 4 digits expanded, surrounding whitespace trimmed, null for empty, bare '#', missing '#', '##', wrong digit counts, non-hex digits, inner space, 0x prefix and named colours.",
+  "difficulty_rationale": "One function with clear accept/reject rules.",
+  "estimated_human_minutes": 8
+}

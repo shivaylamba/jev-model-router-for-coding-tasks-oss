@@ -1,0 +1,6 @@
+NConnect ▸ Routing Claude Code → Nebius Token Factory (Kimi K3). Not Anthropic.
+[nconnect proxy] daemon: http://127.0.0.1:7897
+[nconnect proxy] session: http://127.0.0.1:7897/session/nconnect-v_WcDDW6FvH-WUJRhZgca8vnISajMAKa
+[nconnect claude] model: nebius-kimi-k3
+[claude-code:unrecognized_model] {"model":"nebius-kimi-k3[1m]","query_source":"sdk"}
+[nconnect cost] session total: $0.1501 (46,337 in incl 36,416 cached, 741 out)

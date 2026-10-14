@@ -1,0 +1,11 @@
+{
+  "id": "py-shipping-constants",
+  "title": "Rename calc and name its magic numbers",
+  "category": "refactor",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "shipping.calc is a bad name and the pricing numbers are buried inside it. Please clean up shipping.py:\n\n1. Rename calc(weight_kg, zone, express=False) to shipping_cost(weight_kg, zone, express=False). Results and the ValueError cases must stay exactly as they are now.\n2. Keep calc as a deprecated alias with the same signature: it emits a DeprecationWarning and returns whatever shipping_cost returns. shipping_cost itself must not warn.\n3. Replace the magic numbers with module-level constants, with these names and values: BASE_FEE = 4.99, PER_KG_RATE = 1.25, WEIGHT_STEP_KG = 0.5, ZONE_MULTIPLIERS = {1: 1.0, 2: 1.4, 3: 1.9}, EXPRESS_MULTIPLIER = 1.5, MAX_COST = 75.0. shipping_cost has to read the constants at call time (no copies baked into defaults), so that changing one of them, or a ZONE_MULTIPLIERS entry, changes the result. The set of valid zones comes from ZONE_MULTIPLIERS.\n4. Update orders.py to call shipping_cost so it no longer goes through the deprecated name.\n\nThe existing tests in tests/ should keep passing.",
+  "acceptance": "shipping_cost returns the original values (rounding to half kilos, express, cap) and raises the same ValueErrors; the six constants exist with the stated values and patching them changes the result; calc warns with DeprecationWarning and returns the same value; shipping_cost and orders functions run without warnings under warnings-as-errors.",
+  "difficulty_rationale": "A rename with an alias and constant extraction in one module plus one caller.",
+  "estimated_human_minutes": 10
+}

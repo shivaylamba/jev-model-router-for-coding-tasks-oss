@@ -1,0 +1,14 @@
+{
+  "title": "Q3 sales",
+  "columns": [
+    {"key": "region", "label": "Region"},
+    {"key": "orders", "label": "Orders"},
+    {"key": "revenue", "label": "Revenue"},
+    {"key": "target_met", "label": "Target met"}
+  ],
+  "rows": [
+    {"region": "North", "orders": 1204, "revenue": 98213.5, "target_met": true},
+    {"region": "South, coastal", "orders": 87, "revenue": 4410.0, "target_met": false},
+    {"region": "West", "orders": 0, "revenue": null}
+  ]
+}

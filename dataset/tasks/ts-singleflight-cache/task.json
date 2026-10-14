@@ -1,0 +1,11 @@
+{
+  "id": "ts-singleflight-cache",
+  "title": "Async cache with TTL, stale-while-revalidate and single flight",
+  "category": "state",
+  "difficulty": "hard",
+  "language": "typescript",
+  "prompt": "Product lookups through the gateway are slow and the ad-hoc Map cache in src/productService.ts never expires, grows without bound, and fires one API call per concurrent request. We designed a shared replacement; please implement it as AsyncCache in a new file src/asyncCache.ts, exporting the AsyncCache class and the AsyncCacheOptions type exactly as described in docs/ASYNC_CACHE.md.\n\nThe doc is the spec, and the details matter: when an entry's age starts counting (when its load settles), the fresh / stale / expired boundaries, at most one load in flight per key and who waits on it, serving stale values while a single background refresh runs, what happens when a load or a refresh fails (including onRefreshError and never leaving an unhandled rejection), load functions that throw synchronously, invalidate() and clear() racing with loads that are still in flight, and the size limit (expired values dropped first, then least recently used; peek does not count as a use).\n\nTime must only come from the injected now() option (default Date.now). Please don't use timers or setTimeout anywhere in the cache.\n\nYou don't need to switch ProductService over yet; leave it and its test as they are.",
+  "acceptance": "RangeError for bad options; fresh hits without loading; coalesced concurrent loads per key; age measured from settle time; stale value served with exactly one background refresh, refresh result stored; failed refresh keeps stale value, calls onRefreshError, is swallowed without the hook, and the next stale get retries; expired values not served and staleMs 0; failed loads reject all waiters and cache nothing; synchronous throw becomes a rejection; get after expiry joins in-flight refresh; LRU eviction, peek not touching recency, expired dropped first, evicted key's refresh still stores; invalidate and clear detach in-flight loads; size counts fresh and stale only.",
+  "difficulty_rationale": "Concurrency, time and eviction rules interact: single-flight bookkeeping across invalidation, stale-while-revalidate failure handling and LRU with expiry are each easy to get subtly wrong.",
+  "estimated_human_minutes": 120
+}

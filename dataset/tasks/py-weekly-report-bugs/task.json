@@ -1,0 +1,11 @@
+{
+  "id": "py-weekly-report-bugs",
+  "title": "Weekly hours report is wrong around New Year",
+  "category": "bugfix",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "Finance flagged two problems with the weekly hours report (the timesheets package).\n\n1. The week buckets don't match the calendar around New Year. Hours logged Monday 2024-12-30 to Wednesday 2025-01-01 come out split across two rows, \"2024-W53\" and \"2025-W00\", but that is one week, 2025-W01, on every calendar we use. It goes the other way at the start of 2021: Friday 2021-01-01 to Sunday 2021-01-03 show up as \"2021-W00\" but should be in 2020-W53. And all through 2025 the week numbers are one lower than the calendar (the week of Monday 2025-03-10 is W11, the report says W10). There should never be a week 00.\n\n2. The report regularly drops the last page. With 10 weeks of data and 4 rows per page finance gets two pages and the last two weeks are missing (the totals line at the top still includes their hours). It seems fine when the number of weeks happens to divide evenly.\n\nThe docstrings in timesheets/weeks.py and timesheets/report.py describe the intended behaviour. Please fix both problems; keep the function names and return shapes as they are.",
+  "acceptance": "week_key gives ISO week-year and zero-padded ISO week around New Year in several years (2020-W53, 2025-W01, 2026-W01) and mid-2025; weekly_totals merges days of one ISO week across the year boundary and sorts across years; paginate_rows keeps the partial last page, handles exact multiples, fewer rows than a page and no rows, and still raises ValueError; build_report pages contain every week.",
+  "difficulty_rationale": "Two independent bugs in two files, reported only by symptoms; one needs knowing how strftime week numbers differ from ISO weeks.",
+  "estimated_human_minutes": 25
+}

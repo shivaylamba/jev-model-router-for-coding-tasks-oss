@@ -1,0 +1,11 @@
+{
+  "id": "smoke-ts-initials",
+  "title": "Initials from a name",
+  "category": "formatting",
+  "difficulty": "easy",
+  "language": "typescript",
+  "prompt": "Add an exported function initials(name: string): string to src/names.ts. It returns the uppercase first letter of each word in the name, where words are separated by spaces or hyphens, so initials(\"mary-jane van der berg\") is \"MJVDB\". Extra spaces are ignored and an empty or blank name gives an empty string.",
+  "acceptance": "Spaces and hyphens separate words, uppercase, extra spaces ignored, blank gives empty string.",
+  "difficulty_rationale": "One function.",
+  "estimated_human_minutes": 5
+}

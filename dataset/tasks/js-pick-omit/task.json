@@ -1,0 +1,11 @@
+{
+  "id": "js-pick-omit",
+  "title": "pick and omit for plain objects",
+  "category": "utility",
+  "difficulty": "easy",
+  "language": "javascript",
+  "prompt": "Can you add `pick(obj, keys)` and `omit(obj, keys)` to src/object.js, exported next to the existing helpers? `keys` is an array of property names.\n\n- `pick` returns a new object containing only the listed keys that are own enumerable properties of `obj`, in the order they appear in `keys`. Keys that `obj` doesn't have are ignored (not added as `undefined`), and so are inherited and non-enumerable properties. A key that exists with the value `undefined` is kept.\n- `omit` returns a new object with every own enumerable string key of `obj` except the listed ones, in the original key order. Listed keys that don't exist are ignored. Inherited and non-enumerable properties are not copied.\n\nNeither function may mutate `obj` or `keys`, and both always return a new object, even when nothing is picked or omitted.",
+  "acceptance": "pick keeps listed keys in keys order, ignores missing/inherited/non-enumerable keys, keeps explicit undefined; omit drops listed keys, keeps order, copies only own enumerable; inputs unchanged and results are new objects.",
+  "difficulty_rationale": "Two short functions; the only subtleties (own vs inherited, enumerability, no mutation) are stated.",
+  "estimated_human_minutes": 8
+}

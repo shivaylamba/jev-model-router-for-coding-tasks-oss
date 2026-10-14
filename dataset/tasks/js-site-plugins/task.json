@@ -1,0 +1,11 @@
+{
+  "id": "js-site-plugins",
+  "title": "Plugin hooks for the site builder",
+  "category": "feature",
+  "difficulty": "medium",
+  "language": "javascript",
+  "prompt": "We want plugins in pagesmith so things like a sitemap or a link checker don't need edits to src/site.js each time. The design is written up in docs/plugins.md: please implement it in src/site.js. That means exporting createSite(options) with use(plugin) and build(pages), the three hooks (beforeRender, afterRender, onComplete) with the call order, chaining and async behaviour the doc describes, the use() validation, and an exported PluginError class carrying plugin, hook and cause for any hook that throws, rejects or returns the wrong type. buildSite(pages, options) and the existing tests must keep working as they are.",
+  "acceptance": "use() chaining and validation (TypeError cases, duplicate name); buildSite unchanged; exact hook order across plugins and pages; beforeRender/afterRender chaining with undefined meaning keep, final page drives path/title/body; async hooks awaited in order; onComplete can add entries; caller pages not mutated; PluginError with plugin/hook/cause/message for throws, rejections and wrong return types; later hooks and onComplete skipped after an error.",
+  "difficulty_rationale": "A small plugin system with ordering, async chaining and error wrapping rules spread over one module, driven by a written design.",
+  "estimated_human_minutes": 40
+}

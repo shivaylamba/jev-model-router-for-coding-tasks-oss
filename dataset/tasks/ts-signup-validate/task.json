@@ -1,0 +1,11 @@
+{
+  "id": "ts-signup-validate",
+  "title": "Validate a sign-up request",
+  "category": "validation",
+  "difficulty": "medium",
+  "language": "typescript",
+  "prompt": "Please implement validateSignup in src/signup.ts. src/handler.ts already calls it, but the function doesn't exist yet.\n\nSignature: export function validateSignup(input: SignupInput, today: Date): SignupResult, using the types in src/types.ts. It checks username, email, password, confirmPassword and birthDate and returns either { ok: true, value: { username, email, birthDate } } with normalized values, or { ok: false, errors } where errors maps each invalid field to exactly one error code. The full rules, including which fields are trimmed, the order in which each field's rules are checked (only the first failure is reported), the normalization, and how age is computed from today, are in docs/signup-rules.md. Follow that document exactly; the web team mirrors the same error codes on the client. today is injected so the age check is testable; only its UTC date matters.\n\nThe helpers in src/dates.ts are available if useful.",
+  "acceptance": "Valid input with normalization; every field missing gives required; username length/format priority and trimming; email format variants; password length, weak and contains_username (only with a valid username); confirmPassword required/mismatch and skipped when password missing; birthDate format (bad shapes, impossible dates, year < 1900), future, too_young with anniversary on today, Feb 29 births, UTC date of today; non-string values count as required.",
+  "difficulty_rationale": "Five fields each with an ordered list of rules, cross-field dependencies (username inside password, confirmation) and calendar edge cases in the age computation.",
+  "estimated_human_minutes": 35
+}

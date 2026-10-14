@@ -1,0 +1,11 @@
+{
+  "id": "ts-emitter-bugs",
+  "title": "Event emitter drops and misfires listeners",
+  "category": "bugfix",
+  "difficulty": "medium",
+  "language": "typescript",
+  "prompt": "We're seeing three problems with the Emitter in src/emitter.ts (and so with Store in src/store.ts, which uses it):\n\n1. A listener registered with once() can't be removed with off(). emitter.off(\"change\", handler) returns without error, listenerCount stays the same, and the handler still fires on the next emit.\n\n2. When a listener removes itself or another listener while an emit is running (an unsubscribe inside a handler, or a once() listener firing), the listener right after it is skipped for that emit. In the settings panel, two subscribeOnce callbacks on the same store: only the first one ever runs.\n\n3. A listener registered from inside another listener for the same event runs immediately, during the emit that is in progress, instead of from the next emit on.\n\nThe doc comments in src/emitter.ts describe the intended behaviour: once registrations count and can be removed until they fire, off removes the earliest registration of that function whether added with on or once, and each emit calls the listeners registered when it started, minus any removed before their turn. Please fix the emitter so it behaves as documented, keeping its public methods and their signatures.",
+  "acceptance": "off removes a once listener before it fires (and listenerCount drops); the function returned by once cancels it; once listeners fire exactly once even with a re-entrant emit; self-removal and once listeners never skip the next listener; listeners removed during an emit before their turn are not called; listeners added during an emit run from the next emit; duplicate registrations and off removing one; emit return value; Store subscribeOnce with two callbacks.",
+  "difficulty_rationale": "Three symptoms traced to two design issues (once wrappers hide the original function; emit iterates the live list), with re-entrancy rules that a naive copy of the list does not fully satisfy.",
+  "estimated_human_minutes": 30
+}

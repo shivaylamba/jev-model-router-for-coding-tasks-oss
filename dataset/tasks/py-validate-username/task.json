@@ -1,0 +1,11 @@
+{
+  "id": "py-validate-username",
+  "title": "Validate usernames",
+  "category": "validation",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Signup needs a username check. Add is_valid_username(name) to accounts/usernames.py that returns True or False (it never raises). It is called on names that have already gone through normalize_username, and a name is valid when all of these hold:\n\n- it is a str of 3 to 20 characters, inclusive;\n- it starts with a lowercase ASCII letter (a-z);\n- every character is a lowercase ASCII letter, an ASCII digit, or one of the separators \".\", \"_\" and \"-\" (so uppercase, spaces, other symbols and non-ASCII letters are all invalid);\n- two separators never appear next to each other, in any combination (\"a..b\", \"a._b\" and \"a-.b\" are all invalid);\n- it does not end with a separator.\n\nAnything that isn't a str returns False. Reserved names are handled separately by is_reserved, so don't check them here.",
+  "acceptance": "Valid examples, 3 and 20 character bounds, first character must be a letter, uppercase/space/symbol/non-ASCII/newline rejected, any doubled separator combination rejected, trailing separators rejected, non-str input returns False.",
+  "difficulty_rationale": "One predicate with a short list of explicit rules.",
+  "estimated_human_minutes": 8
+}

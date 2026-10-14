@@ -1,0 +1,11 @@
+{
+  "id": "js-pluralize",
+  "title": "pluralize for CLI messages",
+  "category": "formatting",
+  "difficulty": "easy",
+  "language": "javascript",
+  "prompt": "Add an exported `pluralize(count, singular, plural)` to src/text.js for our CLI messages. It returns the count, a space, and the right word form: `pluralize(1, \"file\")` is `\"1 file\"`, `pluralize(0, \"file\")` is `\"0 files\"`. The count is printed with `String(count)`.\n\nThe singular form is used only when `count` is exactly 1; everything else (0, negatives, 1.5, ...) uses the plural.\n\n`plural` is optional. When it's given, use it as is (`pluralize(2, \"child\", \"children\")` is `\"2 children\"`). Otherwise build the plural from `singular`:\n- words ending in s, x, z, ch or sh get `es` (bus -> buses, box -> boxes, quiz -> quizes, match -> matches)\n- words ending in a consonant followed by y replace the y with `ies` (city -> cities); a vowel (a, e, i, o, u) followed by y just gets `s` (day -> days)\n- everything else gets `s`\n\nThrow a TypeError if `count` is not a finite number (NaN, Infinity, or not a number at all, such as the string \"2\").",
+  "acceptance": "Singular only for exactly 1 (0, -1, 1.5 plural); s/x/z/ch/sh get es; consonant+y to ies; vowel+y gets s; explicit plural used for any non-1 count; TypeError for NaN, Infinity and strings.",
+  "difficulty_rationale": "One function with a small, fully listed rule set.",
+  "estimated_human_minutes": 8
+}

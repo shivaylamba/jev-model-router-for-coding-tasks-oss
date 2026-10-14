@@ -1,0 +1,11 @@
+{
+  "id": "ts-table-wrap",
+  "title": "Plain-text table that fits a width",
+  "category": "formatting",
+  "difficulty": "hard",
+  "language": "typescript",
+  "prompt": "`pkgls` crashes because `renderTable` in src/table.ts was never written; `packageReport` in src/report.ts already calls it. Please implement it.\n\nThe full rules are in SPEC.md, and the output has to match it exactly, since other tools parse this listing. The gist: `renderTable(rows: string[][], options?: { maxWidth?: number; align?: Align[]; header?: boolean }): string` lays out the rows as columns separated by `\" | \"`, with an optional `-+-` separator line under the first row. When `maxWidth` is given and the table is too wide, it repeatedly narrows the widest column (rightmost on ties) until it fits, then wraps cell text on words, breaking words that are too long for their column. Columns can be left, right or center aligned. East Asian wide characters (the code point ranges are listed in the spec) take two terminal columns, and widths are measured per code point. It throws `RangeError` for invalid options or when the table can't be made to fit.\n\nKeep the exported `renderTable`, `Align` and `TableOptions` names and the function signature as they are; feel free to add helpers.",
+  "acceptance": "Exact output for: padding every line to table width, empty input, ragged rows, header separator, left/right/center alignment and missing/extra align entries, space collapsing, word wrapping under maxWidth, widest-then-rightmost shrinking, breaking long words with the last piece continuing the line, a long word after other words, newline paragraphs including an empty one, wide BMP and astral characters, never splitting a wide character, minimum width 2 for wide columns, RangeError when the table cannot fit and for invalid maxWidth/align, and packageReport output.",
+  "difficulty_rationale": "Many interacting rules (shrinking order with per-column minimums, greedy wrapping with word breaking, code-point display widths, padding and alignment) that must all agree for exact-string output.",
+  "estimated_human_minutes": 100
+}

@@ -1,0 +1,11 @@
+{
+  "id": "py-format-phone",
+  "title": "Format US phone numbers",
+  "category": "formatting",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Please add `format_us_phone(raw)` to contacts.py. It takes a phone number string as typed by a user and returns it formatted as `(415) 555-0123`.\n\nRules:\n- Spaces, parentheses, hyphens, dots and `+` are ignored. Any other non-digit character (letters, slashes, and so on) raises ValueError.\n- After removing those, there must be exactly 10 digits, or 11 digits where the first is `1` (the country code, which is dropped). Anything else raises ValueError, including an empty string.\n- The area code (first three of the 10 digits) and the exchange (next three) may not start with 0 or 1; raise ValueError if either does.\n\nExamples: `\"415-555-0123\"`, `\"(415) 555.0123\"`, `\"+1 415 555 0123\"` and `\"14155550123\"` all give `\"(415) 555-0123\"`.",
+  "acceptance": "10-digit and 11-digit-with-leading-1 inputs with assorted separators format correctly; wrong lengths, an 11-digit number not starting with 1, letters or other characters, and area code/exchange starting with 0 or 1 raise ValueError.",
+  "difficulty_rationale": "One function with a short, fully stated rule set.",
+  "estimated_human_minutes": 10
+}
