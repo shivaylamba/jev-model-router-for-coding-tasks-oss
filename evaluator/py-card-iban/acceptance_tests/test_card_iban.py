@@ -28,7 +28,7 @@ class CardBrandTest(unittest.TestCase):
         self.assertIsNone(card_brand("2721000000000004"))
 
     def test_mastercard_other_prefixes(self):
-        self.assertIsNone(card_brand("56000000000003"))
+        self.assertIsNone(card_brand("5600000000000003"))
 
     def test_discover(self):
         self.assertEqual(card_brand("6011111111111117"), "discover")
