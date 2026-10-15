@@ -205,6 +205,31 @@ def pin_catalog(run_dir: Path, nebius_key: str) -> dict:
     return {"nconnect_version_output": version, "catalog": catalog}
 
 
+def all_conditions() -> dict:
+    return {**CONFIG["conditions"], **CONFIG["pipeline_check_conditions"], **CONFIG.get("v2_conditions", {})}
+
+
+def bundle_for(spec: dict) -> Path:
+    """The nconnect bundle a condition runs: 0.23.0 unless the condition pins another build."""
+    return ROOT / spec["nconnect_bundle"] if spec.get("nconnect_bundle") else NCONNECT_BUNDLE
+
+
+def check_bundle(spec: dict) -> None:
+    if spec.get("nconnect_bundle") and sha256_file(bundle_for(spec)) != spec["nconnect_bundle_sha256"]:
+        sys.exit(f"{spec['nconnect_bundle']} does not match its pinned sha256.")
+
+
+def copy_catalog(run_dir: Path, source_run: str) -> dict:
+    """Reuse another run's frozen catalog, so both runs price tokens identically."""
+    source = RUNS / source_run / "pinned"
+    pinned = run_dir / "pinned"
+    shutil.copytree(source, pinned)
+    catalog = json.loads((pinned / "model-catalog.json").read_text())
+    manifest = json.loads((RUNS / source_run / "manifest.json").read_text())
+    return {"nconnect_version_output": manifest["versions"]["nconnect_version"], "catalog": catalog,
+            "copied_from": source_run}
+
+
 def seed_nconnect_home(run_dir: Path, nhome: Path) -> None:
     nhome.mkdir(parents=True, exist_ok=True)
     for name in ("model-catalog.json", "models-dev.json"):
@@ -269,39 +294,47 @@ def prepare(args) -> Path:
         tasks = [t for t in tasks if t.id in wanted]
     conditions = args.conditions.split(",")
     for condition in conditions:
-        spec = CONFIG["conditions"].get(condition) or CONFIG["pipeline_check_conditions"].get(condition)
+        spec = all_conditions().get(condition)
         if spec is None:
             sys.exit(f"unknown condition {condition}")
+        check_bundle(spec)
         if spec.get("smoke_only") and suite != "smoke":
             sys.exit(f"{condition} is a pipeline check and may only run on smoke tasks")
-    pinned = pin_catalog(run_dir, nebius_key)
+    pinned = copy_catalog(run_dir, args.catalog_from) if args.catalog_from else pin_catalog(run_dir, nebius_key)
     prices = prices_from_catalog(pinned["catalog"])
-    for model in [m for pool in AUTO_POOLS.values() for m in pool] + [CONFIG["conditions"]["A"]["nconnect_model"]]:
+    pools = next((all_conditions()[c]["pools"] for c in conditions if all_conditions()[c].get("pools")), AUTO_POOLS)
+    for model in [m for pool in pools.values() for m in pool] + [CONFIG["conditions"]["A"]["nconnect_model"]]:
         if model not in prices:
             print(f"warning: no price for {model} in the pinned catalog", file=sys.stderr)
     claude_version = run_quiet([str(CLAUDE_BINARY), "--version"], base_env(Path(tempfile.gettempdir()), Path(tempfile.gettempdir()))).stdout.strip()
     node_version = run_quiet([str(VENDOR / "bin" / "node"), "--version"], {"PATH": tool_path()}).stdout.strip()
     python_version = run_quiet([str(VENDOR / "bin" / "python3"), "--version"], {"PATH": tool_path()}).stdout.strip()
     bun_version = run_quiet([str(BUN), "--version"], {"PATH": tool_path()}).stdout.strip()
-    all_conditions = {**CONFIG["conditions"], **CONFIG["pipeline_check_conditions"]}
     manifest = {
         "run_id": args.run_id,
         "suite": suite,
         "created_at": now_iso(),
         "seed": CONFIG["seed"],
         "repetitions": args.repetitions,
-        "conditions": {c: all_conditions[c] for c in conditions},
+        "conditions": {c: all_conditions()[c] for c in conditions},
         "common_env": CONFIG["common_env"],
         "left_at_default": CONFIG["left_at_default"],
         "limits": CONFIG["limits"],
         "claude_code": CONFIG["claude_code"],
         "scoring": CONFIG["scoring"],
-        "auto": {"pools": AUTO_POOLS, "pool_models": sorted({m for p in AUTO_POOLS.values() for m in p}),
+        # Claude Code's background calls (titles, permission checks) go to the catalog default in every
+        # condition, so they count as expected models too.
+        "auto": {"pools": pools, "pool_models": sorted({m for p in pools.values() for m in p} | {BACKGROUND_MODEL}),
                  "cost_tier": "medium", "thresholds_medium": [0.3, 0.7], "per_turn": False,
                  "stuck_after_tool_errors": 3, "decider_wait_ms": 2500, "decider_hard_timeout_ms": 20000,
                  "background_model": BACKGROUND_MODEL},
         "versions": {
             "nconnect_bundle_sha256": sha256_file(NCONNECT_BUNDLE),
+            "condition_bundles": {c: {"path": all_conditions()[c]["nconnect_bundle"],
+                                      "sha256": all_conditions()[c]["nconnect_bundle_sha256"],
+                                      "source_commit": all_conditions()[c]["nconnect_source_commit"]}
+                                  for c in conditions if all_conditions()[c].get("nconnect_bundle")},
+            "catalog_copied_from": pinned.get("copied_from"),
             "nconnect_version": pinned["nconnect_version_output"],
             "nconnect_source_commit": NCONNECT_SOURCE_COMMIT,
             "nconnect_provenance": "The installed bundle (~/.nconnect/bin/nconnect.js) is byte-identical to "
@@ -324,7 +357,7 @@ def prepare(args) -> Path:
             "captured_at": now_iso(),
         },
         "dataset_digest": tree_digest([ROOT / "dataset", ROOT / "evaluator"], ROOT) if suite == "dataset"
-        else tree_digest([ROOT / "smoke"], ROOT),
+        else tree_digest([ROOT / suite], ROOT),
         "protocol_digest": protocol_digest(),
         "task_ids": [t.id for t in tasks],
     }
@@ -497,7 +530,7 @@ def execute(run_dir: Path, manifest: dict, item: dict, keys: dict) -> dict:
     if spec.get("decider_through_recorder"):
         env["NCONNECT_AUTO_DECIDER_URL"] = f"http://127.0.0.1:{rport}/typesafe/v1/systemone"
     cc = manifest["claude_code"]
-    command = [str(BUN), str(NCONNECT_BUNDLE), "--model", spec["nconnect_model"], "claude", "-p", task.prompt,
+    command = [str(BUN), str(bundle_for(spec)), "--model", spec["nconnect_model"], "claude", "-p", task.prompt,
                *cc["flags"], "--allowedTools", ",".join(cc["allowed_tools"]),
                "--disallowedTools", ",".join(cc["disallowed_tools"])]
     limits = manifest["limits"]
@@ -616,9 +649,17 @@ def probe(model: str, key: str, timeout: int = 30) -> tuple[bool, str]:
     return False, f"HTTP {code}" if code and code != "000" else (proc.stderr.strip()[:60] or "no response")
 
 
-def wait_until_healthy(run_dir: Path, key: str, deadline: float) -> bool:
+def health_models(manifest: dict) -> list[str]:
+    """The main run probed HEALTH_MODELS. A run with its own pools probes the models it can actually use."""
+    if not any(spec.get("pools") for spec in manifest["conditions"].values()):
+        return HEALTH_MODELS
+    models = {spec["nconnect_model"] for spec in manifest["conditions"].values() if spec["nconnect_model"] != "auto"}
+    return sorted(models | set(manifest["auto"]["pool_models"]))
+
+
+def wait_until_healthy(run_dir: Path, key: str, deadline: float, models: list[str] = HEALTH_MODELS) -> bool:
     while True:
-        results = {model: probe(model, key) for model in HEALTH_MODELS}
+        results = {model: probe(model, key) for model in models}
         bad = {m: r[1] for m, r in results.items() if not r[0]}
         if not bad:
             return True
@@ -712,13 +753,15 @@ def load_results(run_dir: Path) -> list[dict]:
 
 def verify_frozen(run_dir: Path, manifest: dict) -> None:
     current = (tree_digest([ROOT / "dataset", ROOT / "evaluator"], ROOT) if manifest["suite"] == "dataset"
-               else tree_digest([ROOT / "smoke"], ROOT))
+               else tree_digest([ROOT / manifest["suite"]], ROOT))
     if current != manifest["dataset_digest"]:
         changed = sorted(k for k in set(current) | set(manifest["dataset_digest"])
                          if current.get(k) != manifest["dataset_digest"].get(k))
         sys.exit(f"The dataset changed after the manifest was frozen: {changed[:10]}")
     if sha256_file(NCONNECT_BUNDLE) != manifest["versions"]["nconnect_bundle_sha256"]:
         sys.exit("The pinned nconnect bundle changed.")
+    for spec in manifest["conditions"].values():
+        check_bundle(spec)
     if sha256_file(CLAUDE_BINARY) != manifest["versions"]["claude_code_binary_sha256"]:
         sys.exit("The pinned Claude Code binary changed.")
 
@@ -754,7 +797,8 @@ def run(args, run_dir: Path | None = None) -> None:
         if (time.time() - started) / 3600 >= max_hours:
             log_event(run_dir, "stopped: runtime cap reached", hours=max_hours)
             return
-        if not wait_until_healthy(run_dir, keys["NEBIUS_API_KEY"], started + max_hours * 3600):
+        if not wait_until_healthy(run_dir, keys["NEBIUS_API_KEY"], started + max_hours * 3600,
+                                      health_models(manifest)):
             log_event(run_dir, "stopped: provider still unhealthy at the runtime cap")
             return
         record = execute(run_dir, manifest, item, keys)
@@ -762,7 +806,8 @@ def run(args, run_dir: Path | None = None) -> None:
         while (reason := infra_failure(run_dir, record)) and reruns < INFRA_RERUNS:
             quarantine(run_dir, record, reason)
             reruns += 1
-            if not wait_until_healthy(run_dir, keys["NEBIUS_API_KEY"], started + max_hours * 3600):
+            if not wait_until_healthy(run_dir, keys["NEBIUS_API_KEY"], started + max_hours * 3600,
+                                      health_models(manifest)):
                 log_event(run_dir, "stopped: provider still unhealthy at the runtime cap")
                 return
             record = execute(run_dir, manifest, item, keys)
@@ -790,10 +835,11 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("prepare")
     p.add_argument("--run-id", required=True)
-    p.add_argument("--suite", default="dataset", choices=["dataset", "smoke"])
+    p.add_argument("--suite", default="dataset", choices=["dataset", "smoke", "dev"])
     p.add_argument("--conditions", default="A,B")
     p.add_argument("--repetitions", type=int, default=1)
     p.add_argument("--tasks", default="")
+    p.add_argument("--catalog-from", default="", help="reuse this run's frozen catalog and prices")
     r = sub.add_parser("run")
     r.add_argument("--run-id", required=True)
     r.add_argument("--budget-usd", type=float)
@@ -807,6 +853,7 @@ def main() -> None:
     sm.add_argument("--conditions", default="A,B")
     sm.add_argument("--budget-usd", type=float, default=3.0)
     sm.add_argument("--max-hours", type=float, default=1.0)
+    sm.add_argument("--catalog-from", default="", help="reuse this run's frozen catalog and prices")
     args = parser.parse_args()
     if args.command == "prepare":
         prepare(args)

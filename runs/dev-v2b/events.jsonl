@@ -1,0 +1,9 @@
+{"at": "2026-10-15T10:30:06.951Z", "event": "prepared", "tasks": 15, "executions": 30, "conditions": ["A", "C"]}
+{"at": "2026-10-15T10:30:07.633Z", "event": "run started", "budget_usd": 10.0, "max_hours": 2.0}
+{"at": "2026-10-15T10:32:38.328Z", "event": "provider unhealthy; waiting", "models": {"zai-org/GLM-5.3": "curl: (28) Operation timed out after 30006 milliseconds with"}, "wait_s": 300}
+{"at": "2026-10-15T10:38:10.561Z", "event": "provider unhealthy; waiting", "models": {"zai-org/GLM-5.3": "curl: (28) Operation timed out after 30003 milliseconds with"}, "wait_s": 300}
+{"at": "2026-10-15T10:40:51.483Z", "event": "run started", "budget_usd": 10.0, "max_hours": 2.0}
+{"at": "2026-10-15T10:50:12.847Z", "event": "provider unhealthy; waiting", "models": {"moonshotai/Kimi-K3": "curl: (28) Operation timed out after 30005 milliseconds with"}, "wait_s": 300}
+{"at": "2026-10-15T11:01:41.047Z", "event": "stopped: budget reached", "spent_usd": 10.2197, "budget_usd": 10.0}
+{"at": "2026-10-15T11:01:53.605Z", "event": "run started", "budget_usd": 20.0, "max_hours": 2.0}
+{"at": "2026-10-15T11:06:16.304Z", "event": "run complete", "spent_usd": 12.2037}

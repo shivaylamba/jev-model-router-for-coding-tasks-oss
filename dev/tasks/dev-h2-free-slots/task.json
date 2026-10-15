@@ -1,0 +1,12 @@
+{
+  "id": "dev-h2-free-slots",
+  "title": "h2-free-slots",
+  "category": "utility",
+  "difficulty": "hard",
+  "language": "python",
+  "prompt": "free_slots in calendar_util.py gives wrong answers for some calendars: overlapping meetings, a short meeting inside a longer one, and meetings that start before the working day or end after it. Make it correct. The docstring is the spec.",
+  "acceptance": "nconnect auto-routing benchmark hidden tests",
+  "difficulty_rationale": "from nconnect's benchmark",
+  "estimated_human_minutes": 0,
+  "source": "Studio1-OSS/nconnect packages/tests/benchmarks/auto-routing/tasks/h2-free-slots at 66bf93f"
+}

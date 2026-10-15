@@ -1,0 +1,12 @@
+{
+  "id": "dev-m1-ttl-cache",
+  "title": "m1-ttl-cache",
+  "category": "utility",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "Implement the TTLCache class in cache.py. The docstring says how it should behave.",
+  "acceptance": "nconnect auto-routing benchmark hidden tests",
+  "difficulty_rationale": "from nconnect's benchmark",
+  "estimated_human_minutes": 0,
+  "source": "Studio1-OSS/nconnect packages/tests/benchmarks/auto-routing/tasks/m1-ttl-cache at 66bf93f"
+}

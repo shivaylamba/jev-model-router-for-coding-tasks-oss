@@ -34,7 +34,9 @@ MODEL_SHORT = {
     "zai-org/GLM-5.3": "GLM 5.3",
     "moonshotai/Kimi-K2.6": "Kimi K2.6",
     "deepseek-ai/DeepSeek-V4.1-Flash": "DeepSeek V4.1 Flash",
+    "deepseek-ai/DeepSeek-V4-Flash-0731": "DeepSeek V4 Flash",
 }
+AUTO_LABELS = {"B": "Auto + Jev", "C": "Auto v2 + Jev"}
 
 
 # ---------------------------------------------------------------- loading
@@ -348,9 +350,9 @@ def charts(out: Path, summary: dict, records: list[dict], pairs) -> list[str]:
         return ["charts skipped: matplotlib unavailable (use vendor/analysis-venv/bin/python)"]
     out.mkdir(parents=True, exist_ok=True)
     colors = {FIXED: "#2a78d6", AUTO: "#eb6834"}
-    labels = {FIXED: "Fixed Kimi K3", AUTO: "Auto + Jev"}
+    labels = {FIXED: "Fixed Kimi K3", AUTO: AUTO_LABELS.get(AUTO, "Auto + Jev")}
     model_colors = {"Kimi K3": "#2a78d6", "GLM 5.3 Flash": "#1baf7a", "GLM 5.3": "#eda100", "Kimi K2.6": "#e87ba4",
-                    "DeepSeek V4.1 Flash": "#6250d6"}
+                    "DeepSeek V4.1 Flash": "#6250d6", "DeepSeek V4 Flash": "#6250d6"}
     plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False,
                          "axes.edgecolor": "#8a8984", "axes.labelcolor": "#0b0b0b", "xtick.color": "#52514e",
                          "ytick.color": "#52514e", "axes.grid": True, "grid.color": "#e7e6e2", "grid.linewidth": 0.8,
@@ -491,7 +493,7 @@ def charts(out: Path, summary: dict, records: list[dict], pairs) -> list[str]:
         ax.set_xlim(lo, hi)
         ax.set_ylim(lo, hi)
         ax.set_xlabel("Fixed Kimi K3 cost per task, USD")
-        ax.set_ylabel("Auto + Jev cost per task, USD")
+        ax.set_ylabel(f"{labels[AUTO]} cost per task, USD")
         ax.set_title("Cost per task, paired (below the line = Auto cheaper)", loc="left", fontsize=11)
         ax.legend(fontsize=8)
         save(fig, "paired-cost")
@@ -505,17 +507,32 @@ def main() -> None:
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--use-results", action="store_true", help="read results.jsonl instead of re-normalizing")
     parser.add_argument("--auto-condition", default="B", help="the routed condition to compare with A (B_rules for pipeline checks)")
+    parser.add_argument("--fixed-from", default="", help="take condition A from this run instead (same tasks, same pinned catalog)")
+    parser.add_argument("--out", default="", help="report directory name under reports/ (default: the run id)")
     args = parser.parse_args()
     global AUTO
     AUTO = args.auto_condition
     run_dir = ROOT / "runs" / args.run_id
-    out = ROOT / "reports" / args.run_id
+    out = ROOT / "reports" / (args.out or args.run_id)
     out.mkdir(parents=True, exist_ok=True)
     manifest, records = load_records(run_dir, args.use_results)
+    fixed_excluded = []
+    if args.fixed_from:
+        fixed_dir = ROOT / "runs" / args.fixed_from
+        fixed_manifest, fixed_records = load_records(fixed_dir, args.use_results)
+        if fixed_manifest["prices"]["nebius"] != manifest["prices"]["nebius"]:
+            sys.exit(f"{args.fixed_from} priced tokens differently; pin the same catalog (--catalog-from)")
+        records = [r for r in records if r["condition"] != FIXED] + [r for r in fixed_records if r["condition"] == FIXED]
+        manifest["conditions"][FIXED] = fixed_manifest["conditions"][FIXED]
+        path = fixed_dir / "excluded.jsonl"
+        if path.exists():
+            fixed_excluded = [r for r in map(json.loads, filter(str.strip, path.read_text().splitlines()))
+                              if r["condition"] == FIXED]
     conditions = sorted({r["condition"] for r in records})
     pairs = pairs_of(records)
     excluded_path = run_dir / "excluded.jsonl"
     excluded = [json.loads(l) for l in excluded_path.read_text().splitlines() if l.strip()] if excluded_path.exists() else []
+    excluded += fixed_excluded
     # Sensitivity (Amendment 1): the first, outage-hit attempt stands in for its re-run.
     first_attempt = {}
     for r in excluded:

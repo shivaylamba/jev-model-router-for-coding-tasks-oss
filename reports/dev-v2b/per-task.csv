@@ -1,0 +1,16 @@
+task_id,repetition,difficulty,category,language,fixed_models,auto_models,auto_tiers,auto_first_tier,jev_choice,fixed_pass,auto_pass,fixed_cost_usd,auto_cost_usd,savings_pct,fixed_time_s,auto_time_s,fixed_model_calls,auto_model_calls,notable,fixed_execution,auto_execution
+dev-e1-rename,1,easy,utility,python,Kimi K3×8,DeepSeek V4 Flash×5,fast,fast,routine,True,True,0.249351,0.007707,96.9,13.085,12.059,8,5,,028,027
+dev-e2-flag,1,easy,utility,python,Kimi K3×4,DeepSeek V4 Flash×5,fast,fast,routine,True,True,0.116634,0.007351,93.7,11.049,11.068,4,5,,001,002
+dev-e3-nameerror,1,easy,utility,python,Kimi K3×6,Kimi K2.6×5,balanced,balanced,routine,True,True,0.184167,0.04344,76.4,14.064,8.039,6,5,,030,029
+dev-e4-slugify,1,easy,utility,python,Kimi K3×4,DeepSeek V4 Flash×7,fast,fast,routine,True,True,0.122778,0.01554,87.3,11.049,40.205,4,7,Auto took 7 model calls vs 4,011,012
+dev-h1-off-by-a-cent,1,hard,utility,python,Kimi K3×11,Kimi K3×24,strong,strong,hard,True,True,0.486249,1.008446,-107.4,46.229,52.275,11,24,Auto cost more; Auto took 24 model calls vs 11,020,019
+dev-h2-free-slots,1,hard,utility,python,Kimi K3×8,Kimi K2.6×5,balanced,balanced,hard,True,True,0.297084,0.05039,83.0,30.154,13.077,8,5,,014,013
+dev-h3-install-order,1,hard,utility,python,Kimi K3×3,Kimi K3×18,strong,strong,hard,True,False,0.105684,0.844559,-699.1,14.072,44.241,3,18,only fixed passed; Auto cost more,024,023
+dev-h4-rate-limiter,1,hard,utility,python,Kimi K3×22,Kimi K3×64,strong,strong,hard,True,True,1.463337,5.590542,-282.0,97.478,163.818,22,64,Auto cost more; Auto took 64 model calls vs 22,017,018
+dev-m1-ttl-cache,1,medium,utility,python,Kimi K3×6,DeepSeek V4 Flash×5,fast,fast,routine,True,True,0.227337,0.009402,95.9,46.245,23.097,6,5,,009,010
+dev-m2-duration,1,medium,utility,python,Kimi K3×6,DeepSeek V4 Flash×14 + Kimi K3×4,fast → strong,fast,routine,True,True,0.200112,0.223944,-11.9,17.077,46.241,6,18,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 18 model calls vs 6,022,021
+dev-m3-pagination,1,medium,utility,python,Kimi K3×7,DeepSeek V4 Flash×12,fast,fast,routine,True,True,0.265272,0.029021,89.1,26.123,169.872,7,12,Auto took 12 model calls vs 7,005,006
+dev-m4-csv-jsonl,1,medium,utility,python,Kimi K3×7,DeepSeek V4 Flash×5,fast,fast,routine,True,True,0.237504,0.009901,95.8,19.084,26.137,7,5,,015,016
+smoke-py-average-bug,1,easy,bugfix,python,Kimi K3×4,DeepSeek V4 Flash×6,fast,fast,routine,True,True,0.116952,0.008968,92.3,8.039,13.073,4,6,,003,004
+smoke-py-word-count,1,easy,utility,python,Kimi K3×4,DeepSeek V4 Flash×5,fast,fast,routine,True,True,0.117138,0.007867,93.3,9.058,15.084,4,5,,026,025
+smoke-ts-initials,1,easy,formatting,typescript,Kimi K3×5,DeepSeek V4 Flash×4,fast,fast,routine,True,True,0.150075,0.006959,95.4,10.049,18.101,5,4,,007,008

@@ -1,0 +1,12 @@
+{
+  "id": "dev-m3-pagination",
+  "title": "m3-pagination",
+  "category": "utility",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "Add cursor pagination to list_users in users.py. It should take limit (default 20, max 100) and an optional cursor, and return a dict with 'items' and 'next_cursor'. Users are ordered by id. next_cursor is None on the last page. A bad cursor or a limit outside 1..100 should raise ValueError. The cursor should be an opaque string.",
+  "acceptance": "nconnect auto-routing benchmark hidden tests",
+  "difficulty_rationale": "from nconnect's benchmark",
+  "estimated_human_minutes": 0,
+  "source": "Studio1-OSS/nconnect packages/tests/benchmarks/auto-routing/tasks/m3-pagination at 66bf93f"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "dev-h3-install-order",
+  "title": "h3-install-order",
+  "category": "utility",
+  "difficulty": "hard",
+  "language": "python",
+  "prompt": "resolve() in resolver.py sometimes puts a package before something it depends on, and it blows up on circular dependencies instead of reporting them. Fix it so it matches the docstrings.",
+  "acceptance": "nconnect auto-routing benchmark hidden tests",
+  "difficulty_rationale": "from nconnect's benchmark",
+  "estimated_human_minutes": 0,
+  "source": "Studio1-OSS/nconnect packages/tests/benchmarks/auto-routing/tasks/h3-install-order at 66bf93f"
+}

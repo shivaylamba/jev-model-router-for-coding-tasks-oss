@@ -1,0 +1,12 @@
+{
+  "id": "dev-e3-nameerror",
+  "title": "e3-nameerror",
+  "category": "utility",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "stats.mean crashes with a NameError. Fix it.",
+  "acceptance": "nconnect auto-routing benchmark hidden tests",
+  "difficulty_rationale": "from nconnect's benchmark",
+  "estimated_human_minutes": 0,
+  "source": "Studio1-OSS/nconnect packages/tests/benchmarks/auto-routing/tasks/e3-nameerror at 66bf93f"
+}

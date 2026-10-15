@@ -1,0 +1,12 @@
+{
+  "id": "dev-h4-rate-limiter",
+  "title": "h4-rate-limiter",
+  "category": "utility",
+  "difficulty": "hard",
+  "language": "python",
+  "prompt": "Our rate limiter in ratelimit.py lets clients go over the limit around window boundaries, and its memory use grows forever as new clients come and go. Fix both. The class docstring describes the intended behaviour.",
+  "acceptance": "nconnect auto-routing benchmark hidden tests",
+  "difficulty_rationale": "from nconnect's benchmark",
+  "estimated_human_minutes": 0,
+  "source": "Studio1-OSS/nconnect packages/tests/benchmarks/auto-routing/tasks/h4-rate-limiter at 66bf93f"
+}

@@ -15,7 +15,9 @@
         "NCONNECT_AUTO_DECIDER": "jev",
         "NCONNECT_AUTO_DECIDER_MODEL": "jev-1.13.0"
       },
-      "secrets": ["TYPESAFE_API_KEY"],
+      "secrets": [
+        "TYPESAFE_API_KEY"
+      ],
       "decider_through_recorder": true
     }
   },
@@ -54,9 +56,37 @@
     "max_hours": 10.0
   },
   "claude_code": {
-    "flags": ["--output-format", "stream-json", "--verbose", "--include-partial-messages", "--permission-mode", "acceptEdits", "--strict-mcp-config"],
-    "allowed_tools": ["Bash(python3:*)", "Bash(python:*)", "Bash(node:*)", "Bash(ls:*)", "Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(wc:*)", "Bash(grep:*)", "Bash(find:*)", "Bash(mkdir:*)", "Bash(git status:*)", "Bash(git diff:*)"],
-    "disallowed_tools": ["WebFetch", "WebSearch", "Task", "Agent", "NotebookEdit"],
+    "flags": [
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--include-partial-messages",
+      "--permission-mode",
+      "acceptEdits",
+      "--strict-mcp-config"
+    ],
+    "allowed_tools": [
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(node:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)"
+    ],
+    "disallowed_tools": [
+      "WebFetch",
+      "WebSearch",
+      "Task",
+      "Agent",
+      "NotebookEdit"
+    ],
     "notes": "Reads and edits inside the workspace need no allow rule in acceptEdits mode. Subagents are disabled in both conditions: Claude Code would run them on its Haiku-tier model, which would break 'Kimi K3 for every foreground request' in condition A."
   },
   "nconnect_port": 7897,
@@ -65,5 +95,38 @@
     "cost": "Estimated. Provider-reported tokens per upstream request (recorder) times the prices in the manifest. Cached input is billed at the full input rate because Nebius publishes no cached-input price; a cache-free lower bound is reported alongside. Requests without reported usage are estimated from bytes and kept separate. Jev is charged per input token at its published rate.",
     "duration": "Wall time from launching nconnect to its exit, per task. Time to first visible output is the first non-empty text delta in Claude Code's stream.",
     "failed_tasks": "Included in every cost total. Cost per successful task divides total spend by successful tasks."
+  },
+  "v2_conditions": {
+    "C": {
+      "label": "Router on: Auto v2 with Jev (DeepSeek V4 Flash 0731 / Kimi K2.6 / Kimi K3, no effort raise)",
+      "nconnect_model": "auto",
+      "nconnect_bundle": "vendor/nconnect-0.23.0-autov2.2.js",
+      "nconnect_bundle_sha256": "1e392f7eb140d747d20d891149005092483be1c5d941608b6610bec2032e2390",
+      "nconnect_source_commit": "12ad392e0afb7b671fd6eb515c36711b6ef293ab",
+      "nconnect_source_note": "Branch feat/auto-v2 of Studio1-OSS/nconnect, built with bun build --target=bun --production. Changes from 0.23.0: GLM 5.3 effort floor low; Kimi K2.6 thinking off via chat_template_kwargs at effort none; DeepSeek V4 Flash 0731 accepts reasoning_effort; output-limit nudges no longer start a new task; permission refusals do not count toward escalation; reworded decider criteria. v2.1 adds: DeepSeek V4 Flash 0731 effort floor low (it loops at none); Claude Code's empty-reply nudge is a continuation, not a new task. v2.2 adds: the nudges are stripped wherever Claude Code merges them into the prompt message.",
+      "env": {
+        "NCONNECT_AUTO_DECIDER": "jev",
+        "NCONNECT_AUTO_DECIDER_MODEL": "jev-1.13.0",
+        "NCONNECT_AUTO_FAST_MODEL": "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "NCONNECT_AUTO_BALANCED_MODEL": "moonshotai/Kimi-K2.6",
+        "NCONNECT_AUTO_STRONG_MODEL": "moonshotai/Kimi-K3",
+        "NCONNECT_AUTO_EFFORT": "off"
+      },
+      "pools": {
+        "fast": [
+          "deepseek-ai/DeepSeek-V4-Flash-0731"
+        ],
+        "balanced": [
+          "moonshotai/Kimi-K2.6"
+        ],
+        "strong": [
+          "moonshotai/Kimi-K3"
+        ]
+      },
+      "secrets": [
+        "TYPESAFE_API_KEY"
+      ],
+      "decider_through_recorder": true
+    }
   }
 }

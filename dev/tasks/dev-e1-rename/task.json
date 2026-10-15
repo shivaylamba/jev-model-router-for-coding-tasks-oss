@@ -1,0 +1,12 @@
+{
+  "id": "dev-e1-rename",
+  "title": "e1-rename",
+  "category": "utility",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Rename the function calc_area to rectangle_area everywhere in this project.",
+  "acceptance": "nconnect auto-routing benchmark hidden tests",
+  "difficulty_rationale": "from nconnect's benchmark",
+  "estimated_human_minutes": 0,
+  "source": "Studio1-OSS/nconnect packages/tests/benchmarks/auto-routing/tasks/e1-rename at 66bf93f"
+}

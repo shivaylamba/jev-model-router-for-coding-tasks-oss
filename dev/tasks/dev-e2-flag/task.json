@@ -1,0 +1,12 @@
+{
+  "id": "dev-e2-flag",
+  "title": "e2-flag",
+  "category": "utility",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Add an --upper flag to cli.py that makes the greeting uppercase.",
+  "acceptance": "nconnect auto-routing benchmark hidden tests",
+  "difficulty_rationale": "from nconnect's benchmark",
+  "estimated_human_minutes": 0,
+  "source": "Studio1-OSS/nconnect packages/tests/benchmarks/auto-routing/tasks/e2-flag at 66bf93f"
+}

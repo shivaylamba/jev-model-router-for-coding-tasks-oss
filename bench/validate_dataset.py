@@ -105,7 +105,7 @@ def check(task) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--suite", default="dataset", choices=["dataset", "smoke"])
+    parser.add_argument("--suite", default="dataset", choices=["dataset", "smoke", "dev"])
     parser.add_argument("--task", action="append", help="task id (repeatable); default all")
     args = parser.parse_args()
     tasks = [load_task(t, args.suite) for t in args.task] if args.task else list_tasks(args.suite)
