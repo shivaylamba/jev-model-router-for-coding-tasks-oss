@@ -1,0 +1,53 @@
+TAP version 13
+# Subtest: basic USD
+ok 1 - basic USD
+  ---
+  duration_ms: 0.583083
+  type: 'test'
+  ...
+# Subtest: small amounts keep two decimals
+ok 2 - small amounts keep two decimals
+  ---
+  duration_ms: 0.08775
+  type: 'test'
+  ...
+# Subtest: thousands separators
+ok 3 - thousands separators
+  ---
+  duration_ms: 0.07725
+  type: 'test'
+  ...
+# Subtest: currency symbols
+ok 4 - currency symbols
+  ---
+  duration_ms: 0.0725
+  type: 'test'
+  ...
+# Subtest: negatives put the minus before the symbol
+ok 5 - negatives put the minus before the symbol
+  ---
+  duration_ms: 0.077375
+  type: 'test'
+  ...
+# Subtest: non-integers throw TypeError
+ok 6 - non-integers throw TypeError
+  ---
+  duration_ms: 0.259209
+  type: 'test'
+  ...
+# Subtest: unknown currency throws RangeError
+ok 7 - unknown currency throws RangeError
+  ---
+  duration_ms: 0.068417
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 101.788833
+

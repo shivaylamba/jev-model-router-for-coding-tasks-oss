@@ -1,0 +1,37 @@
+{
+ "moderate": {
+  "tasks": 42,
+  "difficulty": {
+   "easy": 20,
+   "medium": 18,
+   "hard": 4
+  },
+  "outcomes": {
+   "both": 37,
+   "fixed only": 1,
+   "Auto only": 4
+  },
+  "fixed_cost_usd": 27.7608,
+  "auto_cost_usd": 21.8939,
+  "savings_pct": 21.1,
+  "speedup_geomean_both_pass": 0.315,
+  "escalated": 12
+ },
+ "hard": {
+  "tasks": 8,
+  "difficulty": {
+   "hard": 6,
+   "medium": 2
+  },
+  "outcomes": {
+   "Auto only": 4,
+   "both": 3,
+   "fixed only": 1
+  },
+  "fixed_cost_usd": 9.0323,
+  "auto_cost_usd": 15.1941,
+  "savings_pct": -68.2,
+  "speedup_geomean_both_pass": 1.104,
+  "escalated": 0
+ }
+}

@@ -1,0 +1,51 @@
+task_id,repetition,difficulty,category,language,fixed_models,auto_models,auto_tiers,auto_first_tier,jev_choice,fixed_pass,auto_pass,fixed_cost_usd,auto_cost_usd,savings_pct,fixed_time_s,auto_time_s,fixed_model_calls,auto_model_calls,notable,fixed_execution,auto_execution
+js-cli-json-flag,1,easy,feature,javascript,Kimi K3×10,GLM 5.3×11 + Kimi K3×6,balanced → strong,balanced,moderate,True,True,0.380403,0.534678,-40.6,18.086,35.174,10,17,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 17 model calls vs 10,098,097
+js-client-options,1,medium,api-change,javascript,Kimi K3×15,GLM 5.3×9,balanced,balanced,moderate,True,True,0.701883,0.35504,49.4,28.127,154.692,15,9,,056,055
+js-debounce-bugs,1,medium,bugfix,javascript,Kimi K3×13,Kimi K3×21,strong,strong,moderate,True,True,0.678858,1.42067,-109.3,40.182,64.317,13,21,Auto cost more; Auto took 21 model calls vs 13,002,001
+js-email-list,1,easy,validation,javascript,Kimi K3×5,GLM 5.3×7,balanced,balanced,moderate,True,True,0.194646,0.254277,-30.6,13.066,53.292,5,7,Auto cost more,061,062
+js-human-duration,1,medium,formatting,javascript,Kimi K3×12,GLM 5.3×7,balanced,balanced,moderate,True,True,0.531321,0.305305,42.5,29.146,81.438,12,7,,047,048
+js-parse-ini,1,medium,parsing,javascript,Kimi K3×14,GLM 5.3×12,balanced,balanced,moderate,True,True,0.66801,0.736521,-10.3,38.195,232.292,14,12,Auto cost more,024,023
+js-pick-omit,1,easy,utility,javascript,Kimi K3×4,GLM 5.3×9 + Kimi K3×8,balanced → strong,balanced,moderate,True,True,0.13242,0.586603,-343.0,9.052,53.301,4,17,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 17 model calls vs 4,068,067
+js-pluralize,1,easy,formatting,javascript,Kimi K3×4,GLM 5.3×10,balanced,balanced,moderate,True,True,0.131193,0.206682,-57.5,8.052,33.161,4,10,Auto cost more; Auto took 10 model calls vs 4,032,031
+js-score-sort,1,easy,bugfix,javascript,Kimi K3×6,GLM 5.3×7,balanced,balanced,moderate,True,True,0.207855,0.115701,44.3,13.077,18.09,6,7,,015,016
+js-site-plugins,1,medium,feature,javascript,Kimi K3×11,GLM 5.3×13 + Kimi K3×6,balanced → strong,balanced,moderate,True,True,0.507651,1.141005,-124.8,25.142,213.163,11,19,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 19 model calls vs 11,099,100
+py-async-rate-limiter,1,hard,state,python,Kimi K3×34,Kimi K3×63,strong,strong,hard,False,True,2.739318,7.071727,-158.2,74.37,1201.611,34,63,only Auto passed; Auto hit wall_limit; Auto cost more,027,028
+py-card-iban,1,medium,validation,python,Kimi K3×14,GLM 5.3×9 + Kimi K3×4,balanced → strong,balanced,moderate,True,True,0.600477,0.531279,11.5,26.154,123.681,14,13,Auto escalated 1×; stuck → strong,029,030
+py-chunk-evenly,1,easy,utility,python,Kimi K3×14,GLM 5.3×6,balanced,balanced,moderate,True,True,0.52302,0.10253,80.4,25.12,15.076,14,6,,051,052
+py-cron-next,1,hard,utility,python,Kimi K3×9,GLM 5.3 Flash×13 + GLM 5.3×7,balanced → fast,balanced,moderate,True,False,0.443865,0.525714,-18.4,29.221,669.068,9,20,only fixed passed; Auto cost more,074,073
+py-cursor-pagination,1,hard,api-change,python,Kimi K3×23,GLM 5.3×30,balanced,balanced,moderate,False,True,1.365246,1.521544,-11.4,49.257,263.474,23,30,only Auto passed; Auto cost more,037,038
+py-expr-eval,1,hard,parsing,python,Kimi K3×26,Kimi K3×36,strong,strong,hard,True,True,1.69983,2.785024,-63.8,61.319,76.404,26,36,Auto cost more,033,034
+py-extract-validators,1,medium,refactor,python,Kimi K3×11,Kimi K3×11 + GLM 5.3×9,balanced → strong,balanced,moderate,True,True,0.514986,1.088866,-111.4,25.125,124.653,11,20,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 20 model calls vs 11,049,050
+py-flatten-records-csv,1,medium,formatting,python,Kimi K3×13,GLM 5.3×13,balanced,balanced,moderate,True,True,0.523548,0.388284,25.8,24.102,90.444,13,13,,004,003
+py-format-phone,1,easy,formatting,python,Kimi K3×8,GLM 5.3×6,balanced,balanced,moderate,True,True,0.278862,0.11592,58.4,18.102,21.11,8,6,,039,040
+py-inventory-reservations,1,hard,bugfix,python,Kimi K3×23,Kimi K3×17,strong,strong,hard,True,True,1.326273,0.937915,29.3,61.298,53.243,23,17,,089,090
+py-memoize,1,easy,state,python,Kimi K3×5,GLM 5.3×8 + Kimi K3×5,balanced → strong,balanced,moderate,True,True,0.1953,0.451813,-131.3,19.107,213.032,5,13,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 13 model calls vs 5,010,009
+py-order-state-machine,1,medium,state,python,Kimi K3×7,GLM 5.3×14 + Kimi K3×3,balanced → strong,balanced,moderate,True,True,0.30684,0.805626,-162.6,27.249,315.978,7,17,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 17 model calls vs 7,080,079
+py-parse-kv,1,easy,parsing,python,Kimi K3×9,GLM 5.3×11,balanced,balanced,moderate,True,True,0.325266,0.201898,37.9,17.085,30.133,9,11,,072,071
+py-parse-query,1,medium,parsing,python,Kimi K3×9,GLM 5.3×13,balanced,balanced,moderate,True,True,0.463785,0.50134,-8.1,39.219,362.848,9,13,Auto cost more,011,012
+py-report-csv-export,1,medium,feature,python,Kimi K3×16,GLM 5.3×14,balanced,balanced,moderate,True,True,0.813429,0.387889,52.3,25.234,40.21,16,14,,093,094
+py-retry-backoff,1,medium,utility,python,Kimi K3×8,GLM 5.3×17 + Kimi K3×1,balanced → strong,balanced,moderate,True,True,0.301179,0.450392,-49.5,16.074,40.182,8,18,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 18 model calls vs 8,057,058
+py-shared-default-tags,1,easy,bugfix,python,Kimi K3×10,GLM 5.3×11,balanced,balanced,moderate,True,True,0.388029,0.225465,41.9,23.21,42.341,10,11,,081,082
+py-shipping-constants,1,easy,refactor,python,Kimi K3×13,GLM 5.3×10 + Kimi K3×8,balanced → strong,balanced,moderate,True,True,0.567996,0.676839,-19.2,32.189,59.287,13,18,Auto escalated 1×; stuck → strong; Auto cost more,053,054
+py-top-n-reverse,1,easy,api-change,python,Kimi K3×8,GLM 5.3×10,balanced,balanced,moderate,True,True,0.280083,0.212568,24.1,14.136,28.143,8,10,,087,088
+py-user-stats-dataclass,1,medium,api-change,python,Kimi K3×10,GLM 5.3×12,balanced,balanced,moderate,True,True,0.446664,0.248051,44.5,24.205,188.672,10,12,,083,084
+py-validate-username,1,easy,validation,python,Kimi K3×6,GLM 5.3×6,balanced,balanced,moderate,True,True,0.205614,0.134355,34.7,12.07,25.112,6,6,,042,041
+py-weekly-report-bugs,1,medium,bugfix,python,Kimi K3×15,Kimi K3×9,strong,strong,hard,True,True,0.651789,0.350706,46.2,32.161,22.113,15,9,,026,025
+ts-clamp-range,1,easy,utility,typescript,Kimi K3×7,GLM 5.3×10,balanced,balanced,moderate,True,True,0.230577,0.169874,26.3,12.056,22.093,7,10,,060,059
+ts-config-promise,1,easy,refactor,typescript,Kimi K3×7,GLM 5.3×14 + Kimi K3×10,balanced → strong,balanced,moderate,True,True,0.252312,0.891345,-253.3,17.129,70.388,7,24,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 24 model calls vs 7,021,022
+ts-deep-merge,1,medium,utility,typescript,Kimi K3×17,GLM 5.3 Flash×11 + GLM 5.3×5,balanced → fast,balanced,moderate,False,True,0.801951,0.345898,56.9,43.181,436.069,17,16,only Auto passed,006,005
+ts-emitter-bugs,1,medium,bugfix,typescript,Kimi K3×3,Kimi K3×9,strong,strong,hard,False,True,0.092676,0.348279,-275.8,8.051,21.114,3,9,only Auto passed; Auto cost more,066,065
+ts-format-money,1,easy,formatting,typescript,Kimi K3×10,GLM 5.3×10,balanced,balanced,moderate,True,True,0.332154,0.184672,44.4,17.096,24.207,10,10,,092,091
+ts-hex-color,1,easy,validation,typescript,Kimi K3×10,GLM 5.3×8,balanced,balanced,moderate,True,True,0.353985,0.145961,58.8,16.081,29.163,10,8,,077,078
+ts-notify-many,1,easy,api-change,typescript,Kimi K3×10,GLM 5.3×9,balanced,balanced,moderate,True,True,0.39459,0.169852,57.0,22.125,50.292,10,9,,064,063
+ts-paginate-off-by-one,1,easy,bugfix,typescript,Kimi K3×3,GLM 5.3×11,balanced,balanced,moderate,True,True,0.096915,0.21261,-119.4,6.036,24.115,3,11,Auto cost more; Auto took 11 model calls vs 3,020,019
+ts-parse-clock,1,easy,parsing,typescript,Kimi K3×7,GLM 5.3×8,balanced,balanced,moderate,True,True,0.245643,0.172006,30.0,14.089,32.173,7,8,,045,046
+ts-pricing-rules,1,hard,refactor,typescript,Kimi K3×17,Kimi K3×14,strong,strong,hard,False,True,0.963552,0.885342,8.1,40.203,43.234,17,14,only Auto passed,070,069
+ts-schema-validator,1,hard,validation,typescript,Kimi K3×19,Kimi K3×14,strong,strong,hard,True,False,1.105878,0.896705,18.9,60.314,39.197,19,14,only fixed passed,044,043
+ts-semver-range,1,medium,parsing,typescript,Kimi K3×20,GLM 5.3 Flash×21 + GLM 5.3×6,balanced → fast,balanced,moderate,True,True,1.606869,0.437719,72.8,91.419,350.904,20,27,,017,018
+ts-signup-validate,1,medium,validation,typescript,Kimi K3×45,GLM 5.3×14,balanced,balanced,moderate,True,True,3.894294,0.839612,78.4,114.639,291.412,45,14,,014,013
+ts-singleflight-cache,1,hard,state,typescript,Kimi K3×28,GLM 5.3 Flash×13 + GLM 5.3×6,balanced → fast,balanced,moderate,False,True,1.810401,0.527013,70.9,65.329,511.564,28,19,only Auto passed,036,035
+ts-table-wrap,1,hard,formatting,typescript,Kimi K3×39,GLM 5.3 Flash×15 + Kimi K3×14 + GLM 5.3×4,balanced → fast → strong,balanced,moderate,True,True,3.318774,1.531291,53.9,116.017,671.868,39,33,Auto escalated 1×; stuck → strong,086,085
+ts-todo-query,1,medium,feature,typescript,Kimi K3×21,Kimi K3×20 + GLM 5.3×7,balanced → strong,balanced,moderate,False,True,1.288476,1.611068,-25.0,67.309,283.35,21,27,only Auto passed; Auto escalated 1×; stuck → strong; Auto cost more,007,008
+ts-undo-redo,1,hard,feature,typescript,Kimi K3×9,Kimi K3×24,strong,strong,hard,False,True,0.452961,1.918366,-323.5,34.19,85.48,9,24,only Auto passed; Auto cost more,095,096
+ts-weighted-lru,1,medium,state,typescript,Kimi K3×11,GLM 5.3×13,balanced,balanced,moderate,True,True,0.455415,0.428153,6.0,23.121,203.163,11,13,,076,075

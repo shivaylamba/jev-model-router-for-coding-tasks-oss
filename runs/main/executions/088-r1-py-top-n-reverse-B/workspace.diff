@@ -1,0 +1,112 @@
+ latency.py            |  2 +-
+ ranking.py            | 14 +++++++++-----
+ tests/test_ranking.py | 39 ++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 48 insertions(+), 7 deletions(-)
+
+diff --git a/latency.py b/latency.py
+index 1dcdc2d..9fe0c73 100644
+--- a/latency.py
++++ b/latency.py
+@@ -10,4 +10,4 @@ def slowest(timings_ms, count=5):
+ 
+ def fastest(timings_ms, count=5):
+     """The `count` fastest request timings, fastest first."""
+-    return sorted(timings_ms)[:count]
++    return top_n(timings_ms, count, reverse=True)
+diff --git a/ranking.py b/ranking.py
+index 3d4ee2c..1048c44 100644
+--- a/ranking.py
++++ b/ranking.py
+@@ -1,14 +1,18 @@
+ """Ranking helpers."""
+ 
+ 
+-def top_n(items, n, key=None):
++def top_n(items, n, key=None, *, reverse=False):
+     """Return the n largest items, largest first.
+ 
+-    `key` works like the key argument of sorted(). Items that compare equal
+-    keep their original relative order. If n is larger than the number of
+-    items, all items are returned. The input is never modified.
++    With reverse=True, return the n smallest items, smallest first. `key`
++    works like the key argument of sorted(). Items that compare equal keep
++    their original relative order. If n is larger than the number of items,
++    all items are returned. A negative n raises ValueError. The input is
++    never modified.
+     """
+-    return sorted(items, key=key, reverse=True)[:n]
++    if n < 0:
++        raise ValueError("n must not be negative")
++    return sorted(items, key=key, reverse=not reverse)[:n]
+ 
+ 
+ def rank_positions(scores):
+diff --git a/tests/test_ranking.py b/tests/test_ranking.py
+index 7562d77..b1edd80 100644
+--- a/tests/test_ranking.py
++++ b/tests/test_ranking.py
+@@ -1,6 +1,6 @@
+ import unittest
+ 
+-from latency import slowest
++from latency import fastest, slowest
+ from leaderboard import Player, format_podium
+ from ranking import rank_positions, top_n
+ 
+@@ -9,12 +9,46 @@ class TopNTest(unittest.TestCase):
+     def test_largest_first(self):
+         self.assertEqual(top_n([4, 9, 1, 7], 2), [9, 7])
+ 
++    def test_smallest_first_with_reverse(self):
++        self.assertEqual(top_n([4, 9, 1, 7], 2, reverse=True), [1, 4])
++
++    def test_reverse_is_keyword_only(self):
++        with self.assertRaises(TypeError):
++            top_n([4, 9, 1, 7], 2, True)
++
+     def test_key(self):
+         self.assertEqual(top_n(["bb", "a", "ccc"], 2, key=len), ["ccc", "bb"])
+ 
++    def test_key_positional(self):
++        self.assertEqual(top_n(["bb", "a", "ccc"], 2, len), ["ccc", "bb"])
++
++    def test_key_with_reverse(self):
++        self.assertEqual(top_n(["bb", "a", "ccc"], 2, len, reverse=True), ["a", "bb"])
++
++    def test_equal_items_keep_original_order(self):
++        items = [(3, "a"), (1, "b"), (3, "c")]
++        self.assertEqual(top_n(items, 3, key=lambda p: p[0]), [(3, "a"), (3, "c"), (1, "b")])
++        self.assertEqual(top_n(items, 3, key=lambda p: p[0], reverse=True), [(1, "b"), (3, "a"), (3, "c")])
++
+     def test_more_than_available(self):
+         self.assertEqual(top_n([3, 1], 5), [3, 1])
+ 
++    def test_more_than_available_with_reverse(self):
++        self.assertEqual(top_n([3, 1], 5, reverse=True), [1, 3])
++
++    def test_zero_n(self):
++        self.assertEqual(top_n([4, 9, 1, 7], 0), [])
++        self.assertEqual(top_n([4, 9, 1, 7], 0, reverse=True), [])
++
++    def test_negative_n(self):
++        with self.assertRaises(ValueError):
++            top_n([4, 9, 1, 7], -1)
++
++    def test_input_not_modified(self):
++        items = [4, 9, 1, 7]
++        top_n(items, 2, reverse=True)
++        self.assertEqual(items, [4, 9, 1, 7])
++
+     def test_rank_positions(self):
+         self.assertEqual(rank_positions([10, 20, 20, 5]), {20: 1, 10: 3, 5: 4})
+ 
+@@ -27,6 +61,9 @@ class CallersTest(unittest.TestCase):
+     def test_slowest(self):
+         self.assertEqual(slowest([120, 40, 980, 300], count=2), [980, 300])
+ 
++    def test_fastest(self):
++        self.assertEqual(fastest([120, 40, 980, 300], count=2), [40, 120])
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

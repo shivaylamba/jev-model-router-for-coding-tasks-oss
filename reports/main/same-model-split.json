@@ -1,0 +1,76 @@
+{
+ "Auto used only Kimi K3 (same model as fixed)": {
+  "tasks": 9,
+  "outcomes": {
+   "Auto only": 4,
+   "both": 4,
+   "fixed only": 1
+  },
+  "fixed_cost": 9.7111,
+  "auto_cost": 16.6147,
+  "tasks_list": [
+   "js-debounce-bugs",
+   "py-async-rate-limiter",
+   "py-expr-eval",
+   "py-inventory-reservations",
+   "py-weekly-report-bugs",
+   "ts-emitter-bugs",
+   "ts-pricing-rules",
+   "ts-schema-validator",
+   "ts-undo-redo"
+  ]
+ },
+ "Auto used GLM 5.3 / Flash for some or all of the task": {
+  "tasks": 41,
+  "outcomes": {
+   "both": 36,
+   "fixed only": 1,
+   "Auto only": 4
+  },
+  "fixed_cost": 27.0819,
+  "auto_cost": 20.4733,
+  "tasks_list": [
+   "js-cli-json-flag",
+   "js-client-options",
+   "js-email-list",
+   "js-human-duration",
+   "js-parse-ini",
+   "js-pick-omit",
+   "js-pluralize",
+   "js-score-sort",
+   "js-site-plugins",
+   "py-card-iban",
+   "py-chunk-evenly",
+   "py-cron-next",
+   "py-cursor-pagination",
+   "py-extract-validators",
+   "py-flatten-records-csv",
+   "py-format-phone",
+   "py-memoize",
+   "py-order-state-machine",
+   "py-parse-kv",
+   "py-parse-query",
+   "py-report-csv-export",
+   "py-retry-backoff",
+   "py-shared-default-tags",
+   "py-shipping-constants",
+   "py-top-n-reverse",
+   "py-user-stats-dataclass",
+   "py-validate-username",
+   "ts-clamp-range",
+   "ts-config-promise",
+   "ts-deep-merge",
+   "ts-format-money",
+   "ts-hex-color",
+   "ts-notify-many",
+   "ts-paginate-off-by-one",
+   "ts-parse-clock",
+   "ts-semver-range",
+   "ts-signup-validate",
+   "ts-singleflight-cache",
+   "ts-table-wrap",
+   "ts-todo-query",
+   "ts-weighted-lru"
+  ]
+ }
+}

@@ -1,0 +1,120 @@
+ README.md        | 18 ++++++++++++++++--
+ src/cli.js       | 22 ++++++++++++++++++----
+ test/cli.test.js | 20 ++++++++++++++++++++
+ 3 files changed, 54 insertions(+), 6 deletions(-)
+
+diff --git a/README.md b/README.md
+index efc5627..603c954 100644
+--- a/README.md
++++ b/README.md
+@@ -16,9 +16,23 @@ prints one row per file and, when more than one file is given, a `total` row:
+ ```
+ 
+ Each number is right-aligned in a 7-character column followed by a space.
++
++With `--json` (which may appear anywhere among the arguments), tally instead
++prints exactly one JSON document followed by a newline:
++
++```
++$ node bin/tally.js --json notes.txt todo.txt
++{"files":[{"path":"notes.txt","lines":3,"words":12,"chars":80},{"path":"todo.txt","lines":1,"words":4,"chars":19}],"total":{"lines":4,"words":16,"chars":99}}
++```
++
++`files` has one entry per successfully read file, in command-line order;
++`total` sums their counts and is always present, even for a single file or
++no files at all (`{"files":[],"total":{"lines":0,"words":0,"chars":0}}`).
++
+ A file that cannot be read is reported on stderr as `tally: cannot read <path>`,
+-the other files are still counted, and the exit code is 1. An unknown option
+-prints a usage line on stderr and exits with code 2. Otherwise the exit code is 0.
++the other files are still counted (in JSON mode it is left out of `files`), and
++the exit code is 1. An unknown option prints a usage line on stderr and exits
++with code 2. Otherwise the exit code is 0.
+ 
+ Code layout: `src/count.js` does the counting, `src/cli.js` parses arguments and
+ prints (`run(argv, io)` takes the IO functions as parameters so it can be
+diff --git a/src/cli.js b/src/cli.js
+index a7b0671..a740e08 100644
+--- a/src/cli.js
++++ b/src/cli.js
+@@ -1,6 +1,6 @@
+ import { addCounts, count } from "./count.js";
+ 
+-const USAGE = "usage: tally [file ...]";
++const USAGE = "usage: tally [--json] [file ...]";
+ 
+ function row(counts, label) {
+   const cell = (n) => String(n).padStart(7) + " ";
+@@ -15,7 +15,12 @@ function row(counts, label) {
+  */
+ export function run(argv, io) {
+   const paths = [];
++  let json = false;
+   for (const arg of argv) {
++    if (arg === "--json") {
++      json = true;
++      continue;
++    }
+     if (arg.startsWith("-")) {
+       io.stderr(`tally: unknown option ${arg}\n${USAGE}\n`);
+       return 2;
+@@ -26,6 +31,7 @@ export function run(argv, io) {
+   let exitCode = 0;
+   let total = { lines: 0, words: 0, chars: 0 };
+   const rows = [];
++  const files = [];
+   for (const path of paths) {
+     let text;
+     try {
+@@ -37,9 +43,17 @@ export function run(argv, io) {
+     }
+     const counts = count(text);
+     total = addCounts(total, counts);
+-    rows.push(row(counts, path));
++    if (json) {
++      files.push({ path, ...counts });
++    } else {
++      rows.push(row(counts, path));
++    }
++  }
++  if (json) {
++    io.stdout(JSON.stringify({ files, total }) + "\n");
++  } else {
++    if (paths.length > 1) rows.push(row(total, "total"));
++    if (rows.length > 0) io.stdout(rows.join("\n") + "\n");
+   }
+-  if (paths.length > 1) rows.push(row(total, "total"));
+-  if (rows.length > 0) io.stdout(rows.join("\n") + "\n");
+   return exitCode;
+ }
+diff --git a/test/cli.test.js b/test/cli.test.js
+index ca3e4d4..cef91a7 100644
+--- a/test/cli.test.js
++++ b/test/cli.test.js
+@@ -31,6 +31,26 @@ test("several files with a total and a missing file", () => {
+   assert.equal(io.err, "tally: cannot read nope.txt\n");
+ });
+ 
++test("json output for a single file", () => {
++  const io = fakeIo({ "a.txt": "hello world\n" });
++  assert.equal(run(["--json", "a.txt"], io), 0);
++  assert.equal(io.out, '{"files":[{"path":"a.txt","lines":1,"words":2,"chars":12}],"total":{"lines":1,"words":2,"chars":12}}\n');
++  assert.equal(io.err, "");
++});
++
++test("json output with several files, flag anywhere, and a missing file", () => {
++  const io = fakeIo({ "a.txt": "a b\n", "b.txt": "c\n" });
++  assert.equal(run(["a.txt", "--json", "nope.txt", "b.txt"], io), 1);
++  assert.equal(io.out, '{"files":[{"path":"a.txt","lines":1,"words":2,"chars":4},{"path":"b.txt","lines":1,"words":1,"chars":2}],"total":{"lines":2,"words":3,"chars":6}}\n');
++  assert.equal(io.err, "tally: cannot read nope.txt\n");
++});
++
++test("json output with no files", () => {
++  const io = fakeIo({});
++  assert.equal(run(["--json"], io), 0);
++  assert.equal(io.out, '{"files":[],"total":{"lines":0,"words":0,"chars":0}}\n');
++});
++
+ test("unknown option", () => {
+   const io = fakeIo({});
+   assert.equal(run(["-x"], io), 2);

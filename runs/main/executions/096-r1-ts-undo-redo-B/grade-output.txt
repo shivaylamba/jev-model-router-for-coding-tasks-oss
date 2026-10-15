@@ -1,0 +1,173 @@
+TAP version 13
+# Subtest: nothing to undo or redo at first
+ok 1 - nothing to undo or redo at first
+  ---
+  duration_ms: 1.280167
+  type: 'test'
+  ...
+# Subtest: undo and redo restore text and selection
+ok 2 - undo and redo restore text and selection
+  ---
+  duration_ms: 0.623125
+  type: 'test'
+  ...
+# Subtest: typing within a second of each keystroke is one step
+ok 3 - typing within a second of each keystroke is one step
+  ---
+  duration_ms: 0.143291
+  type: 'test'
+  ...
+# Subtest: the 1000 ms boundary
+ok 4 - the 1000 ms boundary
+  ---
+  duration_ms: 0.101041
+  type: 'test'
+  ...
+# Subtest: the gap is measured from the previous keystroke
+ok 5 - the gap is measured from the previous keystroke
+  ---
+  duration_ms: 0.10375
+  type: 'test'
+  ...
+# Subtest: newlines and pastes are their own steps
+ok 6 - newlines and pastes are their own steps
+  ---
+  duration_ms: 0.099125
+  type: 'test'
+  ...
+# Subtest: replacing a selection with one character is its own step
+ok 7 - replacing a selection with one character is its own step
+  ---
+  duration_ms: 0.080958
+  type: 'test'
+  ...
+# Subtest: select closes the typing group, even at the same position
+ok 8 - select closes the typing group, even at the same position
+  ---
+  duration_ms: 0.066083
+  type: 'test'
+  ...
+# Subtest: a no-op delete closes the typing group
+ok 9 - a no-op delete closes the typing group
+  ---
+  duration_ms: 0.108708
+  type: 'test'
+  ...
+# Subtest: deletes are separate steps and restore the selection
+ok 10 - deletes are separate steps and restore the selection
+  ---
+  duration_ms: 0.180667
+  type: 'test'
+  ...
+# Subtest: no-op edits create no step and keep redo
+ok 11 - no-op edits create no step and keep redo
+  ---
+  duration_ms: 0.162584
+  type: 'test'
+  ...
+# Subtest: insert of an empty string over a selection is a step
+ok 12 - insert of an empty string over a selection is a step
+  ---
+  duration_ms: 0.063791
+  type: 'test'
+  ...
+# Subtest: a new change clears redo
+ok 13 - a new change clears redo
+  ---
+  duration_ms: 0.051
+  type: 'test'
+  ...
+# Subtest: undo closes the group: typing after undo is a new step
+ok 14 - undo closes the group: typing after undo is a new step
+  ---
+  duration_ms: 0.061958
+  type: 'test'
+  ...
+# Subtest: redo closes the group
+ok 15 - redo closes the group
+  ---
+  duration_ms: 0.063542
+  type: 'test'
+  ...
+# Subtest: transactions are one step with before and after selection
+ok 16 - transactions are one step with before and after selection
+  ---
+  duration_ms: 0.136
+  type: 'test'
+  ...
+# Subtest: nested transactions join the outer one
+ok 17 - nested transactions join the outer one
+  ---
+  duration_ms: 0.06625
+  type: 'test'
+  ...
+# Subtest: a transaction with no net change creates no step
+ok 18 - a transaction with no net change creates no step
+  ---
+  duration_ms: 0.053542
+  type: 'test'
+  ...
+# Subtest: a failing transaction rolls back and rethrows
+ok 19 - a failing transaction rolls back and rethrows
+  ---
+  duration_ms: 0.24125
+  type: 'test'
+  ...
+# Subtest: a failing inner transaction rolls back only its own changes
+ok 20 - a failing inner transaction rolls back only its own changes
+  ---
+  duration_ms: 0.065833
+  type: 'test'
+  ...
+# Subtest: undo and redo inside a transaction throw
+ok 21 - undo and redo inside a transaction throw
+  ---
+  duration_ms: 0.069208
+  type: 'test'
+  ...
+# Subtest: typing does not merge across a transaction
+ok 22 - typing does not merge across a transaction
+  ---
+  duration_ms: 0.056584
+  type: 'test'
+  ...
+# Subtest: history limit discards the oldest steps
+ok 23 - history limit discards the oldest steps
+  ---
+  duration_ms: 0.047958
+  type: 'test'
+  ...
+# Subtest: extending a typing group does not count against the limit
+ok 24 - extending a typing group does not count against the limit
+  ---
+  duration_ms: 0.047542
+  type: 'test'
+  ...
+# Subtest: history limit 0 keeps nothing
+ok 25 - history limit 0 keeps nothing
+  ---
+  duration_ms: 0.0355
+  type: 'test'
+  ...
+# Subtest: invalid history limits
+ok 26 - invalid history limits
+  ---
+  duration_ms: 0.072542
+  type: 'test'
+  ...
+# Subtest: default limit is 100
+ok 27 - default limit is 100
+  ---
+  duration_ms: 0.130584
+  type: 'test'
+  ...
+1..27
+# tests 27
+# suites 0
+# pass 27
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 103.758167
+

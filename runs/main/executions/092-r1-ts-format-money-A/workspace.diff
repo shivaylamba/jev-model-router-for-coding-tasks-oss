@@ -1,0 +1,76 @@
+ src/money.ts       | 28 ++++++++++++++++++++++++++++
+ test/money.test.ts | 19 ++++++++++++++++++-
+ 2 files changed, 46 insertions(+), 1 deletion(-)
+
+diff --git a/src/money.ts b/src/money.ts
+index 0d9ecc8..9efaa93 100644
+--- a/src/money.ts
++++ b/src/money.ts
+@@ -6,6 +6,34 @@ export interface LineItem {
+   unitCents: number;
+ }
+ 
++const CURRENCY_SYMBOLS: Record<Currency, string> = {
++  USD: "$",
++  EUR: "€",
++  GBP: "£",
++};
++
++/**
++ * Format an integer amount of cents for display on invoices,
++ * e.g. formatCents(123456, "USD") === "$1,234.56".
++ * Locale-independent; negatives render as "-$1,234.56".
++ */
++export function formatCents(cents: number, currency: Currency): string {
++  if (typeof cents !== "number" || !Number.isInteger(cents)) {
++    throw new TypeError("cents must be an integer number of cents");
++  }
++  if (!Object.prototype.hasOwnProperty.call(CURRENCY_SYMBOLS, currency)) {
++    throw new RangeError(`unsupported currency: ${String(currency)}`);
++  }
++
++  const symbol = CURRENCY_SYMBOLS[currency];
++  const negative = cents < 0;
++  const abs = Math.abs(cents);
++  const fraction = String(abs % 100).padStart(2, "0");
++  const whole = String(Math.floor(abs / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
++
++  return `${negative ? "-" : ""}${symbol}${whole}.${fraction}`;
++}
++
+ /** Total of all line items, in cents. */
+ export function totalCents(items: readonly LineItem[]): number {
+   return items.reduce((acc, item) => acc + item.quantity * item.unitCents, 0);
+diff --git a/test/money.test.ts b/test/money.test.ts
+index 52b6100..f594b26 100644
+--- a/test/money.test.ts
++++ b/test/money.test.ts
+@@ -1,6 +1,6 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+-import { totalCents } from "../src/money.ts";
++import { formatCents, totalCents } from "../src/money.ts";
+ 
+ test("totalCents", () => {
+   assert.equal(totalCents([]), 0);
+@@ -12,3 +12,20 @@ test("totalCents", () => {
+     2749,
+   );
+ });
++
++test("formatCents", () => {
++  assert.equal(formatCents(123456, "USD"), "$1,234.56");
++  assert.equal(formatCents(5, "USD"), "$0.05");
++  assert.equal(formatCents(0, "GBP"), "£0.00");
++  assert.equal(formatCents(-123456, "USD"), "-$1,234.56");
++  assert.equal(formatCents(999, "EUR"), "€9.99");
++  assert.equal(formatCents(100000000, "GBP"), "£1,000,000.00");
++
++  assert.throws(() => formatCents(1.5, "USD"), TypeError);
++  assert.throws(() => formatCents(NaN, "USD"), TypeError);
++  assert.throws(() => formatCents(Infinity, "USD"), TypeError);
++  // @ts-expect-error runtime misuse with a non-number
++  assert.throws(() => formatCents("123", "USD"), TypeError);
++  // @ts-expect-error runtime misuse with an unsupported code
++  assert.throws(() => formatCents(100, "JPY"), RangeError);
++});

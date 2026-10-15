@@ -1,0 +1,9 @@
+{
+ "benchmark_executions_usd": 73.8811,
+ "smoke_1_usd": 0.4012,
+ "smoke_2_usd": 0.3495,
+ "excluded_attempts_usd": 5.2788,
+ "interrupted_attempts_usd": 0,
+ "not_metered": "Dataset authoring and validation used no paid inference (local tests only). Health probes: about 3 tiny requests per execution (8 output tokens each), well under $0.10 in total; not metered individually.",
+ "basis": "estimated, same pricing basis as the benchmark"
+}

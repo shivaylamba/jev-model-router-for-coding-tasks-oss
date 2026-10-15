@@ -1,0 +1,139 @@
+ inventory/holds.py   |  4 ++--
+ inventory/service.py | 67 ++++++++++++++++++++++++++++++++++++++++++----------
+ 2 files changed, 57 insertions(+), 14 deletions(-)
+
+diff --git a/inventory/holds.py b/inventory/holds.py
+index 1458e7a..a1c34ad 100644
+--- a/inventory/holds.py
++++ b/inventory/holds.py
+@@ -14,7 +14,7 @@ class Hold:
+     status: str = "held"
+ 
+     def is_expired(self, now):
+-        return now > self.expires_at
++        return now >= self.expires_at
+ 
+ 
+ class HoldStore:
+@@ -27,7 +27,7 @@ class HoldStore:
+         hold = Hold(f"h{self._next}", sku, quantity, request_id, created_at, expires_at)
+         self._next += 1
+         self._by_id[hold.id] = hold
+-        self._by_request[hold.id] = hold
++        self._by_request[request_id] = hold
+         return hold
+ 
+     def get(self, hold_id):
+diff --git a/inventory/service.py b/inventory/service.py
+index f088aa5..380182a 100644
+--- a/inventory/service.py
++++ b/inventory/service.py
+@@ -2,8 +2,8 @@
+ 
+ from collections import defaultdict
+ 
+-from .errors import (HoldNotFoundError, HoldStateError, IdempotencyConflictError,
+-                     InsufficientStockError)
++from .errors import (HoldExpiredError, HoldNotFoundError, HoldStateError,
++                     IdempotencyConflictError, InsufficientStockError)
+ from .holds import HoldStore
+ 
+ 
+@@ -15,7 +15,37 @@ class ReservationService:
+         self._holds = HoldStore()
+         self._reserved = defaultdict(int)
+ 
++    def _expire_stale_holds(self):
++        """Lazily flip any ``"held"`` hold whose time is up to ``"expired"``.
++
++        Expiry should be observable the instant the clock reaches the hold's
++        expiry — no background sweep required — so every read path goes
++        through this.
++        """
++        now = self._clock.now()
++        changed = False
++        for hold in self._holds.all():
++            if hold.status == "held" and hold.is_expired(now):
++                hold.status = "expired"
++                changed = True
++        if changed:
++            self._sync_reserved()
++        return changed
++
++    def _sync_reserved(self):
++        """Rebuild reserved counters from the hold statuses in the store.
++
++        Keeping the counters derived (rather than maintained incrementally)
++        means they can never drift, no matter how many times a hold is
++        touched after it has left the ``"held"`` state.
++        """
++        self._reserved.clear()
++        for hold in self._holds.all():
++            if hold.status == "held":
++                self._reserved[hold.sku] += hold.quantity
++
+     def available(self, sku):
++        self._expire_stale_holds()
+         return self._ledger.on_hand(sku) - self._reserved[sku]
+ 
+     def reserve(self, sku, quantity, request_id):
+@@ -27,6 +57,7 @@ class ReservationService:
+         if existing is not None:
+             if (existing.sku, existing.quantity) != (sku, quantity):
+                 raise IdempotencyConflictError(request_id)
++            self._expire_stale_holds()
+             return existing
+         if quantity > self.available(sku):
+             raise InsufficientStockError(f"only {self.available(sku)} of {sku} available")
+@@ -39,22 +70,33 @@ class ReservationService:
+         hold = self._holds.get(hold_id)
+         if hold is None:
+             raise HoldNotFoundError(hold_id)
++        self._expire_stale_holds()
+         return hold
+ 
+     def release(self, hold_id):
+         hold = self.get_hold(hold_id)
+-        hold.status = "released"
+-        self._reserved[hold.sku] -= hold.quantity
+-        return True
++        if hold.status == "held":
++            hold.status = "released"
++            self._sync_reserved()
++            return True
++        if hold.status == "confirmed":
++            raise HoldStateError(f"hold {hold_id} was already confirmed")
++        # Already "released" or "expired" — nothing changes.
++        return False
+ 
+     def confirm(self, hold_id):
+         hold = self.get_hold(hold_id)
+-        if hold.status == "released":
+-            raise HoldStateError(f"hold {hold_id} was released")
+-        self._ledger.remove(hold.sku, hold.quantity)
+-        self._reserved[hold.sku] -= hold.quantity
+-        hold.status = "confirmed"
+-        return hold
++        if hold.status == "held":
++            self._ledger.remove(hold.sku, hold.quantity)
++            hold.status = "confirmed"
++            self._sync_reserved()
++            return hold
++        if hold.status == "confirmed":
++            # Double click on "Pay" is safe — the stock was already taken.
++            return hold
++        if hold.status == "expired":
++            raise HoldExpiredError(f"hold {hold_id} has expired")
++        raise HoldStateError(f"hold {hold_id} was released")
+ 
+     def sweep_expired(self):
+         """Mark expired holds and give their units back. Run by the nightly cleanup job."""
+@@ -63,6 +105,7 @@ class ReservationService:
+         for hold in self._holds.all():
+             if hold.status == "held" and hold.is_expired(now):
+                 hold.status = "expired"
+-                self._reserved[hold.sku] -= hold.quantity
+                 marked += 1
++        if marked:
++            self._sync_reserved()
+         return marked

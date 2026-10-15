@@ -1,0 +1,325 @@
+ src/editor.ts  |  81 +++++++++++++++++++++++++-
+ src/history.ts | 175 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 255 insertions(+), 1 deletion(-)
+
+diff --git a/src/editor.ts b/src/editor.ts
+index 0544862..765b5b9 100644
+--- a/src/editor.ts
++++ b/src/editor.ts
+@@ -1,4 +1,5 @@
+ import { isEmpty, normalizeSelection, replaceRange, type Selection } from "./text.ts";
++import { DEFAULT_HISTORY_LIMIT, History, type State } from "./history.ts";
+ 
+ export interface EditorOptions {
+   /** Milliseconds clock used by undo grouping. Defaults to Date.now. */
+@@ -10,11 +11,15 @@ export interface EditorOptions {
+ export class Editor {
+   private content: string;
+   private sel: Selection;
++  private history: History;
+ 
+   constructor(text: string = "", options: EditorOptions = {}) {
+     this.content = text;
+     this.sel = { start: text.length, end: text.length };
+-    void options;
++    this.history = new History(
++      options.historyLimit ?? DEFAULT_HISTORY_LIMIT,
++      options.clock ?? Date.now,
++    );
+   }
+ 
+   get text(): string {
+@@ -26,21 +31,35 @@ export class Editor {
+     return { ...this.sel };
+   }
+ 
++  private state(): State {
++    return { text: this.content, selection: { ...this.sel } };
++  }
++
+   /** Set the selection; offsets are clamped to the text and ordered. `end` defaults to `start`. */
+   select(start: number, end: number = start): void {
++    // Selection changes create no step and never clear redo, but close any open typing group.
++    this.history.closeGroup();
+     this.sel = normalizeSelection(this.content.length, start, end);
+   }
+ 
+   /** Replace the selection with `str` and put the cursor right after it. */
+   insert(str: string): void {
++    const before = this.state();
+     const { start, end } = this.sel;
+     this.content = replaceRange(this.content, start, end, str);
+     const cursor = start + str.length;
+     this.sel = { start: cursor, end: cursor };
++    // Typing = empty selection + exactly one character other than "\n".
++    const typing = isEmpty(before.selection) && str.length === 1 && str !== "\n";
++    this.history.record(before, this.state(), typing);
++    if (!typing) {
++      this.history.closeGroup();
++    }
+   }
+ 
+   /** Delete the selection, or the character before the cursor when the selection is empty. */
+   deleteBackward(): void {
++    const before = this.state();
+     const { start, end } = this.sel;
+     if (!isEmpty(this.sel)) {
+       this.content = replaceRange(this.content, start, end, "");
+@@ -49,10 +68,13 @@ export class Editor {
+       this.content = replaceRange(this.content, start - 1, start, "");
+       this.sel = { start: start - 1, end: start - 1 };
+     }
++    this.history.record(before, this.state(), false);
++    this.history.closeGroup();
+   }
+ 
+   /** Delete the selection, or the character after the cursor when the selection is empty. */
+   deleteForward(): void {
++    const before = this.state();
+     const { start, end } = this.sel;
+     if (!isEmpty(this.sel)) {
+       this.content = replaceRange(this.content, start, end, "");
+@@ -60,5 +82,62 @@ export class Editor {
+     } else if (start < this.content.length) {
+       this.content = replaceRange(this.content, start, start + 1, "");
+     }
++    this.history.record(before, this.state(), false);
++    this.history.closeGroup();
++  }
++
++  canUndo(): boolean {
++    return this.history.canUndo();
++  }
++
++  canRedo(): boolean {
++    return this.history.canRedo();
++  }
++
++  /** Revert the most recent undo step, restoring text and selection. */
++  undo(): boolean {
++    if (this.history.inTransaction) {
++      throw new Error("undo() cannot be called during a transaction");
++    }
++    this.history.closeGroup();
++    const restored = this.history.undo(this.state());
++    if (restored === null) {
++      return false;
++    }
++    this.content = restored.text;
++    this.sel = restored.selection;
++    return true;
++  }
++
++  /** Re-apply the most recently undone step, restoring text and selection. */
++  redo(): boolean {
++    if (this.history.inTransaction) {
++      throw new Error("redo() cannot be called during a transaction");
++    }
++    this.history.closeGroup();
++    const restored = this.history.redo(this.state());
++    if (restored === null) {
++      return false;
++    }
++    this.content = restored.text;
++    this.sel = restored.selection;
++    return true;
++  }
++
++  /** Run `fn` so that everything it changes becomes a single undo step. */
++  transact<T>(fn: () => T): T {
++    this.history.closeGroup();
++    try {
++      return this.history.transact(
++        fn,
++        () => this.state(),
++        (state) => {
++          this.content = state.text;
++          this.sel = state.selection;
++        },
++      );
++    } finally {
++      this.history.closeGroup();
++    }
+   }
+ }
+diff --git a/src/history.ts b/src/history.ts
+new file mode 100644
+index 0000000..39ce144
+--- /dev/null
++++ b/src/history.ts
+@@ -0,0 +1,175 @@
++import type { Selection } from "./text.ts";
++
++/** A snapshot of the editor state (text and selection). */
++export interface State {
++  text: string;
++  selection: Selection;
++}
++
++export interface UndoStep {
++  before: State;
++  after: State;
++  /** Whether this step is an open typing group that may still be extended. */
++  openTypingGroup: boolean;
++  /** Time of the last typing insert in this group, by the injected clock. */
++  lastTypingTime: number;
++}
++
++export const DEFAULT_HISTORY_LIMIT = 100;
++export const TYPING_GROUP_INTERVAL = 1000;
++
++/** Undo/redo bookkeeping for the editor. Editing itself stays in editor.ts. */
++export class History {
++  private undoStack: UndoStep[] = [];
++  private redoStack: UndoStep[] = [];
++  private transactionDepth = 0;
++  private transactionBefore: State | null = null;
++  private transactionDiverged = false;
++
++  constructor(
++    private readonly limit: number,
++    private readonly clock: () => number,
++  ) {
++    if (!Number.isInteger(limit) || limit < 0) {
++      throw new RangeError("historyLimit must be an integer >= 0");
++    }
++  }
++
++  get inTransaction(): boolean {
++    return this.transactionDepth > 0;
++  }
++
++  canUndo(): boolean {
++    return this.undoStack.length > 0;
++  }
++
++  canRedo(): boolean {
++    return this.redoStack.length > 0;
++  }
++
++  /**
++   * Record a change. `typing` marks a single-character typing insert.
++   * No-op edits (unchanged text) create no step and leave redo alone.
++   */
++  record(before: State, after: State, typing: boolean): void {
++    if (before.text === after.text) {
++      return;
++    }
++
++    if (this.inTransaction) {
++      if (!this.transactionDiverged) {
++        this.transactionDiverged = true;
++        this.redoStack = [];
++      }
++      return; // the outermost transaction creates the step
++    }
++
++    const now = this.clock();
++    const top = this.undoStack[this.undoStack.length - 1];
++    if (
++      typing &&
++      top !== undefined &&
++      top.openTypingGroup &&
++      now - top.lastTypingTime < TYPING_GROUP_INTERVAL
++    ) {
++      top.after = cloneState(after);
++      top.lastTypingTime = now;
++    } else {
++      this.pushStep({
++        before: cloneState(before),
++        after: cloneState(after),
++        openTypingGroup: typing,
++        lastTypingTime: typing ? now : 0,
++      });
++    }
++    this.redoStack = [];
++  }
++
++  /** Close any open typing group. */
++  closeGroup(): void {
++    const top = this.undoStack[this.undoStack.length - 1];
++    if (top !== undefined) {
++      top.openTypingGroup = false;
++    }
++  }
++
++  /**
++   * Run `fn` as one undo step. Nested calls join the outermost one.
++   * On throw, restores the state from when this transact call started,
++   * creates no step, leaves the redo stack alone, and rethrows.
++   */
++  transact<T>(fn: () => T, getState: () => State, apply: (state: State) => void): T {
++    this.transactionDepth++;
++    let startedWith: State | null = null;
++    if (this.transactionBefore === null) {
++      this.transactionBefore = cloneState(getState());
++      this.transactionDiverged = false;
++    } else {
++      startedWith = cloneState(getState());
++    }
++    const outer = this.transactionDepth === 1;
++    try {
++      const result = fn();
++      if (outer && this.transactionBefore !== null) {
++        const beforeTx = this.transactionBefore;
++        const after = getState();
++        if (after.text !== beforeTx.text) {
++          this.pushStep({
++            before: cloneState(beforeTx),
++            after: cloneState(after),
++            openTypingGroup: false,
++            lastTypingTime: 0,
++          });
++        }
++      }
++      return result;
++    } catch (error) {
++      apply(startedWith !== null ? startedWith : (this.transactionBefore as State));
++      throw error;
++    } finally {
++      this.transactionDepth--;
++      if (this.transactionDepth === 0) {
++        this.transactionBefore = null;
++        this.transactionDiverged = false;
++      }
++    }
++  }
++
++  /** Pop the most recent undo step; returns the state to restore, or null. */
++  undo(current: State): State | null {
++    void current;
++    const step = this.undoStack.pop();
++    if (step === undefined) {
++      return null;
++    }
++    step.openTypingGroup = false;
++    this.redoStack.push(step);
++    return cloneState(step.before);
++  }
++
++  /** Pop the most recently undone step; returns the state to restore, or null. */
++  redo(current: State): State | null {
++    void current;
++    const step = this.redoStack.pop();
++    if (step === undefined) {
++      return null;
++    }
++    step.openTypingGroup = false;
++    this.undoStack.push(step);
++    return cloneState(step.after);
++  }
++
++  private pushStep(step: UndoStep): void {
++    if (this.limit === 0) {
++      return;
++    }
++    this.undoStack.push(step);
++    if (this.undoStack.length > this.limit) {
++      this.undoStack.shift();
++    }
++  }
++}
++
++function cloneState(state: State): State {
++  return { text: state.text, selection: { ...state.selection } };
++}

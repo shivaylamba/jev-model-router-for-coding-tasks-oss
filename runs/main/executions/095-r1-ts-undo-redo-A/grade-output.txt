@@ -1,0 +1,45 @@
+TAP version 13
+# node:internal/modules/run_main:107
+#     triggerUncaughtException(
+#     ^
+# file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-t67j3dgj/ws/src/history.ts:30
+#   constructor(
+#     private readonly limit: number,
+#                      ^^^^^^^^^^^^^
+#     private readonly clock: () => number,
+# SyntaxError [ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX]: TypeScript parameter property is not supported in strip-only mode
+#     at parseTypeScript (node:internal/modules/typescript:68:40)
+#     at processTypeScriptCode (node:internal/modules/typescript:146:42)
+#     at stripTypeScriptModuleTypes (node:internal/modules/typescript:209:22)
+#     at ModuleLoader.<anonymous> (node:internal/modules/esm/translators:680:29)
+#     at \#translate (node:internal/modules/esm/loader:434:20)
+#     at afterLoad (node:internal/modules/esm/loader:502:29)
+#     at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:507:12)
+#     at \#getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:560:36)
+#     at afterResolve (node:internal/modules/esm/loader:607:52)
+#     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:613:12) {
+#   code: 'ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX'
+# }
+# Node.js v24.18.1
+# Subtest: acceptance_tests/undo.test.ts
+not ok 1 - acceptance_tests/undo.test.ts
+  ---
+  duration_ms: 96.1155
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-t67j3dgj/ws/acceptance_tests/undo.test.ts:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 100.937084
+

@@ -130,3 +130,14 @@ KeyboardInterrupt
  99 js-site-plugins              A       PASS $0.5077   25.1s completed      
 100 js-site-plugins              B       PASS $1.1410  213.2s completed     {'balanced': 13, 'strong': 6} 
 [2026-10-15T01:14:10.608Z] run complete {'spent_usd': 72.6629}
+[2026-10-15T01:14:52.704Z] run started {'budget_usd': 200.0, 'max_hours': 4.0}
+ 88 py-top-n-reverse             B       PASS $0.2126   28.1s completed     {'balanced': 10} 
+ 89 py-inventory-reservations    A       PASS $1.3263   61.3s completed      
+ 90 py-inventory-reservations    B       PASS $0.9379   53.2s completed     {'strong': 17} 
+ 92 ts-format-money              A       PASS $0.3322   17.1s completed      
+ 94 py-report-csv-export         B       PASS $0.3879   40.2s completed     {'balanced': 14} 
+ 95 ts-undo-redo                 A       FAIL $0.4530   34.2s completed      
+ 96 ts-undo-redo                 B       PASS $1.9184   85.5s completed     {'strong': 24} 
+ 97 js-cli-json-flag             B       PASS $0.5347   35.2s completed     {'balanced': 11, 'strong': 6} 
+ 98 js-cli-json-flag             A       PASS $0.3804   18.1s completed      
+[2026-10-15T01:21:54.486Z] run complete {'spent_usd': 73.8811}

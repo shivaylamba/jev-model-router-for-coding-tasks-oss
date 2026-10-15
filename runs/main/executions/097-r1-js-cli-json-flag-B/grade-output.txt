@@ -1,0 +1,47 @@
+TAP version 13
+# Subtest: --json with one file
+ok 1 - --json with one file
+  ---
+  duration_ms: 1.054708
+  type: 'test'
+  ...
+# Subtest: --json anywhere among the arguments, files in order
+ok 2 - --json anywhere among the arguments, files in order
+  ---
+  duration_ms: 0.130333
+  type: 'test'
+  ...
+# Subtest: --json with an unreadable file
+ok 3 - --json with an unreadable file
+  ---
+  duration_ms: 0.117417
+  type: 'test'
+  ...
+# Subtest: --json with no files
+ok 4 - --json with no files
+  ---
+  duration_ms: 0.134084
+  type: 'test'
+  ...
+# Subtest: unknown options are still rejected
+ok 5 - unknown options are still rejected
+  ---
+  duration_ms: 0.089334
+  type: 'test'
+  ...
+# Subtest: text output is unchanged without --json
+ok 6 - text output is unchanged without --json
+  ---
+  duration_ms: 0.10925
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 68.374333
+

@@ -58,14 +58,14 @@ def outages(summary: dict) -> str:
     failures = summary.get("infrastructure_failures") or []
     if not failures:
         return "No execution met the infrastructure-failure rule."
-    out = ["Executions excluded as infrastructure failures and re-run (evidence kept):", "",
+    out = ["Executions excluded as provider outages (Amendment 1) or host sleep (Amendment 2), and re-run. Evidence is kept:", "",
            "| Task | Condition | Execution | Cost | Duration | Reason | Evidence |", "|---|---|---|---|---|---|---|"]
     for f in failures:
         out.append(f"| {f['task_id']} | {f['condition']} | {f['seq']:03d} | {money(f['cost_usd'])} | {secs(f['duration_s'])} | "
                    f"{f['reason']} | `{f['kept_at']}` |")
     s = summary.get("paired_counting_outages_as_failures") or {}
     if s:
-        out += ["", f"Sensitivity, counting each outage-hit attempt as the result instead of its re-run: quality difference "
+        out += ["", f"Sensitivity, using each excluded attempt as the result instead of its re-run: quality difference "
                 f"{s['quality_difference_pp']:+.1f} pp, cost savings {s['cost_savings_pct']:.1f}%, speedup by total time "
                 f"{ratio(s['speedup_total_time'])}."]
     return "\n".join(out)
@@ -216,6 +216,10 @@ def scenarios(rows: list[dict]) -> str:
          "Auto's first tier was fast, both conditions passed, Auto cost less. Sorted by savings.",
          sorted([r for r in rows if r["auto_first_tier"] == "fast" and passed(r, "fixed_pass") and passed(r, "auto_pass")
                  and f(r, "auto_cost_usd") < f(r, "fixed_cost_usd")], key=lambda r: -float(r["savings_pct"] or 0))),
+        ("Routing saved money with a correct result (any tier)",
+         "Both conditions passed and Auto cost less. Sorted by savings.",
+         sorted([r for r in rows if passed(r, "fixed_pass") and passed(r, "auto_pass")
+                 and f(r, "auto_cost_usd") < f(r, "fixed_cost_usd")], key=lambda r: -float(r["savings_pct"] or 0))),
         ("Work where Auto chose or escalated to the strong model",
          "Auto's first tier was strong, or it escalated during the task.",
          [r for r in rows if r["auto_first_tier"] == "strong" or "escalated" in r["notable"]]),
@@ -277,7 +281,7 @@ Generated from `runs/{args.run_id}/` by `bench/analyze.py` and `bench/report.py`
 
 {headline(summary)}
 
-## Provider outages (Amendment 1)
+## Excluded executions (Amendments 1 and 2)
 
 {outages(summary)}
 

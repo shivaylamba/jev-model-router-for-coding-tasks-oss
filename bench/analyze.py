@@ -285,8 +285,12 @@ def models_label(r: dict) -> str:
 
 
 def tiers_label(r: dict) -> str:
-    counts = r.get("auto_tier_counts") or {}
-    return " → ".join(t for t in ("fast", "balanced", "strong") if t in counts) if counts else "-"
+    """Tiers in the order the task used them, e.g. balanced → strong."""
+    seen = []
+    for route in r.get("auto_routes") or []:
+        if route.get("reason") != "harness_call" and (not seen or seen[-1] != route.get("tier")):
+            seen.append(route.get("tier"))
+    return " → ".join(seen) if seen else "-"
 
 
 def notable(a: dict, b: dict) -> str:
@@ -429,7 +433,7 @@ def charts(out: Path, summary: dict, records: list[dict], pairs) -> list[str]:
     from matplotlib.ticker import FuncFormatter
     plain = FuncFormatter(lambda v, _: f"{v:g}")
     ax.yaxis.set_major_formatter(plain)
-    ax.yaxis.set_minor_formatter(plain)
+    ax.yaxis.set_minor_formatter(FuncFormatter(lambda v, _: f"{v:g}" if f"{v:g}"[0] in "25" else ""))
     ax.tick_params(axis="y", which="minor", labelsize=8)
     ax.set_ylabel("Task completion time, s (log scale)")
     ax.set_title("Completion time per task (bar = median, hollow = failed)", loc="left", fontsize=11)
