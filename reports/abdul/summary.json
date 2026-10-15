@@ -1,0 +1,994 @@
+{
+  "run_id": "abdul",
+  "executions": 60,
+  "conditions": {
+    "A": "Router off: fixed Kimi K3",
+    "C": "Router on: Auto v2 with Jev (DeepSeek V4 Flash 0731 / Kimi K2.6 / Kimi K3, no effort raise)"
+  },
+  "overall": {
+    "A": {
+      "attempted": 30,
+      "passed": 24,
+      "success_rate": 0.8,
+      "success_rate_ci95": [
+        0.6269395261897256,
+        0.9049502189759876
+      ],
+      "cost_total_usd": 1.4932710000000002,
+      "cost_foreground_usd": 1.4932710000000002,
+      "cost_background_usd": 0.0,
+      "cost_jev_usd": 0.0,
+      "cost_unmetered_estimate_usd": 0.0,
+      "cost_total_cache_free_lower_bound_usd": 0.47298299999999993,
+      "cost_failed_tasks_usd": 0.159666,
+      "cost_per_attempt_usd": 0.049775700000000006,
+      "cost_per_success_usd": 0.06221962500000001,
+      "successes_per_dollar": 16.07209943807922,
+      "successes_per_hour_sequential": 375.24918891451364,
+      "duration_total_s": 230.24699999999996,
+      "duration_median_s": 5.0305,
+      "duration_p95_s": 23.747199999999992,
+      "first_output_median_s": 2.382,
+      "first_output_p95_s": 16.48594999999998,
+      "input_tokens": 479182,
+      "cached_input_tokens": 340096,
+      "cached_share_of_input": 0.709742853446081,
+      "output_tokens": 3715,
+      "reasoning_tokens_reported": 0,
+      "tokens_per_task": 16096.566666666668,
+      "tokens_per_success": 20120.708333333332,
+      "upstream_requests": 54,
+      "model_requests_per_task": 1.8,
+      "tool_calls_per_task": 0.8,
+      "tool_errors": 0,
+      "upstream_retries": 0,
+      "upstream_errors": 0,
+      "requests_without_usage": 0,
+      "terminations": {
+        "completed": 30
+      },
+      "escalations": 0,
+      "stuck_routes": 0,
+      "anomalies": 0,
+      "contamination_flags": 0
+    },
+    "C": {
+      "attempted": 30,
+      "passed": 29,
+      "success_rate": 0.9666666666666667,
+      "success_rate_ci95": [
+        0.8332924860304112,
+        0.9940915620051425
+      ],
+      "cost_total_usd": 0.09901,
+      "cost_foreground_usd": 0.09778400000000001,
+      "cost_background_usd": 0.0,
+      "cost_jev_usd": 0.0012260000000000003,
+      "cost_unmetered_estimate_usd": 0.0,
+      "cost_total_cache_free_lower_bound_usd": 0.04564499999999999,
+      "cost_failed_tasks_usd": 0.00296,
+      "cost_per_attempt_usd": 0.0033003333333333335,
+      "cost_per_success_usd": 0.003414137931034483,
+      "successes_per_dollar": 292.8997071002929,
+      "successes_per_hour_sequential": 494.41650328190264,
+      "duration_total_s": 211.158,
+      "duration_median_s": 6.0405,
+      "duration_p95_s": 10.0605,
+      "first_output_median_s": 2.8345000000000002,
+      "first_output_p95_s": 3.1794999999999995,
+      "input_tokens": 670139,
+      "cached_input_tokens": 381184,
+      "cached_share_of_input": 0.5688133357407941,
+      "output_tokens": 14161,
+      "reasoning_tokens_reported": 7948,
+      "tokens_per_task": 22810.0,
+      "tokens_per_success": 23596.55172413793,
+      "upstream_requests": 128,
+      "model_requests_per_task": 2.2666666666666666,
+      "tool_calls_per_task": 1.3,
+      "tool_errors": 1,
+      "upstream_retries": 0,
+      "upstream_errors": 0,
+      "requests_without_usage": 0,
+      "terminations": {
+        "completed": 30
+      },
+      "escalations": 0,
+      "stuck_routes": 0,
+      "anomalies": 0,
+      "contamination_flags": 0
+    }
+  },
+  "by_difficulty": {
+    "easy": {
+      "A": {
+        "attempted": 10,
+        "passed": 8,
+        "success_rate": 0.8,
+        "success_rate_ci95": [
+          0.49015684672072335,
+          0.9433190520193067
+        ],
+        "cost_total_usd": 0.497259,
+        "cost_foreground_usd": 0.497259,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.0,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.14877899999999997,
+        "cost_failed_tasks_usd": 0.05298,
+        "cost_per_attempt_usd": 0.0497259,
+        "cost_per_success_usd": 0.062157375,
+        "successes_per_dollar": 16.08819548766337,
+        "successes_per_hour_sequential": 421.16962314093104,
+        "duration_total_s": 68.38099999999999,
+        "duration_median_s": 5.024,
+        "duration_p95_s": 18.09314999999998,
+        "first_output_median_s": 2.4605,
+        "first_output_p95_s": 4.218399999999998,
+        "input_tokens": 159558,
+        "cached_input_tokens": 116160,
+        "cached_share_of_input": 0.7280111307486933,
+        "output_tokens": 1239,
+        "reasoning_tokens_reported": 0,
+        "tokens_per_task": 16079.7,
+        "tokens_per_success": 20099.625,
+        "upstream_requests": 18,
+        "model_requests_per_task": 1.8,
+        "tool_calls_per_task": 0.8,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 10
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      },
+      "C": {
+        "attempted": 10,
+        "passed": 10,
+        "success_rate": 1.0,
+        "success_rate_ci95": [
+          0.7224598312333834,
+          1.0
+        ],
+        "cost_total_usd": 0.033682000000000004,
+        "cost_foreground_usd": 0.033278,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.00040400000000000006,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.01476,
+        "cost_failed_tasks_usd": 0,
+        "cost_per_attempt_usd": 0.0033682000000000004,
+        "cost_per_success_usd": 0.0033682000000000004,
+        "successes_per_dollar": 296.8944837004928,
+        "successes_per_hour_sequential": 542.4709552009402,
+        "duration_total_s": 66.363,
+        "duration_median_s": 6.0335,
+        "duration_p95_s": 8.5993,
+        "first_output_median_s": 2.77,
+        "first_output_p95_s": 3.0255,
+        "input_tokens": 227294,
+        "cached_input_tokens": 135168,
+        "cached_share_of_input": 0.5946835376208787,
+        "output_tokens": 5206,
+        "reasoning_tokens_reported": 2803,
+        "tokens_per_task": 23250.0,
+        "tokens_per_success": 23250.0,
+        "upstream_requests": 43,
+        "model_requests_per_task": 2.3,
+        "tool_calls_per_task": 1.4,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 10
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      }
+    },
+    "medium": {
+      "A": {
+        "attempted": 10,
+        "passed": 9,
+        "success_rate": 0.9,
+        "success_rate_ci95": [
+          0.5958436145024278,
+          0.9821242504842788
+        ],
+        "cost_total_usd": 0.5264939999999999,
+        "cost_foreground_usd": 0.5264939999999999,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.0,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.17091000000000003,
+        "cost_failed_tasks_usd": 0.026475,
+        "cost_per_attempt_usd": 0.05264939999999999,
+        "cost_per_success_usd": 0.05849933333333332,
+        "successes_per_dollar": 17.094211899850713,
+        "successes_per_hour_sequential": 429.67403124419803,
+        "duration_total_s": 75.406,
+        "duration_median_s": 5.029999999999999,
+        "duration_p95_s": 15.188399999999998,
+        "first_output_median_s": 2.465,
+        "first_output_p95_s": 8.95359999999999,
+        "input_tokens": 168698,
+        "cached_input_tokens": 118528,
+        "cached_share_of_input": 0.7026046544713037,
+        "output_tokens": 1360,
+        "reasoning_tokens_reported": 0,
+        "tokens_per_task": 17005.8,
+        "tokens_per_success": 18895.333333333332,
+        "upstream_requests": 19,
+        "model_requests_per_task": 1.9,
+        "tool_calls_per_task": 0.9,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 10
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      },
+      "C": {
+        "attempted": 10,
+        "passed": 10,
+        "success_rate": 1.0,
+        "success_rate_ci95": [
+          0.7224598312333834,
+          1.0
+        ],
+        "cost_total_usd": 0.031687,
+        "cost_foreground_usd": 0.03127800000000001,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.0004090000000000001,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.015237,
+        "cost_failed_tasks_usd": 0,
+        "cost_per_attempt_usd": 0.0031687,
+        "cost_per_success_usd": 0.0031687,
+        "successes_per_dollar": 315.58683371729734,
+        "successes_per_hour_sequential": 534.3466128361931,
+        "duration_total_s": 67.372,
+        "duration_median_s": 6.0395,
+        "duration_p95_s": 9.155549999999998,
+        "first_output_median_s": 2.8395,
+        "first_output_p95_s": 3.4569499999999995,
+        "input_tokens": 215712,
+        "cached_input_tokens": 117504,
+        "cached_share_of_input": 0.5447263017356475,
+        "output_tokens": 3851,
+        "reasoning_tokens_reported": 2097,
+        "tokens_per_task": 21956.3,
+        "tokens_per_success": 21956.3,
+        "upstream_requests": 42,
+        "model_requests_per_task": 2.2,
+        "tool_calls_per_task": 1.2,
+        "tool_errors": 1,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 10
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      }
+    },
+    "hard": {
+      "A": {
+        "attempted": 10,
+        "passed": 7,
+        "success_rate": 0.7,
+        "success_rate_ci95": [
+          0.39677321997956516,
+          0.892210712513788
+        ],
+        "cost_total_usd": 0.46951799999999994,
+        "cost_foreground_usd": 0.46951799999999994,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.0,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.153294,
+        "cost_failed_tasks_usd": 0.080211,
+        "cost_per_attempt_usd": 0.046951799999999995,
+        "cost_per_success_usd": 0.067074,
+        "successes_per_dollar": 14.908906580791367,
+        "successes_per_hour_sequential": 291.46426092990976,
+        "duration_total_s": 86.46000000000001,
+        "duration_median_s": 5.038,
+        "duration_p95_s": 23.747199999999996,
+        "first_output_median_s": 2.0475,
+        "first_output_p95_s": 20.833849999999998,
+        "input_tokens": 150926,
+        "cached_input_tokens": 105408,
+        "cached_share_of_input": 0.6984084915786545,
+        "output_tokens": 1116,
+        "reasoning_tokens_reported": 0,
+        "tokens_per_task": 15204.2,
+        "tokens_per_success": 21720.285714285714,
+        "upstream_requests": 17,
+        "model_requests_per_task": 1.7,
+        "tool_calls_per_task": 0.7,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 10
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      },
+      "C": {
+        "attempted": 10,
+        "passed": 9,
+        "success_rate": 0.9,
+        "success_rate_ci95": [
+          0.5958436145024278,
+          0.9821242504842788
+        ],
+        "cost_total_usd": 0.033641000000000004,
+        "cost_foreground_usd": 0.03322800000000001,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.00041300000000000006,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.015648000000000002,
+        "cost_failed_tasks_usd": 0.00296,
+        "cost_per_attempt_usd": 0.0033641000000000005,
+        "cost_per_success_usd": 0.0037378888888888896,
+        "successes_per_dollar": 267.5306917154662,
+        "successes_per_hour_sequential": 418.4802965527039,
+        "duration_total_s": 77.423,
+        "duration_median_s": 7.042,
+        "duration_p95_s": 12.258849999999995,
+        "first_output_median_s": 2.847,
+        "first_output_p95_s": 3.00915,
+        "input_tokens": 227133,
+        "cached_input_tokens": 128512,
+        "cached_share_of_input": 0.5658006542422281,
+        "output_tokens": 5104,
+        "reasoning_tokens_reported": 3048,
+        "tokens_per_task": 23223.7,
+        "tokens_per_success": 25804.11111111111,
+        "upstream_requests": 43,
+        "model_requests_per_task": 2.3,
+        "tool_calls_per_task": 1.3,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 10
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      }
+    }
+  },
+  "by_category": {
+    "classification": {
+      "A": {
+        "attempted": 9,
+        "passed": 7,
+        "success_rate": 0.7777777777777778,
+        "success_rate_ci95": [
+          0.4525833436728054,
+          0.9367762376877727
+        ],
+        "cost_total_usd": 0.439863,
+        "cost_foreground_usd": 0.439863,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.0,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.14994300000000002,
+        "cost_failed_tasks_usd": 0.053028000000000006,
+        "cost_per_attempt_usd": 0.04887366666666667,
+        "cost_per_success_usd": 0.06283757142857142,
+        "successes_per_dollar": 15.914045964311615,
+        "successes_per_hour_sequential": 379.64957741386326,
+        "duration_total_s": 66.377,
+        "duration_median_s": 5.034,
+        "duration_p95_s": 19.898199999999996,
+        "first_output_median_s": 1.904,
+        "first_output_p95_s": 4.4906,
+        "input_tokens": 141876,
+        "cached_input_tokens": 96640,
+        "cached_share_of_input": 0.6811581944796865,
+        "output_tokens": 949,
+        "reasoning_tokens_reported": 0,
+        "tokens_per_task": 15869.444444444445,
+        "tokens_per_success": 20403.571428571428,
+        "upstream_requests": 16,
+        "model_requests_per_task": 1.7777777777777777,
+        "tool_calls_per_task": 0.7777777777777778,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 9
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      },
+      "C": {
+        "attempted": 9,
+        "passed": 8,
+        "success_rate": 0.8888888888888888,
+        "success_rate_ci95": [
+          0.5649937852319399,
+          0.9801096286728695
+        ],
+        "cost_total_usd": 0.025969,
+        "cost_foreground_usd": 0.025602,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.00036700000000000003,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.012672000000000003,
+        "cost_failed_tasks_usd": 0.00296,
+        "cost_per_attempt_usd": 0.0028854444444444444,
+        "cost_per_success_usd": 0.003246125,
+        "successes_per_dollar": 308.0596095344449,
+        "successes_per_hour_sequential": 502.5914873566829,
+        "duration_total_s": 57.303000000000004,
+        "duration_median_s": 6.035,
+        "duration_p95_s": 7.0426,
+        "first_output_median_s": 2.777,
+        "first_output_p95_s": 3.4743999999999997,
+        "input_tokens": 175876,
+        "cached_input_tokens": 94976,
+        "cached_share_of_input": 0.5400168300393459,
+        "output_tokens": 3497,
+        "reasoning_tokens_reported": 2145,
+        "tokens_per_task": 19930.333333333332,
+        "tokens_per_success": 22421.625,
+        "upstream_requests": 36,
+        "model_requests_per_task": 2.0,
+        "tool_calls_per_task": 1.0,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 9
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      }
+    },
+    "extraction": {
+      "A": {
+        "attempted": 10,
+        "passed": 9,
+        "success_rate": 0.9,
+        "success_rate_ci95": [
+          0.5958436145024278,
+          0.9821242504842788
+        ],
+        "cost_total_usd": 0.530427,
+        "cost_foreground_usd": 0.530427,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.0,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.155451,
+        "cost_failed_tasks_usd": 0.027012,
+        "cost_per_attempt_usd": 0.0530427,
+        "cost_per_success_usd": 0.058936333333333334,
+        "successes_per_dollar": 16.967462063582737,
+        "successes_per_hour_sequential": 319.2055328959035,
+        "duration_total_s": 101.50200000000001,
+        "duration_median_s": 6.0355,
+        "duration_p95_s": 23.747199999999996,
+        "first_output_median_s": 2.6125,
+        "first_output_p95_s": 20.833849999999998,
+        "input_tokens": 168884,
+        "cached_input_tokens": 124992,
+        "cached_share_of_input": 0.7401056346367921,
+        "output_tokens": 1585,
+        "reasoning_tokens_reported": 0,
+        "tokens_per_task": 17046.9,
+        "tokens_per_success": 18941.0,
+        "upstream_requests": 19,
+        "model_requests_per_task": 1.9,
+        "tool_calls_per_task": 0.9,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 10
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      },
+      "C": {
+        "attempted": 10,
+        "passed": 10,
+        "success_rate": 1.0,
+        "success_rate_ci95": [
+          0.7224598312333834,
+          1.0
+        ],
+        "cost_total_usd": 0.030448000000000003,
+        "cost_foreground_usd": 0.030038000000000002,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.0004100000000000001,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.015359,
+        "cost_failed_tasks_usd": 0,
+        "cost_per_attempt_usd": 0.0030448000000000003,
+        "cost_per_success_usd": 0.0030448000000000003,
+        "successes_per_dollar": 328.4287966368891,
+        "successes_per_hour_sequential": 586.7970660146699,
+        "duration_total_s": 61.349999999999994,
+        "duration_median_s": 6.036,
+        "duration_p95_s": 6.5936499999999985,
+        "first_output_median_s": 2.724,
+        "first_output_p95_s": 2.97215,
+        "input_tokens": 206068,
+        "cached_input_tokens": 107776,
+        "cached_share_of_input": 0.5230118213405284,
+        "output_tokens": 4246,
+        "reasoning_tokens_reported": 2225,
+        "tokens_per_task": 21031.4,
+        "tokens_per_success": 21031.4,
+        "upstream_requests": 41,
+        "model_requests_per_task": 2.1,
+        "tool_calls_per_task": 1.1,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 10
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      }
+    },
+    "policy": {
+      "A": {
+        "attempted": 5,
+        "passed": 3,
+        "success_rate": 0.6,
+        "success_rate_ci95": [
+          0.23071993220883708,
+          0.8823817688407467
+        ],
+        "cost_total_usd": 0.219309,
+        "cost_foreground_usd": 0.219309,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.0,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.067821,
+        "cost_failed_tasks_usd": 0.053124,
+        "cost_per_attempt_usd": 0.0438618,
+        "cost_per_success_usd": 0.073103,
+        "successes_per_dollar": 13.679329165697714,
+        "successes_per_hour_sequential": 466.6033007863129,
+        "duration_total_s": 23.146,
+        "duration_median_s": 5.025,
+        "duration_p95_s": 5.8351999999999995,
+        "first_output_median_s": 1.982,
+        "first_output_p95_s": 3.3114,
+        "input_tokens": 70808,
+        "cached_input_tokens": 50496,
+        "cached_share_of_input": 0.7131397582194102,
+        "output_tokens": 459,
+        "reasoning_tokens_reported": 0,
+        "tokens_per_task": 14253.4,
+        "tokens_per_success": 23755.666666666668,
+        "upstream_requests": 8,
+        "model_requests_per_task": 1.6,
+        "tool_calls_per_task": 0.6,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 5
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      },
+      "C": {
+        "attempted": 5,
+        "passed": 5,
+        "success_rate": 1.0,
+        "success_rate_ci95": [
+          0.5655085052479191,
+          1.0
+        ],
+        "cost_total_usd": 0.020488,
+        "cost_foreground_usd": 0.020283000000000002,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.000205,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.007981,
+        "cost_failed_tasks_usd": 0,
+        "cost_per_attempt_usd": 0.0040976,
+        "cost_per_success_usd": 0.0040976,
+        "successes_per_dollar": 244.04529480671613,
+        "successes_per_hour_sequential": 372.8946986803671,
+        "duration_total_s": 48.271,
+        "duration_median_s": 10.055,
+        "duration_p95_s": 13.262599999999999,
+        "first_output_median_s": 2.83,
+        "first_output_p95_s": 3.063,
+        "input_tokens": 139192,
+        "cached_input_tokens": 89344,
+        "cached_share_of_input": 0.6418759698833266,
+        "output_tokens": 2845,
+        "reasoning_tokens_reported": 1558,
+        "tokens_per_task": 28407.4,
+        "tokens_per_success": 28407.4,
+        "upstream_requests": 24,
+        "model_requests_per_task": 2.8,
+        "tool_calls_per_task": 1.8,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 5
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      }
+    },
+    "source_lookup": {
+      "A": {
+        "attempted": 6,
+        "passed": 5,
+        "success_rate": 0.8333333333333334,
+        "success_rate_ci95": [
+          0.43649056343635395,
+          0.9699474141282697
+        ],
+        "cost_total_usd": 0.303672,
+        "cost_foreground_usd": 0.303672,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.0,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.09976800000000001,
+        "cost_failed_tasks_usd": 0.026502,
+        "cost_per_attempt_usd": 0.050612,
+        "cost_per_success_usd": 0.0607344,
+        "successes_per_dollar": 16.465133433441345,
+        "successes_per_hour_sequential": 458.9261128958238,
+        "duration_total_s": 39.222,
+        "duration_median_s": 5.035,
+        "duration_p95_s": 13.56525,
+        "first_output_median_s": 2.4005,
+        "first_output_p95_s": 10.60475,
+        "input_tokens": 97614,
+        "cached_input_tokens": 67968,
+        "cached_share_of_input": 0.6962935644477226,
+        "output_tokens": 722,
+        "reasoning_tokens_reported": 0,
+        "tokens_per_task": 16389.333333333332,
+        "tokens_per_success": 19667.2,
+        "upstream_requests": 11,
+        "model_requests_per_task": 1.8333333333333333,
+        "tool_calls_per_task": 0.8333333333333334,
+        "tool_errors": 0,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 6
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      },
+      "C": {
+        "attempted": 6,
+        "passed": 6,
+        "success_rate": 1.0,
+        "success_rate_ci95": [
+          0.6096569663469354,
+          0.9999999999999999
+        ],
+        "cost_total_usd": 0.022105,
+        "cost_foreground_usd": 0.021861,
+        "cost_background_usd": 0.0,
+        "cost_jev_usd": 0.000244,
+        "cost_unmetered_estimate_usd": 0.0,
+        "cost_total_cache_free_lower_bound_usd": 0.009633000000000001,
+        "cost_failed_tasks_usd": 0,
+        "cost_per_attempt_usd": 0.0036841666666666668,
+        "cost_per_success_usd": 0.0036841666666666668,
+        "successes_per_dollar": 271.43180275955666,
+        "successes_per_hour_sequential": 488.31215806845415,
+        "duration_total_s": 44.234,
+        "duration_median_s": 7.5445,
+        "duration_p95_s": 8.79325,
+        "first_output_median_s": 2.872,
+        "first_output_p95_s": 3.01925,
+        "input_tokens": 149003,
+        "cached_input_tokens": 89088,
+        "cached_share_of_input": 0.5978940021341852,
+        "output_tokens": 3573,
+        "reasoning_tokens_reported": 2020,
+        "tokens_per_task": 25429.333333333332,
+        "tokens_per_success": 25429.333333333332,
+        "upstream_requests": 27,
+        "model_requests_per_task": 2.5,
+        "tool_calls_per_task": 1.6666666666666667,
+        "tool_errors": 1,
+        "upstream_retries": 0,
+        "upstream_errors": 0,
+        "requests_without_usage": 0,
+        "terminations": {
+          "completed": 6
+        },
+        "escalations": 0,
+        "stuck_routes": 0,
+        "anomalies": 0,
+        "contamination_flags": 0
+      }
+    }
+  },
+  "paired": {
+    "pairs": 30,
+    "both_pass": 23,
+    "fixed_only_pass": 1,
+    "auto_only_pass": 6,
+    "both_fail": 0,
+    "mcnemar_exact_p": 0.125,
+    "quality_difference_pp": 16.666666666666668,
+    "quality_difference_pp_ci95": [
+      0.0,
+      33.333333333333336
+    ],
+    "fixed_cost_usd": 1.493271,
+    "auto_cost_usd": 0.09900999999999999,
+    "dollar_savings_usd": 1.394261,
+    "cost_savings_pct": 93.36958931098239,
+    "cost_savings_pct_ci95": [
+      92.4086017002387,
+      94.11532363002553
+    ],
+    "cost_reduction_factor": 15.082022017977984,
+    "auto_cheaper_tasks": 30,
+    "fixed_total_duration_s": 230.24699999999996,
+    "auto_total_duration_s": 211.15800000000002,
+    "speedup_total_time": 1.0904015002983545,
+    "speedup_median_time": 0.8327952984024501,
+    "both_pass_pairs": 23,
+    "speedup_geomean_both_pass": 1.0061100689999867,
+    "speedup_geomean_both_pass_ci95": [
+      0.8043929811448572,
+      1.290859271814542
+    ],
+    "auto_faster_tasks_both_pass": 6
+  },
+  "paired_by_difficulty": {
+    "easy": {
+      "pairs": 10,
+      "both_pass": 8,
+      "fixed_only_pass": 0,
+      "auto_only_pass": 2,
+      "both_fail": 0,
+      "mcnemar_exact_p": 0.5,
+      "quality_difference_pp": 20.0,
+      "quality_difference_pp_ci95": [
+        0.0,
+        50.0
+      ],
+      "fixed_cost_usd": 0.497259,
+      "auto_cost_usd": 0.033682,
+      "dollar_savings_usd": 0.463577,
+      "cost_savings_pct": 93.22646749480653,
+      "cost_savings_pct_ci95": [
+        91.28774046537444,
+        94.51702445970548
+      ],
+      "cost_reduction_factor": 14.763345407042339,
+      "auto_cheaper_tasks": 10,
+      "fixed_total_duration_s": 68.381,
+      "auto_total_duration_s": 66.36300000000001,
+      "speedup_total_time": 1.0304085107665415,
+      "speedup_median_time": 0.8326841799950278,
+      "both_pass_pairs": 8,
+      "speedup_geomean_both_pass": 0.9607075704178129,
+      "speedup_geomean_both_pass_ci95": [
+        0.7135035456415673,
+        1.5477998283303076
+      ],
+      "auto_faster_tasks_both_pass": 1
+    },
+    "medium": {
+      "pairs": 10,
+      "both_pass": 9,
+      "fixed_only_pass": 0,
+      "auto_only_pass": 1,
+      "both_fail": 0,
+      "mcnemar_exact_p": 1.0,
+      "quality_difference_pp": 10.0,
+      "quality_difference_pp_ci95": [
+        0.0,
+        30.0
+      ],
+      "fixed_cost_usd": 0.5264939999999999,
+      "auto_cost_usd": 0.031687,
+      "dollar_savings_usd": 0.4948069999999999,
+      "cost_savings_pct": 93.98150786143812,
+      "cost_savings_pct_ci95": [
+        92.57153224687563,
+        94.84276661391833
+      ],
+      "cost_reduction_factor": 16.61545744311547,
+      "auto_cheaper_tasks": 10,
+      "fixed_total_duration_s": 75.40599999999999,
+      "auto_total_duration_s": 67.372,
+      "speedup_total_time": 1.119248352431277,
+      "speedup_median_time": 0.8328504015233048,
+      "both_pass_pairs": 9,
+      "speedup_geomean_both_pass": 1.1251220729969866,
+      "speedup_geomean_both_pass_ci95": [
+        0.8441416818906883,
+        1.5207954647141486
+      ],
+      "auto_faster_tasks_both_pass": 4
+    },
+    "hard": {
+      "pairs": 10,
+      "both_pass": 6,
+      "fixed_only_pass": 1,
+      "auto_only_pass": 3,
+      "both_fail": 0,
+      "mcnemar_exact_p": 0.625,
+      "quality_difference_pp": 20.0,
+      "quality_difference_pp_ci95": [
+        -20.0,
+        60.0
+      ],
+      "fixed_cost_usd": 0.469518,
+      "auto_cost_usd": 0.033641,
+      "dollar_savings_usd": 0.435877,
+      "cost_savings_pct": 92.8349924816514,
+      "cost_savings_pct_ci95": [
+        91.11415438861604,
+        94.16331530907365
+      ],
+      "cost_reduction_factor": 13.956719479206921,
+      "auto_cheaper_tasks": 10,
+      "fixed_total_duration_s": 86.46000000000001,
+      "auto_total_duration_s": 77.423,
+      "speedup_total_time": 1.116722420986012,
+      "speedup_median_time": 0.7154217551831866,
+      "both_pass_pairs": 6,
+      "speedup_geomean_both_pass": 0.9048015050015044,
+      "speedup_geomean_both_pass_ci95": [
+        0.5690644348381324,
+        1.6672242921875793
+      ],
+      "auto_faster_tasks_both_pass": 1
+    }
+  },
+  "infrastructure_failures": [],
+  "paired_counting_outages_as_failures": null,
+  "model_shares": {
+    "A": {
+      "moonshotai/Kimi-K3": {
+        "requests": 54,
+        "tokens": 482897,
+        "cost_usd": 1.4932710000000002,
+        "requests_share": 1.0,
+        "tokens_share": 1.0,
+        "cost_usd_share": 1.0
+      }
+    },
+    "C": {
+      "deepseek-ai/DeepSeek-V4-Flash-0731": {
+        "requests": 68,
+        "tokens": 684300,
+        "cost_usd": 0.09778400000000001,
+        "requests_share": 1.0,
+        "tokens_share": 1.0,
+        "cost_usd_share": 1.0
+      }
+    }
+  },
+  "auto_routing": {
+    "first_tier_by_difficulty": {
+      "easy": {
+        "fast": 10
+      },
+      "medium": {
+        "fast": 10
+      },
+      "hard": {
+        "fast": 10
+      }
+    },
+    "jev_choice_by_difficulty": {
+      "easy": {
+        "routine": 10
+      },
+      "medium": {
+        "routine": 10
+      },
+      "hard": {
+        "routine": 10
+      }
+    },
+    "tier_request_counts": {
+      "fast": 68
+    },
+    "reason_counts": {
+      "decider_routine": 68
+    },
+    "tasks_with_escalation": 0,
+    "tasks_with_downshift": 0,
+    "tasks_with_repeat_jev_decisions": 0,
+    "tasks_with_output_limit_resumes": 0,
+    "tasks_reaching_strong": 0,
+    "jev_calls": 60,
+    "jev_cost_usd": 0.0012260000000000003,
+    "jev_decision_ms_median": 329.5,
+    "jev_decision_ms_p95": 418.95,
+    "decider_no_answer": 0,
+    "decider_late": 0,
+    "decider_events": 60,
+    "jev_model_versions": {
+      "jev-1.13.0": 30
+    },
+    "effort_counts": {
+      "low": 68
+    }
+  },
+  "spend_by_difficulty": {
+    "A": {
+      "easy": 0.497259,
+      "medium": 0.5264939999999999,
+      "hard": 0.46951799999999994
+    },
+    "C": {
+      "easy": 0.033682000000000004,
+      "medium": 0.031687,
+      "hard": 0.033641000000000004
+    }
+  },
+  "formulas": {
+    "cost_savings_pct": "100 \u00d7 (fixed cost \u2212 Auto cost) / fixed cost, summed over paired tasks",
+    "cost_reduction_factor": "fixed cost / Auto cost",
+    "quality_difference_pp": "Auto success rate \u2212 fixed success rate, in percentage points, over paired tasks",
+    "speedup_total_time": "sum of fixed durations / sum of Auto durations, all paired tasks",
+    "speedup_geomean_both_pass": "geometric mean over tasks both conditions passed of fixed duration / Auto duration",
+    "confidence_intervals": "95% percentile bootstrap over tasks (10000 resamples, seed 20261014); success-rate intervals are Wilson"
+  }
+}

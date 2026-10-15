@@ -1,0 +1,31 @@
+task_id,repetition,difficulty,category,language,fixed_models,auto_models,auto_tiers,auto_first_tier,jev_choice,fixed_pass,auto_pass,fixed_cost_usd,auto_cost_usd,savings_pct,fixed_time_s,auto_time_s,fixed_model_calls,auto_model_calls,notable,fixed_execution,auto_execution
+abdul-s01,1,easy,extraction,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.05568,0.002914,94.8,4.021,6.032,2,2,,058,057
+abdul-s02,1,easy,extraction,python,Kimi K3×2,DeepSeek V4 Flash×3,fast,fast,routine,True,True,0.055479,0.00441,92.1,7.042,7.045,2,3,,023,024
+abdul-s03,1,easy,extraction,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.05583,0.002871,94.9,5.023,6.04,2,2,,020,019
+abdul-s04,1,easy,extraction,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.056157,0.00289,94.9,5.029,6.024,2,2,,012,011
+abdul-s05,1,easy,classification,python,Kimi K3×1,DeepSeek V4 Flash×2,fast,fast,routine,False,True,0.026478,0.002875,89.1,3.02,6.027,1,2,only Auto passed,059,060
+abdul-s06,1,easy,classification,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.055425,0.002915,94.7,5.047,6.028,2,2,,022,021
+abdul-s07,1,easy,classification,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.055371,0.00288,94.8,27.135,6.035,2,2,,033,034
+abdul-s08,1,easy,source_lookup,python,Kimi K3×1,DeepSeek V4 Flash×3,fast,fast,routine,False,True,0.026502,0.004704,82.3,3.009,9.043,1,3,only Auto passed,025,026
+abdul-s09,1,easy,source_lookup,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.055125,0.002888,94.8,4.03,6.032,2,2,,007,008
+abdul-s10,1,easy,policy,python,Kimi K3×2,DeepSeek V4 Flash×3,fast,fast,routine,True,True,0.055212,0.004335,92.1,5.025,8.057,2,3,,050,049
+abdul-s11,1,medium,extraction,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.056133,0.002873,94.9,14.106,6.042,2,2,,038,037
+abdul-s12,1,medium,extraction,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.055668,0.002938,94.7,9.04,6.023,2,2,,031,032
+abdul-s13,1,medium,extraction,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.055653,0.002874,94.8,5.021,6.037,2,2,,053,054
+abdul-s14,1,medium,classification,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.054966,0.002838,94.8,9.043,6.025,2,2,,039,040
+abdul-s15,1,medium,classification,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.05565,0.002858,94.9,5.022,6.042,2,2,,048,047
+abdul-s16,1,medium,classification,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.055011,0.002834,94.8,4.02,7.036,2,2,,030,029
+abdul-s17,1,medium,source_lookup,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.055374,0.00285,94.9,5.028,6.026,2,2,,006,005
+abdul-s18,1,medium,source_lookup,python,Kimi K3×2,DeepSeek V4 Flash×3,fast,fast,routine,True,True,0.055956,0.00439,92.2,16.074,8.044,2,3,,009,010
+abdul-s19,1,medium,policy,python,Kimi K3×1,DeepSeek V4 Flash×3,fast,fast,routine,False,True,0.026475,0.004351,83.6,3.02,10.065,1,3,only Auto passed,052,051
+abdul-s20,1,medium,policy,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.055608,0.002881,94.8,5.032,6.032,2,2,,027,028
+abdul-s21,1,hard,extraction,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.0564,0.002896,94.9,5.028,6.041,2,2,,018,017
+abdul-s22,1,hard,extraction,python,Kimi K3×1,DeepSeek V4 Flash×2,fast,fast,routine,False,True,0.027012,0.002852,89.4,25.108,6.035,1,2,only Auto passed,044,043
+abdul-s23,1,hard,extraction,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.056415,0.00293,94.8,22.084,6.031,2,2,,014,013
+abdul-s24,1,hard,classification,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,False,0.055083,0.00296,94.6,5.034,7.045,2,2,only fixed passed,041,042
+abdul-s25,1,hard,classification,python,Kimi K3×1,DeepSeek V4 Flash×2,fast,fast,routine,False,True,0.02655,0.002939,88.9,3.022,7.039,1,2,only Auto passed,004,003
+abdul-s26,1,hard,classification,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.055329,0.00287,94.8,5.034,6.026,2,2,,001,002
+abdul-s27,1,hard,source_lookup,python,Kimi K3×2,DeepSeek V4 Flash×3,fast,fast,routine,True,True,0.055224,0.004288,92.2,6.039,7.045,2,3,,045,046
+abdul-s28,1,hard,source_lookup,python,Kimi K3×2,DeepSeek V4 Flash×2,fast,fast,routine,True,True,0.055491,0.002985,94.6,5.042,8.044,2,2,,015,016
+abdul-s29,1,hard,policy,python,Kimi K3×2,DeepSeek V4 Flash×4,fast,fast,routine,True,True,0.055365,0.005984,89.2,4.033,10.055,2,4,Auto took 4 model calls vs 2,055,056
+abdul-s30,1,hard,policy,python,Kimi K3×1,DeepSeek V4 Flash×2,fast,fast,routine,False,True,0.026649,0.002937,89.0,6.036,14.062,1,2,only Auto passed,036,035
