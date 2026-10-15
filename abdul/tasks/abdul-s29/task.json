@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s29",
+  "title": "Explicit override order",
+  "category": "policy",
+  "difficulty": "hard",
+  "language": "python",
+  "prompt": "Policy: VIP customers usually receive refunds. However, fraud flags override VIP status and forbid refunds. Used digital goods cannot be refunded unless an administrator approves. Customer is VIP, fraud-flagged, digital item used, administrator approves. Return eligible bool. Return only valid JSON with exactly these fields: eligible. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S29 at 56b4c3b"
+}

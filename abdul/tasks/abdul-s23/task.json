@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s23",
+  "title": "Names collide",
+  "category": "extraction",
+  "difficulty": "hard",
+  "language": "python",
+  "prompt": "Two customers named Sam: id R1 email sam1@example.test; id R2 email sam2@example.test. Ticket T9 belongs to R2. R1 phone is 555-0111. R2 phone is not given. Extract customer_id,email,phone for T9. Return only valid JSON with exactly these fields: customer_id, email, phone. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S23 at 56b4c3b"
+}

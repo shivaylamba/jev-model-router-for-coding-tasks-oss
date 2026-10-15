@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s19",
+  "title": "Return with exception",
+  "category": "policy",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "Policy: unopened items can be returned within 30 days; personalized items never qualify. Item is unopened, purchased 10 days ago, personalized. Return eligible bool. Return only valid JSON with exactly these fields: eligible. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S19 at 56b4c3b"
+}

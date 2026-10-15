@@ -23,6 +23,8 @@ SUITES = {
     "smoke": (ROOT / "smoke" / "tasks", ROOT / "smoke" / "evaluator"),
     # Tuning set for Auto v2: nconnect's own 12 routing tasks plus the smoke tasks. Never the 50.
     "dev": (ROOT / "dev" / "tasks", ROOT / "dev" / "evaluator"),
+    # Abdul's 30 core tasks (amrrs/jev-router-experiment at 56b4c3b): one-shot JSON answers, a separate benchmark.
+    "abdul": (ROOT / "abdul" / "tasks", ROOT / "abdul" / "evaluator"),
 }
 CATEGORIES = {"utility", "formatting", "parsing", "validation", "bugfix", "api-change", "feature", "refactor", "state"}
 DIFFICULTIES = ("easy", "medium", "hard")

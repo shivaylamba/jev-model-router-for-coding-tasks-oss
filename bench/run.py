@@ -848,7 +848,7 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("prepare")
     p.add_argument("--run-id", required=True)
-    p.add_argument("--suite", default="dataset", choices=["dataset", "smoke", "dev"])
+    p.add_argument("--suite", default="dataset", choices=["dataset", "smoke", "dev", "abdul"])
     p.add_argument("--conditions", default="A,B")
     p.add_argument("--repetitions", type=int, default=1)
     p.add_argument("--tasks", default="")

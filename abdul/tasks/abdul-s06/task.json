@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s06",
+  "title": "Technical intent",
+  "category": "classification",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Classify: \"The app crashes when I open settings.\" Labels billing=charges/refunds,technical=bugs,sales=buying. Return label. Return only valid JSON with exactly these fields: label. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S06 at 56b4c3b"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s18",
+  "title": "Current policy revision",
+  "category": "source_lookup",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "Policy v1: retention 30 days. Policy v2 explicitly replaces v1: retention 60 days. The current version is v2. Return retention_days. Return only valid JSON with exactly these fields: retention_days. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S18 at 56b4c3b"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s02",
+  "title": "Contact without phone",
+  "category": "extraction",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Name: Asha Rao; email: asha@example.test; phone unspecified. Extract name,email,phone. Return only valid JSON with exactly these fields: name, email, phone. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S02 at 56b4c3b"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s08",
+  "title": "Plan fact",
+  "category": "source_lookup",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Plans: Basic supports 2 seats; Team supports 12 seats; Enterprise supports 100 seats. How many seats does Team support? Return seats. Return only valid JSON with exactly these fields: seats. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S08 at 56b4c3b"
+}

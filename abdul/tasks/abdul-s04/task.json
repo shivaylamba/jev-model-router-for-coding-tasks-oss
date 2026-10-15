@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s04",
+  "title": "Meeting time",
+  "category": "extraction",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Planning call: November 18, 2026 at 14:30 UTC, 25 minutes. Extract date (ISO),time (HH:MM),timezone,duration_minutes. Return only valid JSON with exactly these fields: date, time, timezone, duration_minutes. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S04 at 56b4c3b"
+}

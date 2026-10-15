@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s12",
+  "title": "Cancel add-on only",
+  "category": "extraction",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "Customer: \"Keep my main subscription. Cancel the analytics add-on effective 2026-11-20.\" Extract cancel_main bool,cancel_addon bool,effective_date. Return only valid JSON with exactly these fields: cancel_main, cancel_addon, effective_date. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S12 at 56b4c3b"
+}

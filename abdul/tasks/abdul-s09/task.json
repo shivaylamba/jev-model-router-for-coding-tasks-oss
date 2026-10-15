@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s09",
+  "title": "Explicit owner",
+  "category": "source_lookup",
+  "difficulty": "easy",
+  "language": "python",
+  "prompt": "Memo: the release owner is Kiran, QA owner is Leena, finance owner is Dev. Who owns QA? Return owner. Return only valid JSON with exactly these fields: owner. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S09 at 56b4c3b"
+}

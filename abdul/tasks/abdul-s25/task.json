@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s25",
+  "title": "Threatened versus requested cancellation",
+  "category": "classification",
+  "difficulty": "hard",
+  "language": "python",
+  "prompt": "Labels cancel=explicit instruction to cancel,complaint=dissatisfaction without cancellation instruction,question=information request. Message: \"If this continues I might cancel next month, but please keep my plan active while you fix it.\" Return intent. Return only valid JSON with exactly these fields: intent. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S25 at 56b4c3b"
+}

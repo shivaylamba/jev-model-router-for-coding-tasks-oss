@@ -93,3 +93,20 @@ The execution hit the 20-minute wall limit and failed. Fixed Kimi K3 had passed 
    - re-run.
 
 **Scope check.** Applied to every execution in `runs/main` (both A and B), the new failure rule matches nothing: none of their 10 failures had a single unanswered request. In `runs/v2` it matches only execution 12. The sensitivity analysis counts each excluded execution as a failed task at the cost it incurred, as before.
+
+## Separate benchmark: Abdul's 30 tasks through nconnect (written before any execution)
+
+**Purpose.** Measure Auto on the lighter, one-shot work from Abdul's Jev router experiment. This is a different workload from the 50 coding tasks: each task is one request with a JSON answer. It is reported as its own result and never merged into the 50.
+
+**Tasks.** The 30 tasks in `core/tasks.json` of amrrs/jev-router-experiment at commit `56b4c3b`:
+- 10 easy, 10 medium, 10 hard;
+- extraction, classification, source lookup and policy.
+
+Each becomes `abdul/tasks/abdul-<id>`:
+- The prompt is Abdul's, with one added sentence: "Write that JSON, and nothing else, to answer.json in the current directory."
+- The workspace holds only a README.
+- The hidden test compares `answer.json` with Abdul's gold answer using his `equal()` rule (exact field names; numbers within 1e-4), copied verbatim.
+
+**Conditions.** A (fixed Kimi K3, nconnect 0.23.0) and C (Auto v2 + Jev, exactly as frozen above), one execution each. Everything else is unchanged:
+- the same Claude Code harness, limits, recorder and prices (the main run's catalog);
+- Amendments 1–3 apply.

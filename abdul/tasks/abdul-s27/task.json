@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s27",
+  "title": "Conflicting revisions",
+  "category": "source_lookup",
+  "difficulty": "hard",
+  "language": "python",
+  "prompt": "Manual revision 4 says max upload 20 MB. Revision 5 replaces revision 4 and says 50 MB. An old FAQ repeats 20 MB. Only revision 5 is authoritative. Return max_upload_mb. Return only valid JSON with exactly these fields: max_upload_mb. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S27 at 56b4c3b"
+}

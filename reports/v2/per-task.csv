@@ -1,0 +1,51 @@
+task_id,repetition,difficulty,category,language,fixed_models,auto_models,auto_tiers,auto_first_tier,jev_choice,fixed_pass,auto_pass,fixed_cost_usd,auto_cost_usd,savings_pct,fixed_time_s,auto_time_s,fixed_model_calls,auto_model_calls,notable,fixed_execution,auto_execution
+js-cli-json-flag,1,easy,feature,javascript,Kimi K3×10,DeepSeek V4 Flash×12 + Kimi K3×5,fast → strong,fast,routine,True,True,0.380403,0.316073,16.9,18.086,47.237,10,17,Auto escalated 1×; stuck → strong; Auto took 17 model calls vs 10,098,049
+js-client-options,1,medium,api-change,javascript,Kimi K3×15,DeepSeek V4 Flash×12,fast,fast,routine,True,True,0.701883,0.031031,95.6,28.127,52.261,15,12,,056,028
+js-debounce-bugs,1,medium,bugfix,javascript,Kimi K3×13,Kimi K3×25,strong,strong,hard,True,True,0.678858,1.837003,-170.6,40.182,392.955,13,25,Auto cost more; Auto took 25 model calls vs 13,002,001
+js-email-list,1,easy,validation,javascript,Kimi K3×5,DeepSeek V4 Flash×8,fast,fast,routine,True,False,0.194646,0.014028,92.8,13.066,28.142,5,8,only fixed passed,061,031
+js-human-duration,1,medium,formatting,javascript,Kimi K3×12,DeepSeek V4 Flash×13,fast,fast,routine,True,True,0.531321,0.036317,93.2,29.146,52.273,12,13,,047,024
+js-parse-ini,1,medium,parsing,javascript,Kimi K3×14,DeepSeek V4 Flash×15,fast,fast,routine,True,True,0.66801,0.056022,91.6,38.195,225.075,14,15,,024,012
+js-pick-omit,1,easy,utility,javascript,Kimi K3×4,DeepSeek V4 Flash×13,fast,fast,routine,True,True,0.13242,0.023995,81.9,9.052,34.178,4,13,Auto took 13 model calls vs 4,068,034
+js-pluralize,1,easy,formatting,javascript,Kimi K3×4,DeepSeek V4 Flash×8,fast,fast,routine,True,True,0.131193,0.013158,90.0,8.052,16.068,4,8,Auto took 8 model calls vs 4,032,016
+js-score-sort,1,easy,bugfix,javascript,Kimi K3×6,Kimi K3×9 + DeepSeek V4 Flash×7,fast → strong,fast,routine,True,True,0.207855,0.37829,-82.0,13.077,50.244,6,16,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 16 model calls vs 6,015,008
+js-site-plugins,1,medium,feature,javascript,Kimi K3×11,Kimi K2.6×11,balanced,balanced,routine,True,True,0.507651,0.161117,68.3,25.142,47.281,11,11,,099,050
+py-async-rate-limiter,1,hard,state,python,Kimi K3×34,Kimi K3×19 + DeepSeek V4 Flash×8,strong → fast,strong,hard,False,True,2.739318,1.316998,51.9,74.37,405.959,34,27,only Auto passed,027,014
+py-card-iban,1,medium,validation,python,Kimi K3×14,DeepSeek V4 Flash×13,fast,fast,routine,True,True,0.600477,0.032537,94.6,26.154,78.347,14,13,,029,015
+py-chunk-evenly,1,easy,utility,python,Kimi K3×14,DeepSeek V4 Flash×12,fast,fast,routine,True,True,0.52302,0.02074,96.0,25.12,26.153,14,12,,051,026
+py-cron-next,1,hard,utility,python,Kimi K3×9,Kimi K3×19 + Kimi K2.6×9,balanced → strong,balanced,routine,True,True,0.443865,1.662625,-274.6,29.221,131.684,9,28,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 28 model calls vs 9,074,037
+py-cursor-pagination,1,hard,api-change,python,Kimi K3×23,Kimi K2.6×14,balanced,balanced,moderate,False,False,1.365246,0.238315,82.5,49.257,41.228,23,14,,037,019
+py-expr-eval,1,hard,parsing,python,Kimi K3×26,Kimi K3×34 + Kimi K2.6×15,balanced → strong,balanced,moderate,True,True,1.69983,4.073973,-139.7,61.319,279.31,26,49,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 49 model calls vs 26,033,017
+py-extract-validators,1,medium,refactor,python,Kimi K3×11,Kimi K2.6×11,balanced,balanced,moderate,True,True,0.514986,0.152355,70.4,25.125,25.119,11,11,,049,025
+py-flatten-records-csv,1,medium,formatting,python,Kimi K3×13,DeepSeek V4 Flash×17,fast,fast,routine,True,True,0.523548,0.043827,91.6,24.102,61.273,13,17,,004,002
+py-format-phone,1,easy,formatting,python,Kimi K3×8,Kimi K3×7 + DeepSeek V4 Flash×6,fast → strong,fast,routine,True,True,0.278862,0.305096,-9.4,18.102,35.162,8,13,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 13 model calls vs 8,039,020
+py-inventory-reservations,1,hard,bugfix,python,Kimi K3×23,Kimi K3×23,strong,strong,hard,True,False,1.326273,1.334634,-0.6,61.298,94.487,23,23,only fixed passed; Auto cost more,089,045
+py-memoize,1,easy,state,python,Kimi K3×5,DeepSeek V4 Flash×7 + Kimi K3×3,fast → strong,fast,routine,True,True,0.1953,0.150061,23.2,19.107,41.201,5,10,Auto escalated 1×; stuck → strong; Auto took 10 model calls vs 5,010,005
+py-order-state-machine,1,medium,state,python,Kimi K3×7,Kimi K3×16 + Kimi K2.6×14,balanced → strong,balanced,moderate,True,True,0.30684,1.191283,-288.2,27.249,75.406,7,30,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 30 model calls vs 7,080,040
+py-parse-kv,1,easy,parsing,python,Kimi K3×9,DeepSeek V4 Flash×11,fast,fast,routine,True,True,0.325266,0.020126,93.8,17.085,32.152,9,11,,072,036
+py-parse-query,1,medium,parsing,python,Kimi K3×9,DeepSeek V4 Flash×13 + Kimi K3×12,fast → strong,fast,routine,True,True,0.463785,0.710955,-53.3,39.219,109.548,9,25,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 25 model calls vs 9,011,006
+py-report-csv-export,1,medium,feature,python,Kimi K3×16,DeepSeek V4 Flash×22,fast,fast,routine,True,True,0.813429,0.057417,92.9,25.234,57.346,16,22,,093,047
+py-retry-backoff,1,medium,utility,python,Kimi K3×8,DeepSeek V4 Flash×11,fast,fast,routine,True,False,0.301179,0.028369,90.6,16.074,139.715,8,11,only fixed passed,057,029
+py-shared-default-tags,1,easy,bugfix,python,Kimi K3×10,Kimi K2.6×3,balanced,balanced,hard,True,True,0.388029,0.03051,92.1,23.21,13.082,10,3,,081,041
+py-shipping-constants,1,easy,refactor,python,Kimi K3×13,DeepSeek V4 Flash×10,fast,fast,routine,True,True,0.567996,0.020619,96.4,32.189,27.138,13,10,,053,027
+py-top-n-reverse,1,easy,api-change,python,Kimi K3×8,DeepSeek V4 Flash×5,fast,fast,routine,True,False,0.280083,0.023153,91.7,14.136,156.904,8,5,only fixed passed,087,044
+py-user-stats-dataclass,1,medium,api-change,python,Kimi K3×10,DeepSeek V4 Flash×16,fast,fast,routine,True,True,0.446664,0.035019,92.2,24.205,44.232,10,16,Auto took 16 model calls vs 10,083,042
+py-validate-username,1,easy,validation,python,Kimi K3×6,DeepSeek V4 Flash×10,fast,fast,routine,True,True,0.205614,0.026984,86.9,12.07,42.219,6,10,Auto took 10 model calls vs 6,042,021
+py-weekly-report-bugs,1,medium,bugfix,python,Kimi K3×15,Kimi K2.6×11,balanced,balanced,moderate,True,True,0.651789,0.139113,78.7,32.161,34.178,15,11,,026,013
+ts-clamp-range,1,easy,utility,typescript,Kimi K3×7,DeepSeek V4 Flash×14,fast,fast,routine,True,True,0.230577,0.025625,88.9,12.056,29.156,7,14,Auto took 14 model calls vs 7,060,030
+ts-config-promise,1,easy,refactor,typescript,Kimi K3×7,Kimi K2.6×10,balanced,balanced,routine,True,True,0.252312,0.109966,56.4,17.129,18.083,7,10,,021,011
+ts-deep-merge,1,medium,utility,typescript,Kimi K3×17,DeepSeek V4 Flash×2,fast,fast,routine,False,False,0.801951,0.003219,99.6,43.181,9.041,17,2,,006,003
+ts-emitter-bugs,1,medium,bugfix,typescript,Kimi K3×3,Kimi K3×24,strong,strong,hard,False,False,0.092676,1.49393,-1512.0,8.051,155.823,3,24,Auto cost more,066,033
+ts-format-money,1,easy,formatting,typescript,Kimi K3×10,DeepSeek V4 Flash×1,fast,fast,routine,True,False,0.332154,0.001883,99.4,17.096,10.056,10,1,only fixed passed,092,046
+ts-hex-color,1,easy,validation,typescript,Kimi K3×10,DeepSeek V4 Flash×10,fast,fast,routine,True,True,0.353985,0.0255,92.8,16.081,109.681,10,10,,077,039
+ts-notify-many,1,easy,api-change,typescript,Kimi K3×10,DeepSeek V4 Flash×7,fast,fast,routine,True,True,0.39459,0.013767,96.5,22.125,31.183,10,7,,064,032
+ts-paginate-off-by-one,1,easy,bugfix,typescript,Kimi K3×3,DeepSeek V4 Flash×10,fast,fast,routine,True,True,0.096915,0.017424,82.0,6.036,22.092,3,10,Auto took 10 model calls vs 3,020,010
+ts-parse-clock,1,easy,parsing,typescript,Kimi K3×7,DeepSeek V4 Flash×11,fast,fast,routine,True,True,0.245643,0.022083,91.0,14.089,28.134,7,11,Auto took 11 model calls vs 7,045,023
+ts-pricing-rules,1,hard,refactor,typescript,Kimi K3×17,Kimi K2.6×23,balanced,balanced,moderate,False,True,0.963552,0.501074,48.0,40.203,78.434,17,23,only Auto passed,070,035
+ts-schema-validator,1,hard,validation,typescript,Kimi K3×19,Kimi K2.6×24,balanced,balanced,hard,True,True,1.105878,0.593828,46.3,60.314,96.44,19,24,,044,022
+ts-semver-range,1,medium,parsing,typescript,Kimi K3×20,Kimi K2.6×25,balanced,balanced,moderate,True,True,1.606869,1.030572,35.9,91.419,146.663,20,25,,017,009
+ts-signup-validate,1,medium,validation,typescript,Kimi K3×45,DeepSeek V4 Flash×24,fast,fast,routine,True,True,3.894294,0.099008,97.5,114.639,100.438,45,24,,014,007
+ts-singleflight-cache,1,hard,state,typescript,Kimi K3×28,Kimi K2.6×48 + Kimi K3×34,balanced → strong,balanced,hard,False,False,1.810401,8.208343,-353.4,65.329,1032.815,28,81,Auto escalated 1×; stuck → strong; Auto hit request_limit; Auto cost more,036,018
+ts-table-wrap,1,hard,formatting,typescript,Kimi K3×39,DeepSeek V4 Flash×14 + Kimi K3×3,fast → strong,fast,routine,True,True,3.318774,0.244101,92.6,116.017,96.488,39,17,Auto escalated 1×; stuck → strong,086,043
+ts-todo-query,1,medium,feature,typescript,Kimi K3×21,DeepSeek V4 Flash×20,fast,fast,routine,False,True,1.288476,0.081254,93.7,67.309,95.474,21,20,only Auto passed,007,004
+ts-undo-redo,1,hard,feature,typescript,Kimi K3×9,Kimi K2.6×17,balanced,balanced,moderate,False,False,0.452961,0.328234,27.5,34.19,69.432,9,17,,095,048
+ts-weighted-lru,1,medium,state,typescript,Kimi K3×11,DeepSeek V4 Flash×11 + Kimi K3×9,fast → strong,fast,routine,True,True,0.455415,0.645954,-41.8,23.121,88.463,11,20,Auto escalated 1×; stuck → strong; Auto cost more; Auto took 20 model calls vs 11,076,038

@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s14",
+  "title": "Priority over sentiment",
+  "category": "classification",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "Label urgent only if service is completely unavailable; otherwise normal. Message: \"I am very angry about the new colors, but the service works.\" Return priority. Return only valid JSON with exactly these fields: priority. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S14 at 56b4c3b"
+}

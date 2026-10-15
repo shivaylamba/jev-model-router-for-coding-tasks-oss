@@ -1,0 +1,12 @@
+{
+  "id": "abdul-s15",
+  "title": "Negated purchase",
+  "category": "classification",
+  "difficulty": "medium",
+  "language": "python",
+  "prompt": "Intent labels: buy=explicit purchase request,cancel=explicit cancellation,question=asking information. Message: \"I am not asking to buy yet. Does your plan support exports?\" Return intent. Return only valid JSON with exactly these fields: intent. Numeric values must be JSON numbers; boolean values must be JSON booleans; absent values null. No extra fields.\n\nWrite that JSON, and nothing else, to answer.json in the current directory.",
+  "acceptance": "answer.json equals the gold answer under Abdul's equality rule",
+  "difficulty_rationale": "Abdul's label",
+  "estimated_human_minutes": 1,
+  "source": "amrrs/jev-router-experiment core/tasks.json S15 at 56b4c3b"
+}
