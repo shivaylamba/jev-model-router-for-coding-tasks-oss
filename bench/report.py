@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import ROOT  # noqa: E402
 
 FIXED, AUTO = "A", "B"
+AUTO_LABELS = {"B": "Auto + Jev", "C": "Auto v2 + Jev"}
 
 
 def money(v):
@@ -107,7 +108,7 @@ def scorecard(summary: dict) -> str:
         ("Auto escalations (tasks with stuck → strong)", "n/a", f"{b.get('escalations')} ({b.get('stuck_routes')} stuck routes)"),
         ("Anomalies / contamination flags", f"{a.get('anomalies')} / {a.get('contamination_flags')}", f"{b.get('anomalies')} / {b.get('contamination_flags')}"),
     ]
-    out = ["| Metric | A: fixed Kimi K3 | B: Auto + Jev |", "|---|---|---|"]
+    out = [f"| Metric | A: fixed Kimi K3 | {AUTO}: {AUTO_LABELS.get(AUTO, 'Auto + Jev')} |", "|---|---|---|"]
     out += [f"| {m} | {x} | {y} |" for m, x, y in rows]
     return "\n".join(out)
 
@@ -255,10 +256,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--auto-condition", default="B")
+    parser.add_argument("--out", default="", help="report directory under reports/ (default: the run id)")
+    parser.add_argument("--fixed-from", default="", help="the run condition A came from, for the header")
     args = parser.parse_args()
     global AUTO
     AUTO = args.auto_condition
-    rep = ROOT / "reports" / args.run_id
+    rep = ROOT / "reports" / (args.out or args.run_id)
     run_dir = ROOT / "runs" / args.run_id
     summary = json.loads((rep / "summary.json").read_text())
     manifest = json.loads((run_dir / "manifest.json").read_text())
@@ -270,9 +273,10 @@ def main() -> None:
 Generated from `runs/{args.run_id}/` by `bench/analyze.py` and `bench/report.py`. Every number below can be traced to
 `results.jsonl` and the raw files of the execution named in the per-task table.
 
+- Condition A taken from: `runs/{args.fixed_from or args.run_id}/`; condition {AUTO} from `runs/{args.run_id}/`.
 - Executions: {summary['executions']} (task executions; each makes many model API requests, counted separately below).
 - {v['nconnect_version']} (bundle `{v['nconnect_bundle_sha256'][:12]}…`, source `{v['nconnect_source_commit'][:7]}`), {v['claude_code']}, Node {v['node']}, {v['python']}.
-- Prices: Nebius catalog captured {manifest['prices']['captured_at']}; Jev {manifest['prices']['jev']['model']} at ${manifest['prices']['jev']['input_per_million_usd']}/M input tokens.
+{"".join(f"- Condition {c} runs its own nconnect build: `{b['path']}` (sha256 `{b['sha256'][:12]}…`, source `{b['source_commit'][:7]}`).{chr(10)}" for c, b in (v.get('condition_bundles') or {}).items())}- Prices: Nebius catalog captured {manifest['prices']['captured_at']}; Jev {manifest['prices']['jev']['model']} at ${manifest['prices']['jev']['input_per_million_usd']}/M input tokens.
 - Costs are **estimates** from provider-reported tokens and those prices, not reconciled against Nebius billing. Cached input
   is charged at the full input rate (Nebius publishes no cached price); the cache-free lower bound is shown alongside.
 - Run events: {"; ".join(e['event'] for e in events)}.

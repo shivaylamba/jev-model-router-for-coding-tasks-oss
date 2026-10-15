@@ -75,3 +75,21 @@ v2.2 (the build used below) differs from the dev-tested v2.1 in one way: it stri
   - time.
 - v1 (B) is reported next to v2 (C). No task is dropped. Every execution, including any exclusion, is listed.
 - Known limitation: one run per task, so hard tasks are noisy. Both conditions run Kimi K3 on them, which makes them a coin-flip on cost in either direction.
+
+## Amendment 3: provider slowdown (2026-10-15, after 13 of 50 v2 executions)
+
+**What happened.** During execution 12 (js-parse-ini), Nebius's Kimi K3 was badly degraded:
+- calls returning about 1,200 tokens took 20–50 s, and one took 250 s;
+- four calls got no response within nconnect's 45 s timeout.
+
+The execution hit the 20-minute wall limit and failed. Fixed Kimi K3 had passed the same task in 38 s the day before. A direct probe afterwards took 7–11 s for a 140-token reply, against about 1–2 s normally. The health probe passed throughout, because it only checked that Kimi K3 answered within 30 s.
+
+**The rule added**, written to be blind to condition:
+
+1. **Health probe.** The probe now asks for a short reply of up to 150 tokens. A model that takes more than 6 s is unhealthy, and the runner waits, as under Amendment 1.
+2. **Infrastructure failure.** A failed execution in which 3 or more model requests got no provider response is an infrastructure failure, handled exactly as in Amendment 1:
+   - kept as evidence;
+   - moved to `excluded.jsonl`;
+   - re-run.
+
+**Scope check.** Applied to every execution in `runs/main` (both A and B), the new failure rule matches nothing: none of their 10 failures had a single unanswered request. In `runs/v2` it matches only execution 12. The sensitivity analysis counts each excluded execution as a failed task at the cost it incurred, as before.

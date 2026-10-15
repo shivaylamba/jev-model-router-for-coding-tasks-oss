@@ -633,19 +633,27 @@ HEALTH_MODELS = ["moonshotai/Kimi-K3", "zai-org/GLM-5.3", "zai-org/GLM-5.3-Flash
 HEALTH_WAIT_S = 300
 INFRA_TAIL = 3
 INFRA_RERUNS = 2
+# Amendment 3 (docs/PROTOCOL-V2.md): a failed execution with this many unanswered model requests is an
+# infrastructure failure, and a model that takes longer than PROBE_SLOW_S for a short reply is unhealthy.
+INFRA_TIMEOUTS = 3
+PROBE_SLOW_S = 6.0
 
 
 def probe(model: str, key: str, timeout: int = 30) -> tuple[bool, str]:
     """One tiny request straight to Nebius (via curl; the key goes on stdin, never argv).
     Not part of any task's cost; logged as overhead."""
-    body = json.dumps({"model": model, "max_tokens": 8, "messages": [{"role": "user", "content": "Reply with OK"}]})
+    body = json.dumps({"model": model, "max_tokens": 150,
+                       "messages": [{"role": "user", "content": "Write about 100 words on caching."}]})
     started = time.time()
     proc = subprocess.run(["curl", "-sS", "-m", str(timeout), "-o", "/dev/null", "-w", "%{http_code}", "-K", "-",
                            "-H", "content-type: application/json", f"{NEBIUS_ORIGIN_BASE}/chat/completions", "-d", body],
                           input=f'header = "Authorization: Bearer {key}"\n', capture_output=True, text=True)
     code = proc.stdout.strip()
+    elapsed = time.time() - started
+    if code == "200" and elapsed > PROBE_SLOW_S:
+        return False, f"slow: {elapsed:.1f}s for a short reply"
     if code == "200":
-        return True, f"200 in {time.time() - started:.1f}s"
+        return True, f"200 in {elapsed:.1f}s"
     return False, f"HTTP {code}" if code and code != "000" else (proc.stderr.strip()[:60] or "no response")
 
 
@@ -679,10 +687,15 @@ def infra_failure(run_dir: Path, record: dict) -> str | None:
     requests = [json.loads(line) for line in (exec_dir / "recorder.jsonl").read_text().splitlines() if line.strip()]
     model_requests = [r for r in requests if r.get("kind") in ("agent", "toolless")]
     tail = model_requests[-INFRA_TAIL:]
-    if len(tail) < INFRA_TAIL or any(r.get("status") == 200 and r.get("usage") for r in tail):
+    no_response = sum(1 for r in model_requests if not (r.get("status") == 200 and r.get("usage")))
+    if no_response < INFRA_TIMEOUTS and (len(tail) < INFRA_TAIL or any(r.get("status") == 200 and r.get("usage") for r in tail)):
         return None
     failed = sum(1 for r in model_requests if not (r.get("status") == 200 and r.get("usage")))
     models = sorted({r.get("model") for r in tail})
+    if failed >= INFRA_TIMEOUTS:
+        # Amendment 3: the provider was degraded during the execution.
+        slow = sorted({r.get("model") for r in model_requests if not (r.get("status") == 200 and r.get("usage"))})
+        return f"{failed} of {len(model_requests)} model requests got no provider response ({', '.join(slow)})"
     return (f"the last {INFRA_TAIL} model requests ({', '.join(models)}) got no provider response; "
             f"{failed} of {len(model_requests)} model requests failed")
 
