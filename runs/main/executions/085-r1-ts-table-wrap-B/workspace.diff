@@ -1,0 +1,339 @@
+ src/table.ts       | 197 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ test/table.test.ts | 122 +++++++++++++++++++++++++++++++++
+ 2 files changed, 318 insertions(+), 1 deletion(-)
+
+diff --git a/src/table.ts b/src/table.ts
+index b1886b8..c84434e 100644
+--- a/src/table.ts
++++ b/src/table.ts
+@@ -8,6 +8,201 @@ export interface TableOptions {
+   header?: boolean;
+ }
+ 
++// Wide code point ranges from SPEC.md, in display columns.
++const WIDE_RANGES: ReadonlyArray<readonly [number, number]> = [
++  [0x1100, 0x115f],
++  [0x2e80, 0x303e],
++  [0x3041, 0x33ff],
++  [0x3400, 0x4dbf],
++  [0x4e00, 0x9fff],
++  [0xa000, 0xa4cf],
++  [0xac00, 0xd7a3],
++  [0xf900, 0xfaff],
++  [0xfe30, 0xfe4f],
++  [0xff00, 0xff60],
++  [0xffe0, 0xffe6],
++  [0x1f300, 0x1f64f],
++  [0x1f900, 0x1f9ff],
++  [0x20000, 0x3fffd],
++];
++
++function isWide(cp: number): boolean {
++  let lo = 0;
++  let hi = WIDE_RANGES.length - 1;
++  while (lo <= hi) {
++    const mid = (lo + hi) >> 1;
++    const [start, end] = WIDE_RANGES[mid];
++    if (cp < start) hi = mid - 1;
++    else if (cp > end) lo = mid + 1;
++    else return true;
++  }
++  return false;
++}
++
++/** Display width of a string in terminal columns, per code point. */
++function displayWidth(s: string): number {
++  let width = 0;
++  for (const ch of s) width += isWide(ch.codePointAt(0)!) ? 2 : 1;
++  return width;
++}
++
++/** Split a string into code points (not UTF-16 code units). */
++function codePoints(s: string): string[] {
++  return Array.from(s);
++}
++
++/** Split a cell into paragraphs, wrap each one greedily to `w` columns. */
++function wrapCell(text: string, w: number): string[] {
++  const lines: string[] = [];
++  for (const paragraph of text.split("\n")) {
++    const words = paragraph.split(" ").filter((word) => word.length > 0);
++    if (words.length === 0) {
++      lines.push("");
++      continue;
++    }
++    let line = "";
++    let lineWidth = 0;
++    for (const word of words) {
++      const wordWidth = displayWidth(word);
++      const lineLen = lineWidth + (line === "" ? 0 : 1) + wordWidth;
++      if (lineLen <= w) {
++        line = line === "" ? word : `${line} ${word}`;
++        lineWidth = lineLen;
++        continue;
++      }
++      if (wordWidth <= w) {
++        if (line !== "") lines.push(line);
++        line = word;
++        lineWidth = wordWidth;
++        continue;
++      }
++      // Word is wider than the column: finish the line, then cut the word
++      // into the longest prefixes that fit.
++      if (line !== "") {
++        lines.push(line);
++        line = "";
++        lineWidth = 0;
++      }
++      let pieces = codePoints(word);
++      while (true) {
++        let take = 0;
++        let width = 0;
++        while (take < pieces.length) {
++          const cw = isWide(pieces[take].codePointAt(0)!) ? 2 : 1;
++          if (width + cw > w) break;
++          width += cw;
++          take += 1;
++        }
++        if (take === pieces.length) {
++          line = pieces.join("");
++          lineWidth = width;
++          break;
++        }
++        lines.push(pieces.slice(0, take).join(""));
++        pieces = pieces.slice(take);
++      }
++      lineWidth = displayWidth(line);
++    }
++    lines.push(line);
++    lineWidth = displayWidth(line);
++  }
++  return lines;
++}
++
++function pad(text: string, width: number, align: Align): string {
++  const extra = width - displayWidth(text);
++  if (align === "left") return text + " ".repeat(extra);
++  if (align === "right") return " ".repeat(extra) + text;
++  const left = Math.floor(extra / 2);
++  return " ".repeat(left) + text + " ".repeat(extra - left);
++}
++
+ export function renderTable(rows: string[][], options: TableOptions = {}): string {
+-  throw new Error("renderTable is not implemented yet");
++  const { maxWidth, align, header = false } = options;
++
++  if (maxWidth !== undefined && (!Number.isInteger(maxWidth) || maxWidth <= 0)) {
++    throw new RangeError(`maxWidth must be a positive integer, got ${maxWidth}`);
++  }
++  if (align !== undefined) {
++    for (const a of align) {
++      if (a !== "left" && a !== "right" && a !== "center") {
++        throw new RangeError(`invalid align entry ${JSON.stringify(a)}`);
++      }
++    }
++  }
++
++  const columns = rows.reduce((max, row) => Math.max(max, row.length), 0);
++  if (columns === 0) return "";
++
++  const alignment: Align[] = [];
++  for (let i = 0; i < columns; i++) alignment.push(align?.[i] ?? "left");
++
++  // Cells split into paragraphs, words re-joined with single spaces.
++  const paragraphs: string[][][] = rows.map((row) =>
++    Array.from({ length: columns }, (_, c) => {
++      const text = row[c] ?? "";
++      return text.split("\n").map((p) => p.split(" ").filter((word) => word.length > 0).join(" "));
++    }),
++  );
++
++  const minWidths: number[] = [];
++  const widths: number[] = [];
++  for (let c = 0; c < columns; c++) {
++    let natural = 0;
++    let hasWide = false;
++    for (const row of paragraphs) {
++      for (const p of row[c]) {
++        natural = Math.max(natural, displayWidth(p));
++        if (!hasWide) {
++          for (const ch of p) {
++            if (isWide(ch.codePointAt(0)!)) {
++              hasWide = true;
++              break;
++            }
++          }
++        }
++      }
++    }
++    minWidths.push(hasWide ? 2 : 1);
++    widths.push(Math.max(natural, minWidths[c]));
++  }
++
++  const tableWidth = (ws: number[]) => ws.reduce((sum, w) => sum + w, 0) + 3 * (columns - 1);
++  if (maxWidth !== undefined) {
++    if (tableWidth(widths) > maxWidth) {
++      // Shrink the widest column that is above its minimum, rightmost on ties.
++      let ws = [...widths];
++      while (tableWidth(ws) > maxWidth) {
++        let best = -1;
++        for (let c = 0; c < columns; c++) {
++          if (ws[c] <= minWidths[c]) continue;
++          if (best === -1 || ws[c] >= ws[best]) best = c;
++        }
++        if (best === -1) throw new RangeError("table cannot be fitted to maxWidth");
++        ws[best] -= 1;
++      }
++      for (let c = 0; c < columns; c++) widths[c] = ws[c];
++    }
++  }
++
++  // Wrap each cell to its (possibly shrunk) column width.
++  const wrapped: WrappedCell[][] = rows.map((row) =>
++    Array.from({ length: columns }, (_, c) => wrapCell(row[c] ?? "", widths[c])),
++  );
++
++  const lines: string[] = [];
++  for (let r = 0; r < rows.length; r++) {
++    const height = Math.max(...wrapped[r].map((cellLines) => cellLines.length));
++    for (let line = 0; line < height; line++) {
++      lines.push(
++        wrapped[r]
++          .map((cellLines, c) => pad(cellLines[line] ?? "", widths[c], alignment[c]))
++          .join(" | "),
++      );
++    }
++    if (header && r === 0) {
++      lines.push(widths.map((w) => "-".repeat(w)).join("-+-"));
++    }
++  }
++  return lines.join("\n");
+ }
+diff --git a/test/table.test.ts b/test/table.test.ts
+new file mode 100644
+index 0000000..c7e1c3b
+--- /dev/null
++++ b/test/table.test.ts
+@@ -0,0 +1,122 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { renderTable } from "../src/table.ts";
++
++test("empty table", () => {
++  assert.equal(renderTable([]), "");
++  assert.equal(renderTable([[]]), "");
++  assert.equal(renderTable([[], []]), "");
++});
++
++test("basic columns and padding", () => {
++  assert.equal(
++    renderTable([
++      ["a", "b"],
++      ["ccc", "d"],
++    ]),
++    ["a   | b", "ccc | d"].join("\n"),
++  );
++});
++
++test("short rows padded with empty cells", () => {
++  // single-char columns have their natural width from the header row
++  assert.equal(renderTable([["a", "b", "c"], ["x"]]), "a | b | c\nx |   |  ");
++});
++
++test("header separator", () => {
++  // "ab" gives column 0 width 2; column 1 is 1 wide
++  assert.equal(
++    renderTable([["ab", "c"], ["x", "y"]], { header: true }),
++    "ab | c\n---+--\nx  | y",
++  );
++});
++
++test("align right and center", () => {
++  // col widths 3 and 1: right-align pads "a" two left; center with extra 0 changes nothing
++  const out = renderTable([["a", "b"], ["xxx", "y"]], { align: ["right", "center"] });
++  assert.equal(out, "  a | b\nxxx | y");
++  // center, column width 3 from row 2, cell "b" in row 1: extra 2 -> 1 left, 1 right
++  const out2 = renderTable([["a", "b"], ["xxx", "yyy"]], { align: ["left", "center"] });
++  assert.equal(out2.split("\n")[0], "a   |  b ");
++});
++
++test("widths measured per code point", () => {
++  // "é" is one code point (BMP); "🇺🇸" flags are 2 code points of width... flags are not in the wide ranges.
++  assert.equal(renderTable([["aé", "b"], ["x", "y"]]), "aé | b\nx  | y");
++});
++
++test("wide characters count double", () => {
++  // 你 (U+4F60) is wide: natural width 2, min width 2
++  assert.equal(renderTable([["你", "b"]]), "你 | b");
++  // widest paragraph decides the column: 你你 (4) over 你 (2); short cell padded right
++  assert.equal(renderTable([["你"], ["你你"]]), "你  \n你你");
++});
++
++test("min width 2 for columns containing wide code points", () => {
++  // "你" alone: natural 2, min 2. A narrow column next to a wide cell gets min 2? No—
++  // min width applies per column only if that column has a wide code point.
++  assert.equal(renderTable([["你", "a"], ["b", "b"]]), "你 | a\nb  | b");
++});
++
++test("paragraphs and word wrapping", () => {
++  // no maxWidth: paragraphs re-joined with single spaces, column keeps natural width
++  assert.equal(renderTable([["a  b\nc"]]), "a b\nc  ");
++  // with maxWidth forcing width 1, each word wraps to its own line
++  assert.equal(renderTable([["a b\nc"]], { maxWidth: 1 }), "a\nb\nc");
++});
++
++test("all-space paragraph produces one empty line", () => {
++  // no words: min width 1, one empty line padded to width 1
++  assert.equal(renderTable([["   "]]), " ");
++});
++
++test("word too long for column is cut", () => {
++  // natural 6 + 1 + 3 = 10; maxWidth 8 shrinks col0 to 4, then "abcdef" is cut into 4-wide pieces
++  const out = renderTable([["abcdef", "x"]], { maxWidth: 8 });
++  assert.equal(out, "abcd | x\nef   |  ");
++});
++
++test("greedy wrap packs words two per line", () => {
++  // col0 shrinks to 5: "aa bb" (5) fits, "cc" starts a new line; row height 2
++  const out = renderTable([["aa bb cc", "x"]], { maxWidth: 9 });
++  assert.equal(out, "aa bb | x\ncc    |  ");
++});
++
++test("narrowing picks the widest column, rightmost on ties", () => {
++  // 3 and 3, table 9 -> maxWidth 8 shrinks the rightmost of the tied columns to 2;
++  // its word "bbb" is wider than the column and wraps
++  const out = renderTable([["aaa", "bbb"]], { maxWidth: 8 });
++  assert.equal(out, "aaa | bb\n    | b ");
++});
++
++test("narrowing stops at minimum width", () => {
++  // Column "ab" min 2; column "c" min 1. natural widths 2 and 1; table 2+1+3=6.
++  // maxWidth 5 -> shrink widest (col 0) to 1? min is 2 (no wide chars, min 1!). natural 2, min 1 -> can shrink to 1.
++  assert.equal(renderTable([["ab", "c"]], { maxWidth: 5 }), "a | c\nb |  ");
++});
++
++test("cannot fit throws", () => {
++  // Two columns each with wide chars: min 2 each, table 2+2+3=7. maxWidth 6 impossible.
++  assert.throws(() => renderTable([["你", "你"]], { maxWidth: 6 }), RangeError);
++});
++
++test("invalid maxWidth throws", () => {
++  assert.throws(() => renderTable([["a"]], { maxWidth: 0 }), RangeError);
++  assert.throws(() => renderTable([["a"]], { maxWidth: -1 }), RangeError);
++  assert.throws(() => renderTable([["a"]], { maxWidth: 1.5 }), RangeError);
++});
++
++test("invalid align throws", () => {
++  assert.throws(() => renderTable([["a"]], { align: ["top" as never] }), RangeError);
++});
++
++test("extra align entries ignored, missing default left", () => {
++  assert.equal(renderTable([["a", "b"]], { align: ["right", "right", "left"] }), "a | b");
++});
++
++test("wide char inside long word is cut on wide boundary", () => {
++  // natural 8 for col0; table 8+1+3 = 12 -> maxWidth 9 shrinks col0 to 5.
++  // Each wide char is 2 columns; pieces at width 5 take two chars (4 columns), padded to 5.
++  const out = renderTable([["你好世界", "x"]], { maxWidth: 9 });
++  assert.equal(out, "你好  | x\n世界  |  ");
++});

@@ -1,0 +1,92 @@
+ src/notifier.ts       | 31 ++++++++++++++++++++++++-------
+ test/notifier.test.ts | 34 ++++++++++++++++++++++++++++++++++
+ 2 files changed, 58 insertions(+), 7 deletions(-)
+
+diff --git a/src/notifier.ts b/src/notifier.ts
+index ec3c84d..ff585d6 100644
+--- a/src/notifier.ts
++++ b/src/notifier.ts
+@@ -19,14 +19,31 @@ export class Notifier {
+   }
+ 
+   /**
+-   * Send `message` to one recipient. The recipient is trimmed before sending.
+-   * Throws TypeError if the recipient is empty or only whitespace.
++   * Send `message` to one recipient or a list of recipients, in the order given.
++   * Each recipient is trimmed before sending. Duplicates are sent only once:
++   * recipients match case-insensitively after trimming, and the first spelling
++   * is the one that gets sent. Returns how many messages were actually sent
++   * (1 for a single string, 0 for an empty list).
++   * Throws TypeError if any recipient is empty or only whitespace, and does so
++   * before sending anything — a bad list never results in a partial send.
+    */
+-  notify(recipient: string, message: string): void {
+-    const to = recipient.trim();
+-    if (to === "") {
+-      throw new TypeError("recipient must be a non-empty string");
++  notify(recipients: string | readonly string[], message: string): number {
++    const list = typeof recipients === "string" ? [recipients] : recipients;
++    const trimmed = list.map((recipient) => recipient.trim());
++    for (const to of trimmed) {
++      if (to === "") {
++        throw new TypeError("recipient must be a non-empty string");
++      }
+     }
+-    this.transport.send(to, message);
++    const seen = new Set<string>();
++    let sent = 0;
++    for (const to of trimmed) {
++      const key = to.toLowerCase();
++      if (seen.has(key)) continue;
++      seen.add(key);
++      this.transport.send(to, message);
++      sent++;
++    }
++    return sent;
+   }
+ }
+diff --git a/test/notifier.test.ts b/test/notifier.test.ts
+index 90b96c6..c43934a 100644
+--- a/test/notifier.test.ts
++++ b/test/notifier.test.ts
+@@ -15,6 +15,40 @@ test("blank recipient is rejected", () => {
+   assert.throws(() => notifier.notify("  ", "hi"), TypeError);
+ });
+ 
++test("notify sends to each recipient in order", () => {
++  const transport = new MemoryTransport();
++  const sent = new Notifier(transport).notify(["  a@example.com ", "b@example.com"], "hi");
++  assert.equal(sent, 2);
++  assert.deepEqual(transport.sent, [
++    { recipient: "a@example.com", message: "hi" },
++    { recipient: "b@example.com", message: "hi" },
++  ]);
++});
++
++test("notify returns 1 for a single string recipient", () => {
++  const transport = new MemoryTransport();
++  assert.equal(new Notifier(transport).notify("a@example.com", "hi"), 1);
++});
++
++test("notify sends an empty list nowhere", () => {
++  const transport = new MemoryTransport();
++  assert.equal(new Notifier(transport).notify([], "hi"), 0);
++  assert.deepEqual(transport.sent, []);
++});
++
++test("notify skips duplicates case-insensitively, keeping the first spelling", () => {
++  const transport = new MemoryTransport();
++  const sent = new Notifier(transport).notify(["Ops@Example.com", "  ops@example.com", "OPS@EXAMPLE.COM"], "hi");
++  assert.equal(sent, 1);
++  assert.deepEqual(transport.sent, [{ recipient: "Ops@Example.com", message: "hi" }]);
++});
++
++test("blank recipient in a list is rejected before anything is sent", () => {
++  const transport = new MemoryTransport();
++  assert.throws(() => new Notifier(transport).notify(["a@example.com", "  "], "hi"), TypeError);
++  assert.deepEqual(transport.sent, []);
++});
++
+ test("alerts page only on critical", () => {
+   const transport = new MemoryTransport();
+   const notifier = new Notifier(transport);

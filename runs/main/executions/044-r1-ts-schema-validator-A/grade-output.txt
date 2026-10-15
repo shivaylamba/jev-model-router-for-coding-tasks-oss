@@ -1,0 +1,143 @@
+TAP version 13
+# Subtest: type, including integer and multiple names
+ok 1 - type, including integer and multiple names
+  ---
+  duration_ms: 1.234084
+  type: 'test'
+  ...
+# Subtest: enum and const use deep, type-strict equality
+ok 2 - enum and const use deep, type-strict equality
+  ---
+  duration_ms: 0.212583
+  type: 'test'
+  ...
+# Subtest: numeric bounds
+ok 3 - numeric bounds
+  ---
+  duration_ms: 0.116917
+  type: 'test'
+  ...
+# Subtest: string lengths count code points
+ok 4 - string lengths count code points
+  ---
+  duration_ms: 0.118833
+  type: 'test'
+  ...
+# Subtest: pattern is unanchored and unicode-aware
+ok 5 - pattern is unanchored and unicode-aware
+  ---
+  duration_ms: 0.407958
+  type: 'test'
+  ...
+# Subtest: type-specific keywords ignore other types
+ok 6 - type-specific keywords ignore other types
+  ---
+  duration_ms: 0.110583
+  type: 'test'
+  ...
+# Subtest: keywords are independent
+ok 7 - keywords are independent
+  ---
+  duration_ms: 0.069208
+  type: 'test'
+  ...
+# Subtest: required and properties keep working
+ok 8 - required and properties keep working
+  ---
+  duration_ms: 0.11475
+  type: 'test'
+  ...
+# Subtest: additionalProperties false is relative to properties
+ok 9 - additionalProperties false is relative to properties
+  ---
+  duration_ms: 0.17325
+  type: 'test'
+  ...
+# Subtest: additionalProperties as a schema
+ok 10 - additionalProperties as a schema
+  ---
+  duration_ms: 0.190041
+  type: 'test'
+  ...
+# Subtest: arrays: bounds, items and uniqueItems
+ok 11 - arrays: bounds, items and uniqueItems
+  ---
+  duration_ms: 0.16925
+  type: 'test'
+  ...
+# Subtest: JSON Pointer escaping
+ok 12 - JSON Pointer escaping
+  ---
+  duration_ms: 0.091834
+  type: 'test'
+  ...
+# Subtest: allOf merges errors from every subschema
+ok 13 - allOf merges errors from every subschema
+  ---
+  duration_ms: 0.111917
+  type: 'test'
+  ...
+# Subtest: no duplicate errors
+ok 14 - no duplicate errors
+  ---
+  duration_ms: 0.105875
+  type: 'test'
+  ...
+# Subtest: anyOf reports one error and hides subschema errors
+ok 15 - anyOf reports one error and hides subschema errors
+  ---
+  duration_ms: 0.117833
+  type: 'test'
+  ...
+# Subtest: oneOf needs exactly one match
+ok 16 - oneOf needs exactly one match
+  ---
+  duration_ms: 0.086458
+  type: 'test'
+  ...
+# Subtest: $ref into definitions, with siblings
+ok 17 - $ref into definitions, with siblings
+  ---
+  duration_ms: 0.172375
+  type: 'test'
+  ...
+# Subtest: $ref with escaped tokens and array indexes
+ok 18 - $ref with escaped tokens and array indexes
+  ---
+  duration_ms: 0.107042
+  type: 'test'
+  ...
+# Subtest: recursive $ref
+ok 19 - recursive $ref
+  ---
+  duration_ms: 0.092583
+  type: 'test'
+  ...
+# Subtest: unresolvable or non-local $ref throws SchemaError
+ok 20 - unresolvable or non-local $ref throws SchemaError
+  ---
+  duration_ms: 0.320083
+  type: 'test'
+  ...
+# Subtest: false schemas inside keywords
+ok 21 - false schemas inside keywords
+  ---
+  duration_ms: 0.058833
+  type: 'test'
+  ...
+# Subtest: a realistic payload
+ok 22 - a realistic payload
+  ---
+  duration_ms: 0.161542
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 116.66675
+

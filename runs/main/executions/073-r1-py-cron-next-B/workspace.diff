@@ -1,0 +1,158 @@
+ cron.py | 144 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 142 insertions(+), 2 deletions(-)
+
+diff --git a/cron.py b/cron.py
+index a26cda8..e4bb48d 100644
+--- a/cron.py
++++ b/cron.py
+@@ -1,8 +1,148 @@
+ """Cron expression evaluation. The supported syntax is described in SPEC.md."""
+ 
+-from datetime import datetime
++import calendar
++from datetime import datetime, timedelta
++
++_MONTHS = {name.lower(): number for number, name in enumerate(calendar.month_abbr) if name}
++_WEEKDAYS = {
++    name.lower(): (number + 1) % 7  # cron counts Sunday as 0, day_abbr starts at Monday
++    for number, name in enumerate(calendar.day_abbr)
++    if name
++}
++
++# (minimum, maximum, names) per field, in expression order
++_FIELDS = [
++    (0, 59, None),      # minute
++    (0, 23, None),      # hour
++    (1, 31, None),      # day of month
++    (1, 12, _MONTHS),   # month
++    (0, 7, _WEEKDAYS),  # day of week
++]
++
++# macro (lowercase) -> equivalent five-field expression
++_MACROS = {
++    "@yearly": "0 0 1 1 *",
++    "@annually": "0 0 1 1 *",
++    "@monthly": "0 0 1 * *",
++    "@weekly": "0 0 * * 0",
++    "@daily": "0 0 * * *",
++    "@midnight": "0 0 * * *",
++    "@hourly": "0 * * * *",
++}
++
++_SEARCH_YEARS = 8  # how far ahead to look before declaring an expression impossible
+ 
+ 
+ def next_run(expr: str, after: datetime) -> datetime:
+     """The earliest minute strictly after `after` that matches `expr`."""
+-    raise NotImplementedError
++    minutes, hours, doms, months, dows, both_restricted = _parse(expr)
++
++    # the first minute we are allowed to return
++    start = after.replace(second=0, microsecond=0) + timedelta(minutes=1)
++    # anything at or after this point is beyond the search horizon
++    limit = start.replace(year=start.year + _SEARCH_YEARS, month=1, day=1)
++
++    day = start.replace(hour=0, minute=0)
++    while day < limit:
++        if day.month in months and _day_matches(day, doms, dows, both_restricted):
++            same_day = day.date() == start.date()
++            for hour in hours:
++                if same_day and hour < start.hour:
++                    continue
++                if same_day and hour == start.hour:
++                    for minute in minutes:
++                        if minute >= start.minute:
++                            return day.replace(hour=hour, minute=minute)
++                else:
++                    return day.replace(hour=hour, minute=minutes[0])
++        day = _next_day(day)
++    raise ValueError(f"expression {expr!r} never matches within {_SEARCH_YEARS} years")
++
++
++def _parse(expr):
++    """Return (minutes, hours, doms, months, dows, both_restricted).
++
++    The value collections are sorted tuples; `both_restricted` is True when
++    both day fields are restricted, in which case a day matching either one
++    is enough (SPEC.md, "Day of month vs day of week").
++    """
++    text = expr.strip()
++    macro = _MACROS.get(text.lower())
++    if macro is not None:
++        text = macro
++    parts = text.split()
++    if len(parts) != 5:
++        raise ValueError(f"expected 5 fields, got {len(parts)} in {expr!r}")
++
++    values = []
++    restricted = []
++    for part, (lo, hi, names) in zip(parts, _FIELDS):
++        field_values, field_restricted = _parse_field(part, lo, hi, names)
++        if names is _WEEKDAYS:
++            field_values = sorted(0 if v == 7 else v for v in field_values)
++        else:
++            field_values = sorted(field_values)
++        values.append(tuple(field_values))
++        restricted.append(field_restricted)
++
++    minutes, hours, doms, months, dows = values
++    return minutes, hours, doms, months, dows, restricted[2] and restricted[4]
++
++
++def _parse_field(field, lo, hi, names):
++    """Parse one field into (set of values, restricted flag)."""
++    values = set()
++    for item in field.split(","):
++        if item == "":
++            raise ValueError(f"empty item in field {field!r}")
++        base, _, step_text = item.partition("/")
++        if _:
++            if not step_text.isdecimal() or int(step_text) == 0:
++                raise ValueError(f"invalid step {step_text!r} in field {field!r}")
++            step = int(step_text)
++        else:
++            step = 1
++        if base == "*":
++            start, end = lo, hi
++        elif "-" in base:
++            start_text, _, end_text = base.partition("-")
++            start = _value(start_text, lo, hi, names, field)
++            end = _value(end_text, lo, hi, names, field)
++            if start > end:
++                raise ValueError(f"reversed range in field {field!r}")
++        else:
++            start = _value(base, lo, hi, names, field)
++            # `N/S` runs from N up to the maximum; bare `N` is just N
++            end = hi if _ else start
++        values.update(range(start, end + 1, step))
++    return values, not field.startswith("*")
++
++
++def _value(text, lo, hi, names, field):
++    """One value: a number or a field name, within the field's range."""
++    if text.isdecimal():
++        value = int(text)
++    elif names is not None:
++        value = names.get(text.lower())
++        if value is None:
++            raise ValueError(f"unknown name {text!r} in field {field!r}")
++    else:
++        raise ValueError(f"expected a number in field {field!r}, got {text!r}")
++    if not lo <= value <= hi:
++        raise ValueError(f"value {text!r} out of range {lo}-{hi} in field {field!r}")
++    return value
++
++
++def _day_matches(day, doms, dows, both_restricted):
++    """Does `day` satisfy the day-of-month/day-of-week rules?"""
++    dom_ok = day.day in doms
++    # cron counts Sunday=0; datetime.weekday() counts Monday=0
++    dow_ok = (day.weekday() + 1) % 7 in dows
++    if both_restricted:
++        return dom_ok or dow_ok
++    return dom_ok and dow_ok
++
++
++def _next_day(day):
++    """The same wall-clock midnight on the following day."""
++    return day + timedelta(days=1)

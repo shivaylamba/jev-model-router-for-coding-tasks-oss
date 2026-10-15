@@ -1,0 +1,1 @@
+{"at":"2026-10-14T20:12:00.710Z","phase":"response_headers","reason":"timeout","clientRequestId":"d5cb59dc-061f-4aa2-83f6-aa97b8c1909b","model":"moonshotai/Kimi-K3","attempt":0,"timeoutMs":45000,"error":"Nebius returned no response headers within 45000ms (client request ID: d5cb59dc-061f-4aa2-83f6-aa97b8c1909b)."}

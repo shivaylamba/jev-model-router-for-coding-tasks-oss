@@ -1,0 +1,348 @@
+ src/weightedLru.ts       | 125 ++++++++++++++++++++++++++++
+ test/weightedLru.test.ts | 207 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 332 insertions(+)
+
+diff --git a/src/weightedLru.ts b/src/weightedLru.ts
+new file mode 100644
+index 0000000..354fa1f
+--- /dev/null
++++ b/src/weightedLru.ts
+@@ -0,0 +1,125 @@
++/**
++ * A least-recently-used cache bounded by the total weight of its entries
++ * rather than their count. Each entry's weight comes from `weigh` (1 by
++ * default); whenever the combined weight would exceed `maxWeight`, entries
++ * are evicted least recently used first.
++ */
++export interface WeightedLRUOptions<K, V> {
++  /** Total weight the cache may hold; must be a positive finite number. */
++  maxWeight: number;
++  /** Returns an entry's weight (default: 1). May be 0 or fractional. */
++  weigh?: (value: V, key: K) => number;
++  /** Called with each entry removed to make room, after its removal. */
++  onEvict?: (key: K, value: V) => void;
++}
++
++interface Entry<V> {
++  value: V;
++  weight: number;
++}
++
++export class WeightedLRU<K, V> {
++  readonly maxWeight: number;
++  #weigh: (value: V, key: K) => number;
++  #onEvict?: (key: K, value: V) => void;
++  #entries = new Map<K, Entry<V>>();
++  #totalWeight = 0;
++  #hits = 0;
++  #misses = 0;
++  #evictions = 0;
++
++  constructor({ maxWeight, weigh, onEvict }: WeightedLRUOptions<K, V>) {
++    if (!Number.isFinite(maxWeight) || maxWeight <= 0) {
++      throw new RangeError(`maxWeight must be a positive finite number, got ${maxWeight}`);
++    }
++    this.maxWeight = maxWeight;
++    this.#weigh = weigh ?? (() => 1);
++    this.#onEvict = onEvict;
++  }
++
++  get size(): number {
++    return this.#entries.size;
++  }
++
++  get totalWeight(): number {
++    return this.#totalWeight;
++  }
++
++  set(key: K, value: V): boolean {
++    // Weigh before touching any state so a rejected or throwing set
++    // leaves the cache exactly as it was.
++    const weight = this.#weigh(value, key);
++    if (!Number.isFinite(weight) || weight < 0) {
++      throw new RangeError(`weigh must return a non-negative finite number, got ${weight}`);
++    }
++    if (weight > this.maxWeight) {
++      return false;
++    }
++    const existing = this.#entries.get(key);
++    if (existing !== undefined) {
++      this.#entries.delete(key);
++      this.#totalWeight -= existing.weight;
++    }
++    // A Map keeps insertion order, so the entry just set is the most
++    // recently used and the first key is always the oldest.
++    this.#entries.set(key, { value, weight });
++    this.#totalWeight += weight;
++    while (this.#totalWeight > this.maxWeight) {
++      const [oldestKey, oldest] = this.#entries.entries().next().value as [K, Entry<V>];
++      // The entry just set always fits on its own, so the loop runs out of
++      // other entries first; the guard only covers floating-point drift in
++      // the running total.
++      if (oldestKey === key) {
++        break;
++      }
++      this.#entries.delete(oldestKey);
++      this.#totalWeight -= oldest.weight;
++      this.#evictions++;
++      this.#onEvict?.(oldestKey, oldest.value);
++    }
++    return true;
++  }
++
++  get(key: K): V | undefined {
++    const entry = this.#entries.get(key);
++    if (entry === undefined) {
++      this.#misses++;
++      return undefined;
++    }
++    this.#entries.delete(key);
++    this.#entries.set(key, entry);
++    this.#hits++;
++    return entry.value;
++  }
++
++  peek(key: K): V | undefined {
++    return this.#entries.get(key)?.value;
++  }
++
++  has(key: K): boolean {
++    return this.#entries.has(key);
++  }
++
++  delete(key: K): boolean {
++    const entry = this.#entries.get(key);
++    if (entry === undefined) {
++      return false;
++    }
++    this.#entries.delete(key);
++    this.#totalWeight -= entry.weight;
++    return true;
++  }
++
++  clear(): void {
++    this.#entries.clear();
++    this.#totalWeight = 0;
++  }
++
++  keys(): K[] {
++    return [...this.#entries.keys()];
++  }
++
++  stats(): { hits: number; misses: number; evictions: number } {
++    return { hits: this.#hits, misses: this.#misses, evictions: this.#evictions };
++  }
++}
+diff --git a/test/weightedLru.test.ts b/test/weightedLru.test.ts
+new file mode 100644
+index 0000000..a5c549e
+--- /dev/null
++++ b/test/weightedLru.test.ts
+@@ -0,0 +1,207 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { WeightedLRU } from "../src/weightedLru.ts";
++
++test("rejects a bad maxWeight", () => {
++  for (const maxWeight of [0, -1, NaN, Infinity, -Infinity, "10", null]) {
++    assert.throws(() => new WeightedLRU({ maxWeight }), RangeError);
++  }
++});
++
++test("accepts fractional maxWeight", () => {
++  const cache = new WeightedLRU<string, number>({
++    maxWeight: 0.5,
++    weigh: () => 0.25,
++  });
++  cache.set("a", 1);
++  cache.set("b", 2);
++  cache.set("c", 3); // 0.75 > 0.5: evicts a
++  assert.deepEqual(cache.keys(), ["b", "c"]);
++  assert.equal(cache.totalWeight, 0.5);
++});
++
++test("defaults to a weight of 1 per entry", () => {
++  const cache = new WeightedLRU<string, number>({ maxWeight: 2 });
++  cache.set("a", 1);
++  cache.set("b", 2);
++  cache.set("c", 3);
++  assert.deepEqual(cache.keys(), ["b", "c"]);
++  assert.equal(cache.has("a"), false);
++});
++
++test("evicts by total weight, least recently used first", () => {
++  const evicted: string[] = [];
++  const cache = new WeightedLRU<string, number>({
++    maxWeight: 10,
++    weigh: (value) => value,
++    onEvict: (key) => evicted.push(key),
++  });
++  cache.set("a", 4); // 4
++  cache.set("b", 3); // 7
++  cache.set("c", 6); // 13 > 10: evicts a
++  assert.deepEqual(evicted, ["a"]);
++  assert.deepEqual(cache.keys(), ["b", "c"]);
++  assert.equal(cache.totalWeight, 9);
++  assert.equal(cache.stats().evictions, 1);
++});
++
++test("a get refreshes recency", () => {
++  const cache = new WeightedLRU<string, number>({
++    maxWeight: 10,
++    weigh: (value) => value,
++  });
++  cache.set("a", 4);
++  cache.set("b", 4);
++  cache.get("a"); // a is now most recently used
++  cache.set("c", 4); // 12 > 10: evicts b
++  assert.deepEqual(cache.keys(), ["a", "c"]);
++});
++
++test("never evicts the entry just set", () => {
++  const cache = new WeightedLRU<string, number>({
++    maxWeight: 5,
++    weigh: (value) => value,
++  });
++  cache.set("a", 2);
++  cache.set("b", 2);
++  assert.equal(cache.set("c", 5), true); // evicts a and b
++  assert.deepEqual(cache.keys(), ["c"]);
++  assert.equal(cache.totalWeight, 5);
++  // An entry weighing exactly maxWeight fits on its own.
++  assert.equal(cache.set("d", 5), true);
++  assert.deepEqual(cache.keys(), ["d"]);
++});
++
++test("rejects an entry heavier than maxWeight without touching the cache", () => {
++  const cache = new WeightedLRU<string, number>({
++    maxWeight: 10,
++    weigh: (value) => value,
++  });
++  cache.set("a", 4);
++  cache.set("b", 6);
++  assert.equal(cache.set("c", 11), false);
++  assert.deepEqual(cache.keys(), ["a", "b"]);
++  assert.equal(cache.totalWeight, 10);
++  assert.deepEqual(cache.stats(), { hits: 0, misses: 0, evictions: 0 });
++  // An existing entry for the key survives a rejected set.
++  assert.equal(cache.set("a", 11), false);
++  assert.equal(cache.get("a"), 4);
++});
++
++test("rejects a bad weight from weigh", () => {
++  for (const weight of [-1, NaN, Infinity, -Infinity]) {
++    const cache = new WeightedLRU<string, number>({
++      maxWeight: 10,
++      weigh: () => weight,
++    });
++    assert.throws(() => cache.set("a", 1), RangeError);
++    assert.equal(cache.size, 0);
++    assert.equal(cache.totalWeight, 0);
++  }
++});
++
++test("replacing a value swaps its weight and refreshes recency", () => {
++  const evicted: string[] = [];
++  const cache = new WeightedLRU<string, number>({
++    maxWeight: 10,
++    weigh: (value) => value,
++    onEvict: (key) => evicted.push(key),
++  });
++  cache.set("a", 4);
++  cache.set("b", 4); // 8
++  cache.set("a", 7); // 8 - 4 + 7 = 11 > 10: evicts b, not the replaced a
++  assert.deepEqual(evicted, ["b"]); // no onEvict for the replaced value
++  assert.equal(cache.get("a"), 7);
++  assert.deepEqual(cache.keys(), ["a"]);
++  assert.equal(cache.totalWeight, 7);
++});
++
++test("allows zero and fractional weights", () => {
++  const cache = new WeightedLRU<string, string>({
++    maxWeight: 1,
++    weigh: (value) => value.length / 4,
++  });
++  cache.set("a", ""); // 0
++  cache.set("b", "x"); // 0.25
++  cache.set("c", "xx"); // 0.5
++  assert.deepEqual(cache.keys(), ["a", "b", "c"]);
++  assert.equal(cache.totalWeight, 0.75);
++});
++
++test("get counts hits and misses", () => {
++  const cache = new WeightedLRU<string, number>({ maxWeight: 10 });
++  cache.set("a", 1);
++  assert.equal(cache.get("a"), 1);
++  assert.equal(cache.get("b"), undefined);
++  assert.deepEqual(cache.stats(), { hits: 1, misses: 1, evictions: 0 });
++});
++
++test("peek and has do not touch recency or stats", () => {
++  const cache = new WeightedLRU<string, number>({
++    maxWeight: 12,
++    weigh: (value) => value,
++  });
++  cache.set("a", 4);
++  cache.set("b", 8);
++  assert.equal(cache.peek("a"), 4);
++  assert.equal(cache.has("b"), true);
++  assert.equal(cache.peek("missing"), undefined);
++  assert.equal(cache.has("missing"), false);
++  assert.deepEqual(cache.keys(), ["a", "b"]); // a still least recently used
++  assert.deepEqual(cache.stats(), { hits: 0, misses: 0, evictions: 0 });
++  cache.set("c", 4); // 16 > 12: still evicts a, not b
++  assert.deepEqual(cache.keys(), ["b", "c"]);
++});
++
++test("delete removes the weight without evicting", () => {
++  const evicted: string[] = [];
++  const cache = new WeightedLRU<string, number>({
++    maxWeight: 10,
++    weigh: (value) => value,
++    onEvict: (key) => evicted.push(key),
++  });
++  cache.set("a", 4);
++  cache.set("b", 6);
++  assert.equal(cache.delete("a"), true);
++  assert.equal(cache.delete("a"), false);
++  assert.deepEqual(evicted, []);
++  assert.equal(cache.totalWeight, 6);
++  assert.deepEqual(cache.stats(), { hits: 0, misses: 0, evictions: 0 });
++  cache.set("c", 4); // room was freed, nothing evicted
++  assert.deepEqual(cache.keys(), ["b", "c"]);
++});
++
++test("clear empties the cache but keeps stats", () => {
++  const cache = new WeightedLRU<string, number>({
++    maxWeight: 10,
++    weigh: (value) => value,
++  });
++  cache.set("a", 6);
++  cache.set("b", 6); // evicts a
++  cache.get("a"); // miss
++  cache.get("b"); // hit
++  cache.clear();
++  assert.equal(cache.size, 0);
++  assert.equal(cache.totalWeight, 0);
++  assert.deepEqual(cache.keys(), []);
++  assert.deepEqual(cache.stats(), { hits: 1, misses: 1, evictions: 1 });
++});
++
++test("onEvict receives the key and value after removal", () => {
++  const calls: [string, number][] = [];
++  const cache = new WeightedLRU<string, number>({
++    maxWeight: 5,
++    weigh: (value) => value,
++    onEvict: (key, value) => {
++      calls.push([key, value]);
++      assert.equal(cache.has(key), false); // already removed
++    },
++  });
++  cache.set("a", 3);
++  cache.set("b", 3); // evicts a
++  cache.set("c", 3); // evicts b
++  assert.deepEqual(calls, [
++    ["a", 3],
++    ["b", 3],
++  ]);
++});

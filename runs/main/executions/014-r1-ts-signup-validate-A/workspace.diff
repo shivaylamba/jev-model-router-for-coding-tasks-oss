@@ -1,0 +1,178 @@
+ src/signup.ts | 168 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 168 insertions(+)
+
+diff --git a/src/signup.ts b/src/signup.ts
+index 0751a59..c38dda3 100644
+--- a/src/signup.ts
++++ b/src/signup.ts
+@@ -1,2 +1,170 @@
+ // Sign-up validation. Rules: docs/signup-rules.md
++import { isLeapYear, daysInMonth } from "./dates.ts";
++import type {
++  SignupErrors,
++  SignupInput,
++  SignupResult,
++  SignupErrorCode,
++} from "./types.ts";
++
+ export type { SignupErrors, SignupInput, SignupResult } from "./types.ts";
++
++function validateUsername(
++  raw: unknown,
++): { ok: true; value: string } | { ok: false; code: SignupErrorCode } {
++  if (typeof raw !== "string") return { ok: false, code: "required" };
++  const trimmed = raw.trim();
++  if (trimmed.length === 0) return { ok: false, code: "required" };
++  if (trimmed.length < 3 || trimmed.length > 20) {
++    return { ok: false, code: "length" };
++  }
++  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(trimmed)) {
++    return { ok: false, code: "format" };
++  }
++  return { ok: true, value: trimmed.toLowerCase() };
++}
++
++function validateEmail(
++  raw: unknown,
++): { ok: true; value: string } | { ok: false; code: SignupErrorCode } {
++  if (typeof raw !== "string") return { ok: false, code: "required" };
++  const trimmed = raw.trim();
++  if (trimmed.length === 0) return { ok: false, code: "required" };
++  if (/\s/.test(trimmed)) return { ok: false, code: "format" };
++  const atParts = trimmed.split("@");
++  if (atParts.length !== 2) return { ok: false, code: "format" };
++  const [local, domain] = atParts;
++  if (local.length === 0) return { ok: false, code: "format" };
++  const labels = domain.split(".");
++  if (labels.length < 2 || labels.some((label) => label.length === 0)) {
++    return { ok: false, code: "format" };
++  }
++  return { ok: true, value: trimmed.toLowerCase() };
++}
++
++function validatePassword(
++  raw: unknown,
++  username: string | null,
++): { ok: true } | { ok: false; code: SignupErrorCode } {
++  if (typeof raw !== "string") return { ok: false, code: "required" };
++  if (raw.length === 0) return { ok: false, code: "required" };
++  if (raw.length < 8 || raw.length > 64) return { ok: false, code: "length" };
++  if (!/[A-Za-z]/.test(raw) || !/[0-9]/.test(raw)) {
++    return { ok: false, code: "weak" };
++  }
++  if (username !== null && raw.toLowerCase().includes(username)) {
++    return { ok: false, code: "contains_username" };
++  }
++  return { ok: true };
++}
++
++function validateConfirmPassword(
++  raw: unknown,
++  password: unknown,
++): { ok: true } | { ok: false; code: SignupErrorCode } {
++  if (typeof raw !== "string") return { ok: false, code: "required" };
++  if (raw.length === 0) return { ok: false, code: "required" };
++  // mismatch is skipped only when password is missing or not a string;
++  // it applies even when password has its own error.
++  if (typeof password === "string" && raw !== password) {
++    return { ok: false, code: "mismatch" };
++  }
++  return { ok: true };
++}
++
++function parseBirthDate(
++  trimmed: string,
++): { year: number; month: number; day: number } | null {
++  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
++  if (!match) return null;
++  const year = Number(match[1]);
++  const month = Number(match[2]);
++  const day = Number(match[3]);
++  if (year < 1900) return null;
++  if (month < 1 || month > 12) return null;
++  if (day < 1 || day > daysInMonth(year, month)) return null;
++  return { year, month, day };
++}
++
++function validateBirthDate(
++  raw: unknown,
++  today: Date,
++): { ok: true; value: string } | { ok: false; code: SignupErrorCode } {
++  if (typeof raw !== "string") return { ok: false, code: "required" };
++  const trimmed = raw.trim();
++  if (trimmed.length === 0) return { ok: false, code: "required" };
++
++  const parsed = parseBirthDate(trimmed);
++  if (parsed === null) return { ok: false, code: "format" };
++  const { year, month, day } = parsed;
++
++  const todayYear = today.getUTCFullYear();
++  const todayMonth = today.getUTCMonth() + 1;
++  const todayDay = today.getUTCDate();
++
++  // Compare calendar dates: birthDate must not be after today.
++  if (
++    year > todayYear ||
++    (year === todayYear && month > todayMonth) ||
++    (year === todayYear && month === todayMonth && day > todayDay)
++  ) {
++    return { ok: false, code: "future" };
++  }
++
++  // Age on `today`: a year is gained on the anniversary of the birth date;
++  // a Feb 29 birth gains it on Mar 1 in non-leap years.
++  let anniversaryMonth = month;
++  let anniversaryDay = day;
++  if (month === 2 && day === 29 && !isLeapYear(todayYear)) {
++    anniversaryMonth = 3;
++    anniversaryDay = 1;
++  }
++  let age = todayYear - year;
++  if (
++    todayMonth < anniversaryMonth ||
++    (todayMonth === anniversaryMonth && todayDay < anniversaryDay)
++  ) {
++    age -= 1;
++  }
++  if (age < 13) return { ok: false, code: "too_young" };
++
++  return { ok: true, value: trimmed };
++}
++
++export function validateSignup(input: SignupInput, today: Date): SignupResult {
++  const errors: SignupErrors = {};
++
++  const username = validateUsername(input.username);
++  if (!username.ok) errors.username = username.code;
++
++  const email = validateEmail(input.email);
++  if (!email.ok) errors.email = email.code;
++
++  // contains_username applies only when the username itself is valid.
++  const password = validatePassword(
++    input.password,
++    username.ok ? username.value : null,
++  );
++  if (!password.ok) errors.password = password.code;
++
++  const confirmPassword = validateConfirmPassword(
++    input.confirmPassword,
++    input.password,
++  );
++  if (!confirmPassword.ok) errors.confirmPassword = confirmPassword.code;
++
++  const birthDate = validateBirthDate(input.birthDate, today);
++  if (!birthDate.ok) errors.birthDate = birthDate.code;
++
++  if (Object.keys(errors).length > 0 || !username.ok || !email.ok || !birthDate.ok) {
++    return { ok: false, errors };
++  }
++  return {
++    ok: true,
++    value: {
++      username: username.value,
++      email: email.value,
++      birthDate: birthDate.value,
++    },
++  };
++}

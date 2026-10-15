@@ -31,3 +31,102 @@ Traceback (most recent call last):
   File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 632, in wait_until_healthy
     time.sleep(HEALTH_WAIT_S)
 KeyboardInterrupt
+[2026-10-14T17:26:10.285Z] run started {'budget_usd': 200.0, 'max_hours': 14.0}
+[2026-10-14T17:26:42.656Z] provider unhealthy; waiting {'models': {'zai-org/GLM-5.3': 'curl: (28) Operation timed out after 30004 milliseconds with'}, 'wait_s': 300}
+  8 ts-todo-query                B       PASS $1.6111  283.4s completed     {'balanced': 7, 'strong': 20} 
+[2026-10-14T17:37:12.204Z] kept interrupted attempt {'execution': '009-r1-py-memoize-B', 'attempt': 1}
+  9 py-memoize                   B       PASS $0.4518  213.0s completed     {'balanced': 8, 'strong': 5} 
+ 10 py-memoize                   A       PASS $0.1953   19.1s completed      
+ 11 py-parse-query               A       PASS $0.4638   39.2s completed      
+ 12 py-parse-query               B       PASS $0.5013  362.8s completed     {'balanced': 13} 
+ 13 ts-signup-validate           B       PASS $0.8396  291.4s completed     {'balanced': 14} 
+ 14 ts-signup-validate           A       PASS $3.8943  114.6s completed      
+ 15 js-score-sort                A       PASS $0.2079   13.1s completed      
+ 16 js-score-sort                B       PASS $0.1157   18.1s completed     {'balanced': 7} 
+ 17 ts-semver-range              A       PASS $1.6069   91.4s completed      
+ 18 ts-semver-range              B       PASS $0.4377  350.9s completed     {'balanced': 6, 'fast': 21} 
+ 19 ts-paginate-off-by-one       B       PASS $0.2126   24.1s completed     {'balanced': 11} 
+ 20 ts-paginate-off-by-one       A       PASS $0.0969    6.0s completed      
+ 21 ts-config-promise            A       PASS $0.2523   17.1s completed      
+ 22 ts-config-promise            B       PASS $0.8913   70.4s completed     {'balanced': 14, 'strong': 10} 
+ 23 js-parse-ini                 B       PASS $0.7365  232.3s completed     {'balanced': 12} 
+[2026-10-14T18:10:59.846Z] provider unhealthy; waiting {'models': {'zai-org/GLM-5.3-Flash': 'curl: (28) Operation timed out after 30005 milliseconds with'}, 'wait_s': 300}
+ 24 js-parse-ini                 A       PASS $0.6680   38.2s completed      
+ 25 py-weekly-report-bugs        B       PASS $0.3507   22.1s completed     {'strong': 9} 
+ 26 py-weekly-report-bugs        A       PASS $0.6518   32.2s completed      
+ 27 py-async-rate-limiter        A       FAIL $2.7393   74.4s completed      
+ 28 py-async-rate-limiter        B       PASS $7.0717 1201.6s wall_limit    {'strong': 63} 
+ 29 py-card-iban                 A       PASS $0.6005   26.2s completed      
+ 30 py-card-iban                 B       PASS $0.5313  123.7s completed     {'balanced': 9, 'strong': 4} 
+ 31 js-pluralize                 B       PASS $0.2067   33.2s completed     {'balanced': 10} 
+ 32 js-pluralize                 A       PASS $0.1312    8.1s completed      
+ 33 py-expr-eval                 A       PASS $1.6998   61.3s completed      
+ 34 py-expr-eval                 B       PASS $2.7850   76.4s completed     {'strong': 36} 
+ 35 ts-singleflight-cache        B       PASS $0.5270  511.6s completed     {'balanced': 6, 'fast': 13} 
+ 36 ts-singleflight-cache        A       FAIL $1.8104   65.3s completed      
+ 37 py-cursor-pagination         A       FAIL $1.3652   49.3s completed      
+ 38 py-cursor-pagination         B       PASS $1.5215  263.5s completed     {'balanced': 30} 
+ 39 py-format-phone              A       PASS $0.2789   18.1s completed      
+ 40 py-format-phone              B       PASS $0.1159   21.1s completed     {'balanced': 6} 
+ 41 py-validate-username         B       PASS $0.1344   25.1s completed     {'balanced': 6} 
+ 42 py-validate-username         A       PASS $0.2056   12.1s completed      
+ 43 ts-schema-validator          B       FAIL $0.8967   39.2s completed     {'strong': 14} 
+ 44 ts-schema-validator          A       PASS $1.1059   60.3s completed      
+ 45 ts-parse-clock               A       PASS $0.2456   14.1s completed      
+ 46 ts-parse-clock               B       PASS $0.1720   32.2s completed     {'balanced': 8} 
+ 47 js-human-duration            A       PASS $0.5313   29.1s completed      
+ 48 js-human-duration            B       PASS $0.3053   81.4s completed     {'balanced': 7} 
+ 49 py-extract-validators        A       PASS $0.5150   25.1s completed      
+ 50 py-extract-validators        B       PASS $1.0889  124.7s completed     {'balanced': 9, 'strong': 11} 
+ 51 py-chunk-evenly              A       PASS $0.5230   25.1s completed      
+ 52 py-chunk-evenly              B       PASS $0.1025   15.1s completed     {'balanced': 6} 
+ 53 py-shipping-constants        A       PASS $0.5680   32.2s completed      
+ 54 py-shipping-constants        B       PASS $0.6768   59.3s completed     {'balanced': 10, 'strong': 8} 
+ 55 js-client-options            B       PASS $0.3550  154.7s completed     {'balanced': 9} 
+ 56 js-client-options            A       PASS $0.7019   28.1s completed      
+ 57 py-retry-backoff             A       PASS $0.3012   16.1s completed      
+ 58 py-retry-backoff             B       PASS $0.4504   40.2s completed     {'balanced': 17, 'strong': 1} 
+ 59 ts-clamp-range               B       PASS $0.1699   22.1s completed     {'balanced': 10} 
+ 60 ts-clamp-range               A       PASS $0.2306   12.1s completed      
+ 61 js-email-list                A       PASS $0.1946   13.1s completed      
+ 62 js-email-list                B       PASS $0.2543   53.3s completed     {'balanced': 7} 
+ 63 ts-notify-many               B       PASS $0.1699   50.3s completed     {'balanced': 9} 
+ 64 ts-notify-many               A       PASS $0.3946   22.1s completed      
+ 65 ts-emitter-bugs              B       PASS $0.3483   21.1s completed     {'strong': 9} 
+ 66 ts-emitter-bugs              A       FAIL $0.0927    8.1s completed      
+ 67 js-pick-omit                 B       PASS $0.5866   53.3s completed     {'balanced': 9, 'strong': 8} 
+ 68 js-pick-omit                 A       PASS $0.1324    9.1s completed      
+ 69 ts-pricing-rules             B       PASS $0.8853   43.2s completed     {'strong': 14} 
+ 70 ts-pricing-rules             A       FAIL $0.9636   40.2s completed      
+ 71 py-parse-kv                  B       PASS $0.2019   30.1s completed     {'balanced': 11} 
+ 72 py-parse-kv                  A       PASS $0.3253   17.1s completed      
+ 73 py-cron-next                 B       FAIL $0.5257  669.1s completed     {'balanced': 7, 'fast': 13} 
+ 74 py-cron-next                 A       PASS $0.4439   29.2s completed      
+ 75 ts-weighted-lru              B       PASS $0.4282  203.2s completed     {'balanced': 13} 
+ 76 ts-weighted-lru              A       PASS $0.4554   23.1s completed      
+ 77 ts-hex-color                 A       PASS $0.3540   16.1s completed      
+ 78 ts-hex-color                 B       PASS $0.1460   29.2s completed     {'balanced': 8} 
+ 79 py-order-state-machine       B       PASS $0.8056  316.0s completed     {'balanced': 14, 'strong': 3} 
+ 80 py-order-state-machine       A       PASS $0.3068   27.2s completed      
+ 81 py-shared-default-tags       A       PASS $0.3880   23.2s completed      
+ 82 py-shared-default-tags       B       PASS $0.2255   42.3s completed     {'balanced': 11} 
+ 83 py-user-stats-dataclass      A       PASS $0.4467   24.2s completed      
+ 84 py-user-stats-dataclass      B       PASS $0.2481  188.7s completed     {'balanced': 12} 
+ 85 ts-table-wrap                B       PASS $1.5313  671.9s completed     {'balanced': 4, 'fast': 15, 'strong': 14} 
+ 86 ts-table-wrap                A       PASS $3.3188  116.0s completed      
+ 87 py-top-n-reverse             A       PASS $0.2801   14.1s completed      
+ 88 py-top-n-reverse             B       PASS $0.1471   83.6s completed     {'balanced': 8} 
+ 89 py-inventory-reservations    A       PASS $0.9867  139.8s completed      
+ 90 py-inventory-reservations    B       PASS $1.0537  207.8s completed     {'strong': 18} 
+ 91 ts-format-money              B       PASS $0.1847   24.2s completed     {'balanced': 10} 
+ 92 ts-format-money              A       PASS $0.3795  235.5s completed      
+ 93 py-report-csv-export         A       PASS $0.8134   25.2s completed      
+ 94 py-report-csv-export         B       PASS $0.5669  324.8s completed     {'balanced': 11, 'fast': 4, 'strong': 4} 
+ 95 ts-undo-redo                 A       FAIL $0.4588 3708.4s wall_limit     
+ 96 ts-undo-redo                 B       FAIL $0.6916 1170.8s completed     {'strong': 16} 
+ 97 js-cli-json-flag             B       PASS $0.7953  981.8s completed     {'balanced': 13, 'strong': 7} 
+ 98 js-cli-json-flag             A       PASS $0.1853 1980.3s wall_limit     
+[2026-10-14T22:53:44.712Z] provider unhealthy; waiting {'models': {'zai-org/GLM-5.3-Flash': 'curl: (28) Operation timed out after 922077 milliseconds wit'}, 'wait_s': 300}
+ 99 js-site-plugins              A       PASS $0.5077   25.1s completed      
+100 js-site-plugins              B       PASS $1.1410  213.2s completed     {'balanced': 13, 'strong': 6} 
+[2026-10-15T01:14:10.608Z] run complete {'spent_usd': 72.6629}

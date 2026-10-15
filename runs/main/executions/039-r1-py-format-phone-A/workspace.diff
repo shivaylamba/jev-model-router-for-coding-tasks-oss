@@ -1,0 +1,48 @@
+ contacts.py | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/contacts.py b/contacts.py
+index f36e8f9..a6cdb93 100644
+--- a/contacts.py
++++ b/contacts.py
+@@ -1,5 +1,7 @@
+ """Formatting helpers for contact records."""
+ 
++_IGNORED_PHONE_CHARS = set(" ()-.+")
++
+ 
+ def format_name(first, last):
+     """'ada', 'LOVELACE' -> 'Ada Lovelace'. Blank parts are skipped."""
+@@ -10,3 +12,32 @@ def format_name(first, last):
+ def normalize_email(email):
+     """Trim and lowercase an e-mail address."""
+     return email.strip().lower()
++
++
++def format_us_phone(raw):
++    """'415-555-0123' -> '(415) 555-0123'. Accepts an optional leading '1'.
++
++    Spaces, parentheses, hyphens, and dots are ignored. Any other non-digit
++    raises ValueError, as does anything that isn't a valid 10-digit US
++    number (area code and exchange may not start with 0 or 1).
++    """
++    digits = []
++    for ch in raw:
++        if ch.isdigit():
++            digits.append(ch)
++        elif ch in _IGNORED_PHONE_CHARS:
++            continue
++        else:
++            raise ValueError(f"Invalid character in phone number: {ch!r}")
++
++    if len(digits) == 11 and digits[0] == "1":
++        digits = digits[1:]
++    if len(digits) != 10:
++        raise ValueError("Phone number must contain 10 digits (or 11 starting with '1')")
++
++    if digits[0] in "01":
++        raise ValueError("Area code may not start with 0 or 1")
++    if digits[3] in "01":
++        raise ValueError("Exchange may not start with 0 or 1")
++
++    return f"({''.join(digits[:3])}) {''.join(digits[3:6])}-{''.join(digits[6:])}"

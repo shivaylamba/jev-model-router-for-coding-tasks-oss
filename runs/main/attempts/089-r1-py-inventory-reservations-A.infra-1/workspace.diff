@@ -1,0 +1,96 @@
+ inventory/holds.py   |  4 ++--
+ inventory/service.py | 30 ++++++++++++++++++++++++------
+ 2 files changed, 26 insertions(+), 8 deletions(-)
+
+diff --git a/inventory/holds.py b/inventory/holds.py
+index 1458e7a..040f39d 100644
+--- a/inventory/holds.py
++++ b/inventory/holds.py
+@@ -14,7 +14,7 @@ class Hold:
+     status: str = "held"
+ 
+     def is_expired(self, now):
+-        return now > self.expires_at
++        return now >= self.expires_at
+ 
+ 
+ class HoldStore:
+@@ -27,7 +27,7 @@ class HoldStore:
+         hold = Hold(f"h{self._next}", sku, quantity, request_id, created_at, expires_at)
+         self._next += 1
+         self._by_id[hold.id] = hold
+-        self._by_request[hold.id] = hold
++        self._by_request[hold.request_id] = hold
+         return hold
+ 
+     def get(self, hold_id):
+diff --git a/inventory/service.py b/inventory/service.py
+index f088aa5..c991345 100644
+--- a/inventory/service.py
++++ b/inventory/service.py
+@@ -2,8 +2,8 @@
+ 
+ from collections import defaultdict
+ 
+-from .errors import (HoldNotFoundError, HoldStateError, IdempotencyConflictError,
+-                     InsufficientStockError)
++from .errors import (HoldExpiredError, HoldNotFoundError, HoldStateError,
++                     IdempotencyConflictError, InsufficientStockError)
+ from .holds import HoldStore
+ 
+ 
+@@ -15,8 +15,16 @@ class ReservationService:
+         self._holds = HoldStore()
+         self._reserved = defaultdict(int)
+ 
++    def _effective(self, hold):
++        """Status as callers must see it: a "held" hold whose time ran out is expired."""
++        if hold.status == "held" and hold.is_expired(self._clock.now()):
++            return "expired"
++        return hold.status
++
+     def available(self, sku):
+-        return self._ledger.on_hand(sku) - self._reserved[sku]
++        held = sum(h.quantity for h in self._holds.all()
++                   if h.sku == sku and self._effective(h) == "held")
++        return self._ledger.on_hand(sku) - held
+ 
+     def reserve(self, sku, quantity, request_id):
+         if not isinstance(quantity, int) or isinstance(quantity, bool) or quantity < 1:
+@@ -27,6 +35,7 @@ class ReservationService:
+         if existing is not None:
+             if (existing.sku, existing.quantity) != (sku, quantity):
+                 raise IdempotencyConflictError(request_id)
++            existing.status = self._effective(existing)
+             return existing
+         if quantity > self.available(sku):
+             raise InsufficientStockError(f"only {self.available(sku)} of {sku} available")
+@@ -39,16 +48,25 @@ class ReservationService:
+         hold = self._holds.get(hold_id)
+         if hold is None:
+             raise HoldNotFoundError(hold_id)
++        hold.status = self._effective(hold)
+         return hold
+ 
+     def release(self, hold_id):
+         hold = self.get_hold(hold_id)
+-        hold.status = "released"
+-        self._reserved[hold.sku] -= hold.quantity
+-        return True
++        if hold.status == "held":
++            hold.status = "released"
++            self._reserved[hold.sku] -= hold.quantity
++            return True
++        if hold.status == "confirmed":
++            raise HoldStateError(f"hold {hold_id} is confirmed")
++        return False
+ 
+     def confirm(self, hold_id):
+         hold = self.get_hold(hold_id)
++        if hold.status == "confirmed":
++            return hold
++        if hold.status == "expired":
++            raise HoldExpiredError(f"hold {hold_id} expired")
+         if hold.status == "released":
+             raise HoldStateError(f"hold {hold_id} was released")
+         self._ledger.remove(hold.sku, hold.quantity)

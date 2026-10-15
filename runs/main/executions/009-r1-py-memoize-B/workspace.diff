@@ -1,0 +1,59 @@
+ __pycache__/funcutil.cpython-311.pyc | Bin 0 -> 2619 bytes
+ funcutil.py                          |  37 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 37 insertions(+)
+
+diff --git a/__pycache__/funcutil.cpython-311.pyc b/__pycache__/funcutil.cpython-311.pyc
+new file mode 100644
+index 0000000..9caf810
+Binary files /dev/null and b/__pycache__/funcutil.cpython-311.pyc differ
+diff --git a/funcutil.py b/funcutil.py
+index f1ca4e7..b67e41b 100644
+--- a/funcutil.py
++++ b/funcutil.py
+@@ -1,5 +1,6 @@
+ """Function decorators."""
+ 
++import collections
+ import functools
+ 
+ 
+@@ -14,3 +15,39 @@ def once(func):
+         return result[0]
+ 
+     return wrapper
++
++
++CacheInfo = collections.namedtuple("CacheInfo", ["hits", "misses", "size"])
++
++
++def memoize(func):
++    """Cache `func`'s result per distinct arguments; later calls with
++    the same arguments return the cached result."""
++    cache = {}
++    hits = misses = 0
++
++    @functools.wraps(func)
++    def wrapper(*args, **kwargs):
++        nonlocal hits, misses
++        key = (args, tuple(sorted(kwargs.items())))
++        if key in cache:
++            hits += 1
++            return cache[key]
++        misses += 1
++        result = func(*args, **kwargs)
++        cache[key] = result
++        return result
++
++    def cache_info():
++        """Return a CacheInfo(hits, misses, size) snapshot of this cache."""
++        return CacheInfo(hits, misses, len(cache))
++
++    def cache_clear():
++        """Empty the cache and reset the hit and miss counts."""
++        nonlocal hits, misses
++        cache.clear()
++        hits = misses = 0
++
++    wrapper.cache_info = cache_info
++    wrapper.cache_clear = cache_clear
++    return wrapper

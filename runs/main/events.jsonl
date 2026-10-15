@@ -3,3 +3,18 @@
 {"at": "2026-10-14T17:24:42.453Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "008-r1-ts-todo-query-B", "reason": "the last 3 model requests (zai-org/GLM-5.3) got no provider response; 22 of 23 model requests failed"}
 {"at": "2026-10-14T17:24:58.495Z", "event": "run started", "budget_usd": 200.0, "max_hours": 14.0}
 {"at": "2026-10-14T17:24:59.643Z", "event": "provider unhealthy; waiting", "models": {"moonshotai/Kimi-K3": "URLError", "zai-org/GLM-5.3": "URLError", "zai-org/GLM-5.3-Flash": "URLError"}, "wait_s": 300}
+{"at": "2026-10-14T17:26:10.285Z", "event": "run started", "budget_usd": 200.0, "max_hours": 14.0}
+{"at": "2026-10-14T17:26:42.656Z", "event": "provider unhealthy; waiting", "models": {"zai-org/GLM-5.3": "curl: (28) Operation timed out after 30004 milliseconds with"}, "wait_s": 300}
+{"at": "2026-10-14T17:37:12.204Z", "event": "kept interrupted attempt", "execution": "009-r1-py-memoize-B", "attempt": 1}
+{"at": "2026-10-14T18:10:59.846Z", "event": "provider unhealthy; waiting", "models": {"zai-org/GLM-5.3-Flash": "curl: (28) Operation timed out after 30005 milliseconds with"}, "wait_s": 300}
+{"at": "2026-10-14T22:53:44.712Z", "event": "provider unhealthy; waiting", "models": {"zai-org/GLM-5.3-Flash": "curl: (28) Operation timed out after 922077 milliseconds wit"}, "wait_s": 300}
+{"at": "2026-10-15T01:14:10.608Z", "event": "run complete", "spent_usd": 72.6629}
+{"at": "2026-10-15T01:14:26.210Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "088-r1-py-top-n-reverse-B", "reason": "the host machine was asleep for 46 s of its 84 s"}
+{"at": "2026-10-15T01:14:26.220Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "089-r1-py-inventory-reservations-A", "reason": "the host machine was asleep for 94 s of its 140 s"}
+{"at": "2026-10-15T01:14:26.229Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "090-r1-py-inventory-reservations-B", "reason": "the host machine was asleep for 165 s of its 208 s"}
+{"at": "2026-10-15T01:14:26.239Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "092-r1-ts-format-money-A", "reason": "the host machine was asleep for 215 s of its 235 s"}
+{"at": "2026-10-15T01:14:26.249Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "094-r1-py-report-csv-export-B", "reason": "the host machine was asleep for 260 s of its 325 s"}
+{"at": "2026-10-15T01:14:26.258Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "095-r1-ts-undo-redo-A", "reason": "the host machine was asleep for 3687 s of its 3708 s"}
+{"at": "2026-10-15T01:14:26.268Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "096-r1-ts-undo-redo-B", "reason": "the host machine was asleep for 1117 s of its 1171 s"}
+{"at": "2026-10-15T01:14:26.277Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "097-r1-js-cli-json-flag-B", "reason": "the host machine was asleep for 938 s of its 982 s"}
+{"at": "2026-10-15T01:14:26.286Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "098-r1-js-cli-json-flag-A", "reason": "the host machine was asleep for 1971 s of its 1980 s"}

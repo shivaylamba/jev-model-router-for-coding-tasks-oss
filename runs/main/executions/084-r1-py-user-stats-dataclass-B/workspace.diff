@@ -1,0 +1,181 @@
+ dashboard.py           |  8 ++++----
+ emailer.py             |  4 ++--
+ stats.py               | 52 +++++++++++++++++++++++++++++++++++++++++++++++---
+ tests/test_activity.py | 46 +++++++++++++++++++++++++++++++++++++++++++-
+ 4 files changed, 100 insertions(+), 10 deletions(-)
+
+diff --git a/dashboard.py b/dashboard.py
+index 62f4e5d..1058a7d 100644
+--- a/dashboard.py
++++ b/dashboard.py
+@@ -4,13 +4,13 @@ from stats import get_all_user_stats, get_user_stats
+ 
+ 
+ def render_row(events, user_id):
+-    total, days, last_seen = get_user_stats(events, user_id)
+-    seen = last_seen.strftime("%Y-%m-%d") if last_seen else "never"
+-    return f"{user_id}: {total} events on {days} days, last seen {seen}"
++    stats = get_user_stats(events, user_id)
++    seen = stats.last_seen.strftime("%Y-%m-%d") if stats.last_seen else "never"
++    return f"{user_id}: {stats.total_events} events on {stats.active_days} days, last seen {seen}"
+ 
+ 
+ def most_active(events, limit=3):
+     """User ids with the most events, most first; ties by user id."""
+     all_stats = get_all_user_stats(events)
+-    ranked = sorted(all_stats.items(), key=lambda item: (-item[1][0], item[0]))
++    ranked = sorted(all_stats.items(), key=lambda item: (-item[1].total_events, item[0]))
+     return [user_id for user_id, _ in ranked[:limit]]
+diff --git a/emailer.py b/emailer.py
+index f1cde35..c0ad7e9 100644
+--- a/emailer.py
++++ b/emailer.py
+@@ -10,6 +10,6 @@ QUIET_PERIOD = timedelta(days=14)
+ def should_send_reengagement(events, user_id, now):
+     """Email users who were active on at least 2 days but have been quiet for 14 days or more."""
+     stats = get_user_stats(events, user_id)
+-    if stats[2] is None or stats[1] < 2:
++    if stats.last_seen is None or stats.active_days < 2:
+         return False
+-    return now - stats[2] >= QUIET_PERIOD
++    return now - stats.last_seen >= QUIET_PERIOD
+diff --git a/stats.py b/stats.py
+index 6b231e8..ecbeaf8 100644
+--- a/stats.py
++++ b/stats.py
+@@ -1,19 +1,65 @@
+ """Per-user activity statistics."""
+ 
++from dataclasses import dataclass
++from datetime import datetime
++
++
++@dataclass(frozen=True)
++class UserStats:
++    """One user's activity summary.
++
++    The fields are in tuple order (total_events, active_days, last_seen),
++    and an instance still behaves like that 3-tuple for code predating
++    this class: it unpacks into the three values, tuple() converts to
++    them, len() is 3, and integer indexing (negative included) works,
++    raising IndexError past the end. last_seen is None when the user has
++    no events.
++    """
++
++    total_events: int
++    active_days: int
++    last_seen: datetime | None
++
++    @property
++    def events_per_active_day(self):
++        """Mean events per active day; 0.0 when there are no active days."""
++        if self.active_days == 0:
++            return 0.0
++        return self.total_events / self.active_days
++
++    def as_dict(self):
++        """The three fields as a dict, keyed by field name."""
++        return {
++            "total_events": self.total_events,
++            "active_days": self.active_days,
++            "last_seen": self.last_seen,
++        }
++
++    # Tuple compatibility, field order above:
++
++    def __iter__(self):
++        return iter((self.total_events, self.active_days, self.last_seen))
++
++    def __len__(self):
++        return 3
++
++    def __getitem__(self, index):
++        return (self.total_events, self.active_days, self.last_seen)[index]
++
+ 
+ def get_user_stats(events, user_id):
+     """Summarise one user's events.
+ 
+-    Returns a tuple (total_events, active_days, last_seen):
++    Returns a UserStats (total_events, active_days, last_seen):
+     total_events is the number of events for the user, active_days the number
+     of distinct UTC calendar dates with at least one event, and last_seen the
+     latest event time, or None when the user has no events.
+     """
+     mine = [event for event in events if event.user_id == user_id]
+     if not mine:
+-        return (0, 0, None)
++        return UserStats(0, 0, None)
+     days = {event.at.date() for event in mine}
+-    return (len(mine), len(days), max(event.at for event in mine))
++    return UserStats(len(mine), len(days), max(event.at for event in mine))
+ 
+ 
+ def get_all_user_stats(events):
+diff --git a/tests/test_activity.py b/tests/test_activity.py
+index 3dd121b..0aeea0a 100644
+--- a/tests/test_activity.py
++++ b/tests/test_activity.py
+@@ -1,10 +1,11 @@
+ import unittest
++from dataclasses import FrozenInstanceError
+ from datetime import datetime, timezone
+ 
+ from dashboard import most_active, render_row
+ from emailer import should_send_reengagement
+ from events import Event
+-from stats import get_user_stats
++from stats import get_all_user_stats, get_user_stats
+ 
+ 
+ def at(day, hour=12):
+@@ -29,6 +30,49 @@ class StatsTest(unittest.TestCase):
+         self.assertEqual((total, days, last), (0, 0, None))
+ 
+ 
++class UserStatsTest(unittest.TestCase):
++    def test_named_fields(self):
++        stats = get_user_stats(EVENTS, "ana")
++        self.assertEqual(
++            (stats.total_events, stats.active_days, stats.last_seen), (3, 2, at(3))
++        )
++
++    def test_behaves_like_tuple(self):
++        stats = get_user_stats(EVENTS, "ana")
++        self.assertEqual(tuple(stats), (3, 2, at(3)))
++        self.assertEqual(len(stats), 3)
++        self.assertEqual(stats[0], 3)
++        self.assertEqual(stats[2], at(3))
++        self.assertEqual(stats[-1], at(3))
++        with self.assertRaises(IndexError):
++            stats[3]
++
++    def test_frozen(self):
++        stats = get_user_stats(EVENTS, "ana")
++        with self.assertRaises(FrozenInstanceError):
++            stats.total_events = 0
++
++    def test_events_per_active_day(self):
++        self.assertEqual(get_user_stats(EVENTS, "ana").events_per_active_day, 1.5)
++        self.assertEqual(get_user_stats(EVENTS, "bo").events_per_active_day, 1.0)
++        self.assertEqual(get_user_stats(EVENTS, "zed").events_per_active_day, 0.0)
++
++    def test_as_dict(self):
++        self.assertEqual(
++            get_user_stats(EVENTS, "ana").as_dict(),
++            {"total_events": 3, "active_days": 2, "last_seen": at(3)},
++        )
++
++    def test_all_user_stats(self):
++        self.assertEqual(
++            get_all_user_stats(EVENTS),
++            {
++                "ana": get_user_stats(EVENTS, "ana"),
++                "bo": get_user_stats(EVENTS, "bo"),
++            },
++        )
++
++
+ class CallersTest(unittest.TestCase):
+     def test_render_row(self):
+         self.assertEqual(render_row(EVENTS, "ana"), "ana: 3 events on 2 days, last seen 2026-03-03")

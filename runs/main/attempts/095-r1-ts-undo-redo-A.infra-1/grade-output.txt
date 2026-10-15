@@ -1,0 +1,293 @@
+TAP version 13
+# Subtest: nothing to undo or redo at first
+ok 1 - nothing to undo or redo at first
+  ---
+  duration_ms: 1.190833
+  type: 'test'
+  ...
+# Subtest: undo and redo restore text and selection
+ok 2 - undo and redo restore text and selection
+  ---
+  duration_ms: 0.572542
+  type: 'test'
+  ...
+# Subtest: typing within a second of each keystroke is one step
+ok 3 - typing within a second of each keystroke is one step
+  ---
+  duration_ms: 0.139458
+  type: 'test'
+  ...
+# Subtest: the 1000 ms boundary
+ok 4 - the 1000 ms boundary
+  ---
+  duration_ms: 0.1025
+  type: 'test'
+  ...
+# Subtest: the gap is measured from the previous keystroke
+ok 5 - the gap is measured from the previous keystroke
+  ---
+  duration_ms: 0.099625
+  type: 'test'
+  ...
+# Subtest: newlines and pastes are their own steps
+ok 6 - newlines and pastes are their own steps
+  ---
+  duration_ms: 0.094542
+  type: 'test'
+  ...
+# Subtest: replacing a selection with one character is its own step
+ok 7 - replacing a selection with one character is its own step
+  ---
+  duration_ms: 0.086
+  type: 'test'
+  ...
+# Subtest: select closes the typing group, even at the same position
+ok 8 - select closes the typing group, even at the same position
+  ---
+  duration_ms: 0.066334
+  type: 'test'
+  ...
+# Subtest: a no-op delete closes the typing group
+not ok 9 - a no-op delete closes the typing group
+  ---
+  duration_ms: 0.630917
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:127:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    '' !== 'ab'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'ab'
+  actual: ''
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:134:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: deletes are separate steps and restore the selection
+ok 10 - deletes are separate steps and restore the selection
+  ---
+  duration_ms: 0.187959
+  type: 'test'
+  ...
+# Subtest: no-op edits create no step and keep redo
+ok 11 - no-op edits create no step and keep redo
+  ---
+  duration_ms: 0.087792
+  type: 'test'
+  ...
+# Subtest: insert of an empty string over a selection is a step
+ok 12 - insert of an empty string over a selection is a step
+  ---
+  duration_ms: 0.059875
+  type: 'test'
+  ...
+# Subtest: a new change clears redo
+ok 13 - a new change clears redo
+  ---
+  duration_ms: 0.074666
+  type: 'test'
+  ...
+# Subtest: undo closes the group: typing after undo is a new step
+ok 14 - undo closes the group: typing after undo is a new step
+  ---
+  duration_ms: 0.064125
+  type: 'test'
+  ...
+# Subtest: redo closes the group
+ok 15 - redo closes the group
+  ---
+  duration_ms: 0.060333
+  type: 'test'
+  ...
+# Subtest: transactions are one step with before and after selection
+not ok 16 - transactions are one step with before and after selection
+  ---
+  duration_ms: 0.176625
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:218:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    true !== false
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:233:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: nested transactions join the outer one
+not ok 17 - nested transactions join the outer one
+  ---
+  duration_ms: 0.115333
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:239:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    true !== false
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:251:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: a transaction with no net change creates no step
+not ok 18 - a transaction with no net change creates no step
+  ---
+  duration_ms: 0.087375
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:254:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    true !== false
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:262:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: a failing transaction rolls back and rethrows
+not ok 19 - a failing transaction rolls back and rethrows
+  ---
+  duration_ms: 0.280791
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:266:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    true !== false
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:283:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: a failing inner transaction rolls back only its own changes
+ok 20 - a failing inner transaction rolls back only its own changes
+  ---
+  duration_ms: 0.077166
+  type: 'test'
+  ...
+# Subtest: undo and redo inside a transaction throw
+ok 21 - undo and redo inside a transaction throw
+  ---
+  duration_ms: 0.078041
+  type: 'test'
+  ...
+# Subtest: typing does not merge across a transaction
+not ok 22 - typing does not merge across a transaction
+  ---
+  duration_ms: 0.098792
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:314:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    'abc' !== ''
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: ''
+  actual: 'abc'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zez7bwl6/ws/acceptance_tests/undo.test.ts:326:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: history limit discards the oldest steps
+ok 23 - history limit discards the oldest steps
+  ---
+  duration_ms: 0.044666
+  type: 'test'
+  ...
+# Subtest: extending a typing group does not count against the limit
+ok 24 - extending a typing group does not count against the limit
+  ---
+  duration_ms: 0.041791
+  type: 'test'
+  ...
+# Subtest: history limit 0 keeps nothing
+ok 25 - history limit 0 keeps nothing
+  ---
+  duration_ms: 0.037417
+  type: 'test'
+  ...
+# Subtest: invalid history limits
+ok 26 - invalid history limits
+  ---
+  duration_ms: 0.129875
+  type: 'test'
+  ...
+# Subtest: default limit is 100
+ok 27 - default limit is 100
+  ---
+  duration_ms: 0.144291
+  type: 'test'
+  ...
+1..27
+# tests 27
+# suites 0
+# pass 21
+# fail 6
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 108.603083
+

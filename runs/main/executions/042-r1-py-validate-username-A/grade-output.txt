@@ -1,0 +1,13 @@
+
+test_disallowed_characters (acceptance_tests.test_is_valid_username.IsValidUsernameTest.test_disallowed_characters) ... ok
+test_doubled_separators (acceptance_tests.test_is_valid_username.IsValidUsernameTest.test_doubled_separators) ... ok
+test_first_character_must_be_letter (acceptance_tests.test_is_valid_username.IsValidUsernameTest.test_first_character_must_be_letter) ... ok
+test_length_bounds (acceptance_tests.test_is_valid_username.IsValidUsernameTest.test_length_bounds) ... ok
+test_non_strings (acceptance_tests.test_is_valid_username.IsValidUsernameTest.test_non_strings) ... ok
+test_trailing_separator (acceptance_tests.test_is_valid_username.IsValidUsernameTest.test_trailing_separator) ... ok
+test_valid_names (acceptance_tests.test_is_valid_username.IsValidUsernameTest.test_valid_names) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.000s
+
+OK

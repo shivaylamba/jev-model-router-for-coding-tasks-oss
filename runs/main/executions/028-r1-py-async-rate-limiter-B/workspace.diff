@@ -1,0 +1,635 @@
+ ratelimit/bucket.py   |   5 +
+ ratelimit/limiter.py  | 224 +++++++++++++++++++++++++++++--
+ tests/test_limiter.py | 361 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 579 insertions(+), 11 deletions(-)
+
+diff --git a/ratelimit/bucket.py b/ratelimit/bucket.py
+index 3389fe9..a8a51af 100644
+--- a/ratelimit/bucket.py
++++ b/ratelimit/bucket.py
+@@ -35,6 +35,11 @@ class TokenBucket:
+             return True
+         return False
+ 
++    def put_back(self):
++        """Return one token to the bucket, still capped at burst."""
++        self._refill()
++        self._tokens = min(float(self.burst), self._tokens + 1)
++
+     def time_until_available(self):
+         """Seconds until at least one token is available (0.0 if one is available now)."""
+         self._refill()
+diff --git a/ratelimit/limiter.py b/ratelimit/limiter.py
+index 98e52f3..296cbca 100644
+--- a/ratelimit/limiter.py
++++ b/ratelimit/limiter.py
+@@ -3,29 +3,231 @@
+ See SPEC.md for the full behaviour.
+ """
+ 
++import asyncio
++from collections import deque
++
++from .bucket import TokenBucket
++
++
++class _KeyState:
++    """A key's bucket plus its FIFO queue of pending requests."""
++
++    __slots__ = ("bucket", "queue")
++
++    def __init__(self, rate, burst, clock):
++        self.bucket = TokenBucket(rate, burst, clock)
++        self.queue = deque()
++
++
++class _Request:
++    """One pending acquire: FIFO position, grant state, and its wakeup event."""
++
++    __slots__ = ("seq", "key", "state", "granted", "event")
++
++    def __init__(self, seq, key, state):
++        self.seq = seq
++        self.key = key
++        self.state = state
++        self.granted = False
++        self.event = asyncio.Event()
++
++    @property
++    def is_head(self):
++        return bool(self.state.queue) and self.state.queue[0] is self
++
++
++class _Grant:
++    """Returned by acquire(); consumed by release()."""
++
++    __slots__ = ("_limiter", "_released")
++
++    def __init__(self, limiter):
++        self._limiter = limiter
++        self._released = False
++
++    def release(self):
++        if self._released:
++            raise RuntimeError("release() called twice on the same grant")
++        self._released = True
++        self._limiter._release()
++
++
++class _LimiterContext:
++    """Async context manager returned by limit(key)."""
++
++    __slots__ = ("_limiter", "_key", "_grant")
++
++    def __init__(self, limiter, key):
++        self._limiter = limiter
++        self._key = key
++        self._grant = None
++
++    async def __aenter__(self):
++        self._grant = await self._limiter.acquire(self._key)
++        return self
++
++    async def __aexit__(self, exc_type, exc, tb):
++        self._grant.release()
++        return False
++
+ 
+ class RateLimiter:
+     def __init__(self, rate, burst, max_concurrent, *, clock, sleep):
+-        raise NotImplementedError
++        if not isinstance(rate, (int, float)) or isinstance(rate, bool) or rate <= 0:
++            raise ValueError("rate must be a number > 0")
++        if isinstance(burst, bool) or not isinstance(burst, int) or burst < 1:
++            raise ValueError("burst must be an int >= 1")
++        if (
++            isinstance(max_concurrent, bool)
++            or not isinstance(max_concurrent, int)
++            or max_concurrent < 1
++        ):
++            raise ValueError("max_concurrent must be an int >= 1")
++        self._rate = rate
++        self._burst = burst
++        self._max_concurrent = max_concurrent
++        self._clock = clock
++        self._sleep = sleep
++        self._keys = {}
++        self._seq = 0
++        self._in_use = 0
++        # A single sleeper task (started lazily in an async context) performs
++        # every sleep() on behalf of the limiter; waiting tasks never sleep
++        # themselves, so cancelling one cannot cancel a scheduled wait.
++        self._sleeper = None
++        self._wake = None
++
++    # -- introspection -----------------------------------------------------
++
++    @property
++    def in_use(self):
++        return self._in_use
++
++    def tokens(self, key):
++        state = self._keys.get(key)
++        if state is None:
++            return float(self._burst)
++        return state.bucket.available()
++
++    def waiting(self, key=None):
++        if key is None:
++            return sum(len(s.queue) for s in self._keys.values())
++        state = self._keys.get(key)
++        return len(state.queue) if state is not None else 0
++
++    # -- public operations -------------------------------------------------
+ 
+     async def acquire(self, key):
+         """Wait until a request for `key` is granted (one token and one slot)."""
+-        raise NotImplementedError
++        self._ensure_sleeper()
++        state = self._keys.get(key)
++        if state is None:
++            state = self._keys[key] = _KeyState(self._rate, self._burst, self._clock)
++        self._seq += 1
++        request = _Request(self._seq, key, state)
++        state.queue.append(request)
++        self._grant_pass()
++        if request.granted:
++            return _Grant(self)
++        try:
++            await request.event.wait()
++        except BaseException:
++            # Cancelled (or otherwise unwound) before acquire returned.
++            if request.granted:
++                # Granted but never resumed: undo the grant.
++                request.granted = False
++                self._in_use -= 1
++                state.bucket.put_back()
++            else:
++                try:
++                    state.queue.remove(request)
++                except ValueError:
++                    pass
++            self._grant_pass()
++            raise
++        return _Grant(self)
+ 
+     def release(self):
+         """Free one slot."""
+-        raise NotImplementedError
++        if self._in_use <= 0:
++            raise RuntimeError("release() with no slot held")
++        self._in_use -= 1
++        self._grant_pass()
+ 
+     def limit(self, key):
+         """Async context manager: acquire on entry, release on exit."""
+-        raise NotImplementedError
++        return _LimiterContext(self, key)
+ 
+-    @property
+-    def in_use(self):
+-        raise NotImplementedError
++    # -- internals ---------------------------------------------------------
+ 
+-    def tokens(self, key):
+-        raise NotImplementedError
++    def _release(self):
++        self._in_use -= 1
++        self._grant_pass()
+ 
+-    def waiting(self, key=None):
+-        raise NotImplementedError
++    def _ensure_sleeper(self):
++        if self._sleeper is None:
++            self._wake = asyncio.Event()
++            self._sleeper = asyncio.create_task(self._sleeper_loop())
++
++    def _grant_pass(self):
++        """Grant the eligible head whose acquire came first; repeat.
++
++        A head is eligible when its bucket has a token and a slot is free.
++        Heads that lack only a slot never sleep; heads that lack a token are
++        served by the sleeper task.
++        """
++        while self._in_use < self._max_concurrent:
++            best = None
++            for state in self._keys.values():
++                if not state.queue:
++                    continue
++                head = state.queue[0]
++                if state.bucket.available() < 1:
++                    continue
++                if best is None or head.seq < best.seq:
++                    best = head
++            if best is None:
++                break
++            best.state.queue.popleft()
++            best.state.bucket.try_take()
++            best.granted = True
++            self._in_use += 1
++            best.event.set()
++        if self._wake is not None:
++            # (Re)schedule the token wait; the sleeper recomputes the delay.
++            self._wake.set()
++
++    async def _sleeper_loop(self):
++        """Performs every sleep() for the limiter, exactly one sleep per wait.
++
++        Sleeps precisely the time until the earliest head's bucket reaches one
++        token (computed from clock() at that moment), then runs a grant pass.
++        Heads that only lack a slot are not waited on here.
++        """
++        wake = self._wake
++        while True:
++            await wake.wait()
++            wake.clear()
++            deadline = None
++            for state in self._keys.values():
++                if not state.queue:
++                    continue
++                wait = state.bucket.time_until_available()
++                if wait <= 0:
++                    # Head already has a token; only a slot could be missing,
++                    # and slot waits are resolved by release/cancellation.
++                    continue
++                need_at = self._clock() + wait
++                if deadline is None or need_at < deadline:
++                    deadline = need_at
++            if deadline is None:
++                continue  # nothing to wait for; park until the next grant pass
++            delay = deadline - self._clock()
++            if delay > 0:
++                # Re-check for new state before committing to the sleep;
++                # _grant_pass() pokes `wake` again if anything changed.
++                await asyncio.sleep(0)
++                if wake.is_set():
++                    continue
++                await self._sleep(delay)
++            self._grant_pass()
+diff --git a/tests/test_limiter.py b/tests/test_limiter.py
+new file mode 100644
+index 0000000..0aafe96
+--- /dev/null
++++ b/tests/test_limiter.py
+@@ -0,0 +1,361 @@
++import asyncio
++import unittest
++
++from ratelimit import RateLimiter
++
++from tests.fake_time import FakeTime, settle
++
++
++class ConstructorTest(unittest.TestCase):
++    def test_rejects_bad_args(self):
++        ft = FakeTime()
++        for kwargs in (
++            dict(rate=0),
++            dict(rate=-1),
++            dict(rate="fast"),
++            dict(burst=0),
++            dict(burst=1.5),
++            dict(max_concurrent=0),
++            dict(max_concurrent=2.5),
++        ):
++            base = dict(rate=1.0, burst=1, max_concurrent=1)
++            base.update(kwargs)
++            with self.assertRaises(ValueError, msg=str(kwargs)):
++                RateLimiter(**base, clock=ft.clock, sleep=ft.sleep)
++
++    def test_accepts_valid_args(self):
++        ft = FakeTime()
++        RateLimiter(rate=3, burst=1, max_concurrent=1, clock=ft.clock, sleep=ft.sleep)
++        self.assertTrue(True)  # no error raised
++
++
++class BasicGrantTest(unittest.IsolatedAsyncioTestCase):
++    async def test_grants_synchronously_from_full_bucket(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=1, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        await limiter.acquire("a")
++        self.assertEqual(limiter.in_use, 1)
++        self.assertEqual(limiter.tokens("a"), 0.0)
++        self.assertEqual(ft.sleep_calls, [])
++        limiter.release()
++        self.assertEqual(limiter.in_use, 0)
++
++    async def test_tokens_for_unused_key_is_burst(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=3, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        self.assertEqual(limiter.tokens("nope"), 3.0)
++
++    async def test_release_without_grant_raises(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=1, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        with self.assertRaises(RuntimeError):
++            limiter.release()
++
++    async def test_slot_and_token_consumed_together(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=1, max_concurrent=2,
++                              clock=ft.clock, sleep=ft.sleep)
++        await limiter.acquire("a")
++        # burst is spent for "a", so a second request for "a" waits on the
++        # token even though a slot is free.
++        t = asyncio.create_task(limiter.acquire("a"))
++        await settle()
++        self.assertFalse(t.done())
++        self.assertEqual(limiter.waiting("a"), 1)
++        self.assertEqual(ft.sleep_calls, [1.0])
++        await ft.advance(1.0)
++        await t
++        self.assertEqual(limiter.in_use, 2)
++
++
++class FifoPerKeyTest(unittest.IsolatedAsyncioTestCase):
++    async def test_same_key_fifo(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=1, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        done = []
++
++        async def run(name):
++            await limiter.acquire("a")
++            done.append(name)
++            await asyncio.sleep(0)  # one extra hop before releasing
++            limiter.release()
++
++        tasks = [asyncio.create_task(run(n)) for n in ("a1", "a2", "a3")]
++        await settle()
++        self.assertEqual(done, ["a1"])
++        self.assertEqual(limiter.waiting("a"), 2)
++        # a2 is head with an empty bucket, so the token wait starts immediately
++        self.assertEqual(ft.sleep_calls, [1.0])
++        await ft.advance(1.0)
++        self.assertEqual(done, ["a1", "a2"])
++        self.assertEqual(ft.sleep_calls, [1.0, 1.0])
++        await ft.advance(1.0)
++        self.assertEqual(done, ["a1", "a2", "a3"])
++        await asyncio.gather(*tasks)
++
++
++class GrantPassAcrossKeysTest(unittest.IsolatedAsyncioTestCase):
++    async def test_earliest_caller_with_token_wins(self):
++        # a1 (t=0) holds the only slot; k2 (t=1) is queued before b1 (t=2).
++        # When a1 releases at t=3, b1's bucket has refilled, so b1's request
++        # is also eligible -- but b1 was queued later, so k2 wins.
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=2, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        done = []
++
++        async def run(key, name, grant=None):
++            if grant is None:
++                grant = await limiter.acquire(key)
++            done.append(name)
++            grant.release()
++
++        g = await limiter.acquire("a")
++        done.append("a1")
++        self.assertEqual(limiter.in_use, 1)
++        await ft.advance(1.0)
++        tk = asyncio.create_task(run("k", "k2"))
++        await settle()
++        await ft.advance(1.0)
++        tb = asyncio.create_task(run("b", "b1"))
++        await settle()
++        self.assertEqual(limiter.waiting(), 2)
++        self.assertEqual(ft.sleep_calls, [])  # token-rich: slot wait, no sleeps
++        await ft.advance(1.0)  # t=3: k2 and b1 both have tokens, slot still held
++        await settle()
++        self.assertEqual(done, ["a1"])
++        g.release()            # grant pass runs synchronously inside release()
++        self.assertEqual(limiter.in_use, 1)   # slot immediately re-granted
++        self.assertEqual(limiter.waiting(), 1)  # one request (b1) still queued
++        await tk
++        await tb
++        self.assertEqual(done, ["a1", "k2", "b1"])
++
++    async def test_starved_key_does_not_block_others(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=1, max_concurrent=2,
++                              clock=ft.clock, sleep=ft.sleep)
++        done = []
++
++        async def run(key, name):
++            await limiter.acquire(key)
++            done.append(name)
++            limiter.release()
++
++        a1 = asyncio.create_task(run("a", "a1"))
++        a2 = asyncio.create_task(run("a", "a2"))
++        b1 = asyncio.create_task(run("b", "b1"))
++        await settle()
++        self.assertEqual(done, ["a1", "b1"])
++        self.assertEqual(limiter.waiting("a"), 1)
++        self.assertEqual(ft.sleep_calls, [1.0])
++        await ft.advance(1.0)
++        self.assertEqual(done, ["a1", "b1", "a2"])
++        await asyncio.gather(a1, a2, b1)
++
++    async def test_slot_waiters_do_not_sleep(self):
++        # full buckets + many slots contended: two waiters for distinct keys
++        # wake strictly on release(); sleep() is never called.
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=101, max_concurrent=101,
++                              clock=ft.clock, sleep=ft.sleep)
++        held = [await limiter.acquire(f"k{i}") for i in range(101)]
++        self.assertEqual(limiter.in_use, 101)
++        x = asyncio.create_task(limiter.acquire("x"))
++        y = asyncio.create_task(limiter.acquire("y"))
++        await settle()
++        self.assertEqual(ft.sleep_calls, [])
++        held[0].release()  # frees one slot: "x" was queued first
++        await x
++        self.assertFalse(y.done())
++        held[1].release()
++        await y
++        for g in held[2:]:
++            g.release()
++
++    async def test_release_grants_before_returning(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=2, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        await limiter.acquire("a")
++        p = asyncio.create_task(limiter.acquire("p"))
++        await settle()
++        self.assertEqual(limiter.in_use, 1)
++        limiter.release()
++        self.assertEqual(limiter.in_use, 1)  # immediately re-granted
++        await p
++
++
++class WaitingForTokenTest(unittest.IsolatedAsyncioTestCase):
++    async def test_exact_sleep_delay(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=2.0, burst=1, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        await limiter.acquire("a")
++        limiter.release()
++        t = asyncio.create_task(limiter.acquire("a"))
++        await settle()
++        self.assertFalse(t.done())
++        self.assertEqual(ft.sleep_calls, [0.5])
++        await ft.advance(0.5)
++        await t
++        self.assertEqual(limiter.in_use, 1)
++
++    async def test_delay_computed_from_clock_at_call_time(self):
++        # half a token regained already -> delay is (1 - 0.4) / rate
++        ft = FakeTime()
++        limiter = RateLimiter(rate=2.0, burst=1, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        await limiter.acquire("a")   # t=0: bucket at 0.0
++        limiter.release()
++        await ft.advance(0.2)        # t=0.2: bucket = 0.4 tokens
++        t = asyncio.create_task(limiter.acquire("a"))
++        await settle()
++        self.assertFalse(t.done())
++        self.assertAlmostEqual(ft.sleep_calls[-1], 0.3)
++        await ft.advance(0.3)
++        await t
++
++    async def test_new_head_starts_token_wait_immediately(self):
++        # a2 becomes head for "a" with an empty bucket and starts waiting
++        # for the token right away, even though the slot is also held.
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=1, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        await limiter.acquire("a")  # empties a's bucket, holds the slot
++        a2 = asyncio.create_task(limiter.acquire("a"))
++        b1 = asyncio.create_task(limiter.acquire("b"))
++        await settle()
++        self.assertEqual(ft.sleep_calls, [1.0])  # a2 sleeping on the token
++        limiter.release()        # slot frees; a's bucket still empty, b granted
++        await b1
++        await ft.advance(1.0)    # a's token arrives
++        await a2
++        self.assertEqual(limiter.in_use, 1)
++
++
++class CancellationTest(unittest.IsolatedAsyncioTestCase):
++    async def test_cancel_ungranted_leaves_no_trace(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=1, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        await limiter.acquire("a")
++        t = asyncio.create_task(limiter.acquire("a"))
++        await settle()
++        self.assertEqual(limiter.waiting("a"), 1)
++        t.cancel()
++        with self.assertRaises(asyncio.CancelledError):
++            await t
++        self.assertEqual(limiter.waiting("a"), 0)
++        self.assertEqual(limiter.waiting(), 0)
++        self.assertEqual(limiter.in_use, 1)
++        self.assertEqual(limiter.tokens("a"), 0.0)
++
++    async def test_cancel_head_promotes_next(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=1, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        await limiter.acquire("a")  # holds slot; bucket empty
++        t1 = asyncio.create_task(limiter.acquire("a"))
++        t2 = asyncio.create_task(limiter.acquire("a"))
++        await settle()
++        self.assertEqual(ft.sleep_calls, [1.0])  # t1 waiting for the token
++        t1.cancel()
++        with self.assertRaises(asyncio.CancelledError):
++            await t1
++        self.assertEqual(limiter.waiting("a"), 1)
++        await ft.advance(1.0)  # token arrives while the slot is still held
++        self.assertFalse(t2.done())
++        limiter.release()
++        await settle()
++        self.assertTrue(t2.done())
++        await t2
++        self.assertEqual(limiter.in_use, 1)
++
++    async def test_granted_then_cancelled_undoes_grant(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=1, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        await limiter.acquire("a")
++        t2 = asyncio.create_task(limiter.acquire("b"))
++        await settle()
++        limiter.release()  # grant pass grants t2 inside release()
++        self.assertEqual(limiter.in_use, 1)
++        self.assertEqual(limiter.tokens("b"), 0.0)
++        # cancel before t2's task resumes: the grant must be undone
++        t2.cancel()
++        with self.assertRaises(asyncio.CancelledError):
++            await t2
++        await settle()
++        self.assertEqual(limiter.in_use, 0)
++        self.assertEqual(limiter.tokens("b"), 1.0)  # token put back
++        # and "b" can acquire immediately
++        await limiter.acquire("b")
++        self.assertEqual(limiter.in_use, 1)
++
++    async def test_cancellation_runs_grant_pass(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=1, max_concurrent=1,
++                              clock=ft.clock, sleep=ft.sleep)
++        await limiter.acquire("a")
++        # let a's bucket refill so its head is token-eligible later
++        await ft.advance(1.0)
++        ta = asyncio.create_task(limiter.acquire("a"))
++        tb = asyncio.create_task(limiter.acquire("b"))
++        await settle()
++        self.assertEqual(limiter.waiting(), 2)
++        limiter.release()  # grants ta (earlier seq) -- ta's task hasn't run
++        self.assertEqual(limiter.in_use, 1)
++        ta.cancel()
++        with self.assertRaises(asyncio.CancelledError):
++            await ta
++        # the undo pass freed the slot; b has a token, so tb is granted there
++        await settle()
++        self.assertTrue(tb.done())
++        await tb
++        self.assertEqual(limiter.in_use, 1)
++        # a's token was returned, its bucket is full again
++        self.assertEqual(limiter.tokens("a"), 1.0)
++
++
++class LimitContextManagerTest(unittest.IsolatedAsyncioTestCase):
++    async def test_releases_on_success_and_on_error(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=1.0, burst=101, max_concurrent=2,
++                              clock=ft.clock, sleep=ft.sleep)
++        async with limiter.limit("a"):
++            self.assertEqual(limiter.in_use, 1)
++        self.assertEqual(limiter.in_use, 0)
++        with self.assertRaises(ValueError):
++            async with limiter.limit("a"):
++                raise ValueError("boom")
++        self.assertEqual(limiter.in_use, 0)
++
++    async def test_concurrent_bodies_within_cap(self):
++        ft = FakeTime()
++        limiter = RateLimiter(rate=10.0, burst=101, max_concurrent=3,
++                              clock=ft.clock, sleep=ft.sleep)
++        current = 0
++        peak = 0
++        entered = []
++
++        async def worker(i):
++            nonlocal current, peak
++            async with limiter.limit(f"k{i}"):
++                current += 1
++                peak = max(peak, current)
++                entered.append(i)
++                await asyncio.sleep(0)
++                current -= 1
++
++        await asyncio.gather(*(worker(i) for i in range(5)))
++        self.assertLessEqual(peak, 3)
++        self.assertEqual(sorted(entered), list(range(5)))
++
++
++if __name__ == "__main__":
++    unittest.main()

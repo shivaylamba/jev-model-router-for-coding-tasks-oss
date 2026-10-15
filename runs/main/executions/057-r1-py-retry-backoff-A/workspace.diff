@@ -1,0 +1,88 @@
+ httpclient.py | 17 +++++++++--------
+ retry.py      | 49 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 58 insertions(+), 8 deletions(-)
+
+diff --git a/httpclient.py b/httpclient.py
+index a0657fe..c835539 100644
+--- a/httpclient.py
++++ b/httpclient.py
+@@ -8,15 +8,16 @@ import json
+ import time
+ 
+ from errors import TransientError
++from retry import retry
+ 
+ 
+ def fetch_json(transport, url, sleep=time.sleep):
+     """Return the decoded JSON body at `url`, retrying transient failures."""
+-    last = None
+-    for _ in range(3):
+-        try:
+-            return json.loads(transport.get(url))
+-        except TransientError as exc:
+-            last = exc
+-            sleep(1)
+-    raise last
++    return retry(
++        lambda: json.loads(transport.get(url)),
++        attempts=4,
++        base_delay=0.5,
++        max_delay=4.0,
++        retry_on=TransientError,
++        sleep=sleep,
++    )
+diff --git a/retry.py b/retry.py
+new file mode 100644
+index 0000000..5aa5da9
+--- /dev/null
++++ b/retry.py
+@@ -0,0 +1,49 @@
++"""Reusable retry helpers with exponential backoff."""
++
++import functools
++import time
++
++
++def retry(fn, *, attempts=3, base_delay=0.1, max_delay=5.0,
++          retry_on=(Exception,), sleep=time.sleep, on_retry=None):
++    """Call `fn()` until it succeeds, retrying up to `attempts` total calls.
++
++    After failed call number n (1-based), sleeps
++    min(max_delay, base_delay * 2 ** (n - 1)) unless it was the last attempt.
++    `on_retry(attempt, exc, delay)` is invoked before each wait.
++    Exceptions that are not instances of `retry_on` propagate immediately.
++    """
++    if attempts < 1:
++        raise ValueError("attempts must be >= 1")
++    if base_delay < 0 or max_delay < 0:
++        raise ValueError("delays must be >= 0")
++
++    for n in range(1, attempts + 1):
++        try:
++            return fn()
++        except retry_on as exc:
++            if n == attempts:
++                raise
++            delay = min(max_delay, base_delay * 2 ** (n - 1))
++            if on_retry is not None:
++                on_retry(n, exc, delay)
++            sleep(delay)
++
++
++def retrying(*, attempts=3, base_delay=0.1, max_delay=5.0,
++             retry_on=(Exception,), sleep=time.sleep, on_retry=None):
++    """Decorator factory wrapping a function in `retry` with these options."""
++    def decorator(func):
++        @functools.wraps(func)
++        def wrapper(*args, **kwargs):
++            return retry(
++                lambda: func(*args, **kwargs),
++                attempts=attempts,
++                base_delay=base_delay,
++                max_delay=max_delay,
++                retry_on=retry_on,
++                sleep=sleep,
++                on_retry=on_retry,
++            )
++        return wrapper
++    return decorator

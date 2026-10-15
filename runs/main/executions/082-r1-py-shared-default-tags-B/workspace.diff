@@ -1,0 +1,78 @@
+ notes.py            |  9 ++++-----
+ tests/test_notes.py | 32 +++++++++++++++++++++++++++++++-
+ 2 files changed, 35 insertions(+), 6 deletions(-)
+
+diff --git a/notes.py b/notes.py
+index 9bcdb53..2ceb1ea 100644
+--- a/notes.py
++++ b/notes.py
+@@ -24,15 +24,14 @@ def create_note(title, body="", tags=[], pinned=False):
+     Every note gets its own tags list, and the sequence passed in as `tags` is
+     never modified.
+     """
+-    for index, tag in enumerate(tags):
+-        tags[index] = normalize_tag(tag)
+-    if pinned and "pinned" not in tags:
+-        tags.append("pinned")
++    note_tags = [normalize_tag(tag) for tag in tags]
++    if pinned and "pinned" not in note_tags:
++        note_tags.append("pinned")
+     return {
+         "id": next(_ids),
+         "title": title.strip(),
+         "body": body,
+-        "tags": tags,
++        "tags": note_tags,
+         "pinned": pinned,
+     }
+ 
+diff --git a/tests/test_notes.py b/tests/test_notes.py
+index 5e02181..75861a2 100644
+--- a/tests/test_notes.py
++++ b/tests/test_notes.py
+@@ -1,7 +1,7 @@
+ import unittest
+ 
+ from notes import add_tag, create_note, remove_tag
+-from search import notes_with_tag
++from search import notes_with_tag, tag_counts
+ 
+ 
+ class NotesTest(unittest.TestCase):
+@@ -22,6 +22,36 @@ class NotesTest(unittest.TestCase):
+         b = create_note("b", tags=["y"])
+         self.assertEqual(notes_with_tag([a, b], "Y"), [b])
+ 
++    def test_untagged_notes_do_not_share_tags(self):
++        pinned = create_note("Standup", pinned=True)
++        plain = create_note("Groceries")
++        self.assertEqual(pinned["tags"], ["pinned"])
++        self.assertEqual(plain["tags"], [])
++
++    def test_add_tag_does_not_leak_to_other_notes(self):
++        a = create_note("a")
++        b = create_note("b")
++        add_tag(a, "work")
++        self.assertEqual(b["tags"], [])
++        self.assertEqual(tag_counts([a, b]), {"work": 1})
++
++    def test_tags_argument_is_not_modified(self):
++        shared = ["Home", "Errands"]
++        first = create_note("n1", tags=shared, pinned=True)
++        second = create_note("n2", tags=shared)
++        self.assertEqual(shared, ["Home", "Errands"])
++        self.assertEqual(first["tags"], ["home", "errands", "pinned"])
++        self.assertEqual(second["tags"], ["home", "errands"])
++        self.assertIsNot(first["tags"], second["tags"])
++
++    def test_tags_accepts_tuple(self):
++        note = create_note("t", tags=("X",))
++        self.assertEqual(note["tags"], ["x"])
++
++    def test_pinned_tag_not_duplicated(self):
++        note = create_note("p", tags=["Pinned"], pinned=True)
++        self.assertEqual(note["tags"], ["pinned"])
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

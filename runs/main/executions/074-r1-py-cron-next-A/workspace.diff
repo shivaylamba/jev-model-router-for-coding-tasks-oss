@@ -1,0 +1,158 @@
+ cron.py | 144 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 142 insertions(+), 2 deletions(-)
+
+diff --git a/cron.py b/cron.py
+index a26cda8..40d0ff2 100644
+--- a/cron.py
++++ b/cron.py
+@@ -1,8 +1,148 @@
+ """Cron expression evaluation. The supported syntax is described in SPEC.md."""
+ 
+-from datetime import datetime
++from datetime import datetime, timedelta
++
++MONTH_NAMES = {
++    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
++    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
++}
++
++WEEKDAY_NAMES = {
++    "sun": 0, "mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6,
++}
++
++MACROS = {
++    "yearly": "0 0 1 1 *",
++    "annually": "0 0 1 1 *",
++    "monthly": "0 0 1 * *",
++    "weekly": "0 0 * * 0",
++    "daily": "0 0 * * *",
++    "midnight": "0 0 * * *",
++    "hourly": "0 * * * *",
++}
++
++# field index -> (min, max, names)
++_FIELDS = (
++    (0, 59, None),          # minute
++    (0, 23, None),          # hour
++    (1, 31, None),          # day of month
++    (1, 12, MONTH_NAMES),   # month
++    (0, 7, WEEKDAY_NAMES),  # day of week
++)
++
++# eight years of minutes, generous enough to always span a leap day
++_SEARCH_WINDOW = timedelta(days=8 * 366)
++
++
++def _value(token, lo, hi, names):
++    """Resolve a number or name token to an int within the field's range."""
++    if names and token.lower() in names:
++        v = names[token.lower()]
++    else:
++        try:
++            v = int(token)
++        except ValueError:
++            raise ValueError(f"invalid value {token!r}") from None
++    if not lo <= v <= hi:
++        raise ValueError(f"value {v} outside {lo}-{hi}")
++    return v
++
++
++def _step(token, names):
++    """A step must be a positive integer, never a name."""
++    if names and token.lower() in names:
++        raise ValueError(f"name {token!r} cannot be a step")
++    try:
++        s = int(token)
++    except ValueError:
++        raise ValueError(f"invalid step {token!r}") from None
++    if s <= 0:
++        raise ValueError(f"step must be a positive integer: {token!r}")
++    return s
++
++
++def _parse_field(text, lo, hi, names):
++    """Parse one field into the set of matching values."""
++    values = set()
++    for item in text.split(","):
++        if item == "":
++            raise ValueError("empty item in field")
++        if "/" in item:
++            base, _, step_tok = item.partition("/")
++            if base == "" or "/" in step_tok:
++                raise ValueError(f"malformed item {item!r}")
++            step = _step(step_tok, names)
++        else:
++            base, step = item, None
++
++        if base == "*":
++            start, end = lo, hi
++        elif "-" in base:
++            a_tok, _, b_tok = base.partition("-")
++            if a_tok == "" or b_tok == "":
++                raise ValueError(f"malformed range {base!r}")
++            start = _value(a_tok, lo, hi, names)
++            end = _value(b_tok, lo, hi, names)
++            if start > end:
++                raise ValueError(f"range {base!r} has start greater than end")
++        else:
++            start = _value(base, lo, hi, names)
++            # N/S runs from N to the field maximum; bare N is that one value
++            end = hi if step is not None else start
++
++        values.update(range(start, end + 1, step if step is not None else 1))
++    return values
++
++
++class _Expression:
++    def __init__(self, expr, names_ok=True):
++        fields = expr.split()
++        if len(fields) != 5:
++            raise ValueError(f"expected five fields, got {len(fields)}")
++        parsed = []
++        for text, (lo, hi, names) in zip(fields, _FIELDS):
++            parsed.append(_parse_field(text, lo, hi, names if names_ok else names))
++        self.minutes, self.hours, self.doms, self.months, self.dows = parsed
++        # normalise Sunday: weekday() uses Monday=0, so Sunday is 6 -> 0
++        self.dows = {0 if d == 7 else d for d in self.dows}
++        # a field is unrestricted only when its text starts with *
++        self.dom_unrestricted = fields[2].startswith("*")
++        self.dow_unrestricted = fields[4].startswith("*")
++        self.dom_restricted = not self.dom_unrestricted
++        self.dow_restricted = not self.dow_unrestricted
++
++    def matches(self, dt):
++        if dt.minute not in self.minutes or dt.hour not in self.hours:
++            return False
++        if dt.month not in self.months:
++            return False
++        dow = (dt.weekday() + 1) % 7  # Python Monday=0 -> Sunday=0
++        dom_ok = self.doms and dt.day in self.doms
++        dow_ok = dow in self.dows
++        if self.dom_restricted and self.dow_restricted:
++            return dom_ok or dow_ok
++        return dom_ok and dow_ok
++
++
++def _parse(expr: str) -> _Expression:
++    text = expr.strip()
++    if not text:
++        raise ValueError("empty expression")
++    if text.startswith("@"):
++        macro = text[1:].lower()
++        if macro not in MACROS:
++            raise ValueError(f"unknown macro @{macro}")
++        text = MACROS[macro]
++    return _Expression(text)
+ 
+ 
+ def next_run(expr: str, after: datetime) -> datetime:
+     """The earliest minute strictly after `after` that matches `expr`."""
+-    raise NotImplementedError
++    parsed = _parse(expr)
++    candidate = after.replace(second=0, microsecond=0) + timedelta(minutes=1)
++    deadline = after + _SEARCH_WINDOW
++    while candidate <= deadline:
++        if parsed.matches(candidate):
++            return candidate
++        candidate += timedelta(minutes=1)
++    raise ValueError(f"expression {expr!r} has no matching time within eight years")

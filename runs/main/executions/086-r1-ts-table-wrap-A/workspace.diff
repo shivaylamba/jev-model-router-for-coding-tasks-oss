@@ -1,0 +1,320 @@
+ src/table.ts          | 196 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ test/table.verify.mjs | 104 +++++++++++++++++++++++++++
+ 2 files changed, 299 insertions(+), 1 deletion(-)
+
+diff --git a/src/table.ts b/src/table.ts
+index b1886b8..18907eb 100644
+--- a/src/table.ts
++++ b/src/table.ts
+@@ -8,6 +8,200 @@ export interface TableOptions {
+   header?: boolean;
+ }
+ 
++// Code point ranges that occupy two terminal columns (see SPEC.md).
++const WIDE_RANGES: ReadonlyArray<readonly [number, number]> = [
++  [0x1100, 0x115f],
++  [0x2e80, 0x303e],
++  [0x3041, 0x33ff],
++  [0x3400, 0x4dbf],
++  [0x4e00, 0x9fff],
++  [0xa000, 0xa4cf],
++  [0xac00, 0xd7a3],
++  [0xf900, 0xfaff],
++  [0xfe30, 0xfe4f],
++  [0xff00, 0xff60],
++  [0xffe0, 0xffe6],
++  [0x1f300, 0x1f64f],
++  [0x1f900, 0x1f9ff],
++  [0x20000, 0x3fffd],
++];
++
++function isWide(codePoint: number): boolean {
++  for (const [lo, hi] of WIDE_RANGES) {
++    if (codePoint >= lo && codePoint <= hi) return true;
++  }
++  return false;
++}
++
++/** Terminal-column width of a string, measured per Unicode code point. */
++function displayWidth(text: string): number {
++  let width = 0;
++  for (const char of text) {
++    width += isWide(char.codePointAt(0)!) ? 2 : 1;
++  }
++  return width;
++}
++
++/** Split a cell into paragraphs, each paragraph into non-empty words. */
++function splitParagraphs(cell: string): string[][] {
++  return cell
++    .split("\n")
++    .map((paragraph) => paragraph.split(" ").filter((word) => word.length > 0));
++}
++
++/**
++ * The longest prefix of `word` (in whole code points) whose display width
++ * is at most `width`. By the spec's minimum-width rule, the first code point
++ * always fits, so the result is never empty.
++ */
++function fittingPrefix(word: string, width: number): string {
++  let result = "";
++  let used = 0;
++  for (const char of word) {
++    const charWidth = isWide(char.codePointAt(0)!) ? 2 : 1;
++    if (used + charWidth > width) break;
++    result += char;
++    used += charWidth;
++  }
++  if (result === "") {
++    // Degenerate case (width smaller than the first code point): keep the
++    // first code point whole rather than splitting a surrogate pair.
++    result = Array.from(word)[0]!;
++  }
++  return result;
++}
++
++/** Greedily wrap one paragraph to a column width; an empty word list yields one empty line. */
++function wrapParagraph(words: string[], width: number): string[] {
++  const lines: string[] = [];
++  let current = "";
++  const finish = () => {
++    lines.push(current);
++    current = "";
++  };
++  for (const word of words) {
++    const wordWidth = displayWidth(word);
++    const candidate = current === "" ? word : `${current} ${word}`;
++    if (displayWidth(candidate) <= width) {
++      current = candidate;
++    } else if (wordWidth <= width) {
++      if (current !== "") finish();
++      current = word;
++    } else {
++      if (current !== "") finish();
++      let rest = word;
++      while (displayWidth(rest) > width) {
++        const piece = fittingPrefix(rest, width);
++        lines.push(piece);
++        rest = rest.slice(piece.length);
++      }
++      current = rest;
++    }
++  }
++  finish();
++  return lines;
++}
++
++/** Pad a line to exactly the column width according to its alignment. */
++function pad(line: string, width: number, align: Align): string {
++  const extra = width - displayWidth(line);
++  if (extra <= 0) return line;
++  if (align === "right") return " ".repeat(extra) + line;
++  if (align === "center") {
++    const before = Math.floor(extra / 2);
++    return " ".repeat(before) + line + " ".repeat(extra - before);
++  }
++  return line + " ".repeat(extra);
++}
++
+ export function renderTable(rows: string[][], options: TableOptions = {}): string {
+-  throw new Error("renderTable is not implemented yet");
++  const { maxWidth, align, header } = options;
++
++  if (maxWidth !== undefined) {
++    if (!Number.isInteger(maxWidth) || maxWidth <= 0) {
++      throw new RangeError("maxWidth must be a positive integer");
++    }
++  }
++  if (align !== undefined) {
++    for (const entry of align) {
++      if (entry !== "left" && entry !== "right" && entry !== "center") {
++        throw new RangeError(`invalid alignment: ${String(entry)}`);
++      }
++    }
++  }
++
++  const columnCount = rows.reduce((max, row) => Math.max(max, row.length), 0);
++  if (columnCount === 0) return "";
++
++  // Shorter rows behave as if missing cells were empty strings.
++  const cellsOf = (column: number): string[] =>
++    rows.map((row) => (column < row.length ? row[column] : ""));
++
++  const minWidths: number[] = [];
++  const widths: number[] = [];
++  for (let column = 0; column < columnCount; column++) {
++    const cells = cellsOf(column);
++    let natural = 0;
++    let hasWide = false;
++    for (const cell of cells) {
++      for (const words of splitParagraphs(cell)) {
++        natural = Math.max(natural, displayWidth(words.join(" ")));
++        if (!hasWide && words.some((word) => displayWidth(word) !== word.length)) {
++          hasWide = true;
++        }
++      }
++    }
++    minWidths.push(hasWide ? 2 : 1);
++    widths.push(Math.max(natural, minWidths[column]));
++  }
++
++  const tableWidth = () => widths.reduce((sum, w) => sum + w, 0) + 3 * (columnCount - 1);
++  if (maxWidth !== undefined) {
++    while (tableWidth() > maxWidth) {
++      // Shrink the widest column still above its minimum; rightmost on ties.
++      let target = -1;
++      for (let column = 0; column < widths.length; column++) {
++        if (widths[column] <= minWidths[column]) continue;
++        // `>=` keeps the rightmost column among those tied for widest.
++        if (target === -1 || widths[column] >= widths[target]) target = column;
++      }
++      if (target === -1) {
++        throw new RangeError("table cannot be made to fit within maxWidth");
++      }
++      widths[target]--;
++    }
++  }
++
++  const alignOf = (column: number): Align => (align && align[column]) || "left";
++
++  const wrappedCells: string[][][] = rows.map((row) => {
++    const wrapped: string[][] = [];
++    for (let column = 0; column < columnCount; column++) {
++      const cell = column < row.length ? row[column] : "";
++      const lines: string[] = [];
++      for (const words of splitParagraphs(cell)) {
++        lines.push(...wrapParagraph(words, widths[column]));
++      }
++      wrapped.push(lines);
++    }
++    return wrapped;
++  });
++
++  const lines: string[] = [];
++  wrappedCells.forEach((wrapped, rowIndex) => {
++    const height = Math.max(...wrapped.map((cellLines) => cellLines.length));
++    for (let lineIndex = 0; lineIndex < height; lineIndex++) {
++      const parts: string[] = [];
++      for (let column = 0; column < columnCount; column++) {
++        const line = wrapped[column][lineIndex] ?? "";
++        parts.push(pad(line, widths[column], alignOf(column)));
++      }
++      lines.push(parts.join(" | "));
++    }
++    if (header && rowIndex === 0) {
++      lines.push(widths.map((w) => "-".repeat(w)).join("-+-"));
++    }
++  });
++
++  return lines.join("\n");
+ }
+diff --git a/test/table.verify.mjs b/test/table.verify.mjs
+new file mode 100644
+index 0000000..39aafb7
+--- /dev/null
++++ b/test/table.verify.mjs
+@@ -0,0 +1,104 @@
++import { renderTable } from '../src/table.ts';
++
++let pass = 0, fail = 0;
++function eq(actual, expected, name) {
++  if (actual === expected) { pass++; }
++  else { fail++; console.log(`FAIL ${name}\n  expected: ${JSON.stringify(expected)}\n  actual:   ${JSON.stringify(actual)}`); }
++}
++function throws(fn, name) {
++  try { fn(); fail++; console.log(`FAIL ${name}: no throw`); }
++  catch (e) { if (e instanceof RangeError) pass++; else { fail++; console.log(`FAIL ${name}: threw ${e.constructor.name}: ${e.message}`); } }
++}
++
++// 1. Basic table, no options
++eq(renderTable([["a", "b"], ["ccc", "d"]]),
++   "a   | b\nccc | d", "basic");
++
++// 2. No columns -> ""
++eq(renderTable([]), "", "empty rows");
++eq(renderTable([[], []]), "", "only empty rows");
++
++// 3. Header separator
++eq(renderTable([["Name", "Size"], ["a", "22"]], { header: true }),
++   "Name | Size\n-----+-----\na    | 22  ", "header");
++
++// 4. Alignment
++eq(renderTable([["x", "y", "z"]], { align: ["right", "center", "left"] }),
++   "x | y | z", "align no padding needed");
++eq(renderTable([["x", "y", "z"], ["www", "www", "www"]], { align: ["right", "center", "left"] }),
++   "  x |  y  | z  \nwww | www | www", "align padding");
++
++// 5. Extra align entries ignored, missing default left
++eq(renderTable([["ab", "cd"]], { align: ["right", "left", "right"] }),
++   "ab | cd", "extra align ignored");
++
++// 6. Ragged rows
++eq(renderTable([["long", "x"], ["y"]]),
++   "long | x\ny    |  ", "ragged rows");
++
++// 7. Wide characters count 2
++eq(renderTable([["ab", "你在"], ["cd", "xy"]]),
++   "ab | 你在\ncd | xy  ", "wide chars");
++
++// 8. Shrinking: widest column shrinks first
++eq(renderTable([["aaaaaaaaaa", "bbbbbb"]], { maxWidth: 12 }),
++   "aaaa | bbbbb\naaaa | b    \naa   |      ",
++   "shrink widest");
++
++// 9. Rightmost on tie
++eq(renderTable([["aaaaa", "bbbbb"]], { maxWidth: 12 }),
++   "aaaaa | bbbb\n      | b   ",
++   "tie shrinks rightmost");
++
++// 10. Wrapping behavior (lines are padded to column width, never trimmed)
++eq(renderTable([["  aa   bb  "]], { maxWidth: 3 }),
++   "aa \nbb ", "space normalization + wrap");
++eq(renderTable([["aa bb cc"]], { maxWidth: 3 }),
++   "aa \nbb \ncc ", "greedy wrap");
++eq(renderTable([["aaaa b"]], { maxWidth: 4 }),
++   "aaaa\nb   ", "word starts new line");
++eq(renderTable([["abcdef"]], { maxWidth: 4 }),
++   "abcd\nef  ", "word cut");
++eq(renderTable([["abcdef g"]], { maxWidth: 4 }),
++   "abcd\nef g", "append after cut");
++eq(renderTable([["你你你"]], { maxWidth: 3 }),
++   "你 \n你 \n你 ", "wide word cut, min width 2 kept");;
++eq(renderTable([["你你你"]], { maxWidth: 4 }),
++   "你你\n你  ", "wide word cut width 4");
++
++// 11. Multi-line cell (paragraphs)
++eq(renderTable([["a\nb", "x"]]),
++   "a | x\nb |  ", "paragraphs");
++
++// 12. Empty paragraph produces one empty line
++eq(renderTable([["", "q"]]),
++   "  | q", "empty paragraph");
++
++// 13. Row height padded at bottom
++eq(renderTable([["one two", "x"]], { maxWidth: 7 }),
++   "one | x\ntwo |  ",
++   "row height padding");
++
++// 14. RangeErrors
++throws(() => renderTable([["你"]], { maxWidth: 1 }), "cannot fit min width 2");
++throws(() => renderTable([["ab"]], { maxWidth: 0 }), "maxWidth 0");
++throws(() => renderTable([["ab"]], { maxWidth: -5 }), "maxWidth negative");
++throws(() => renderTable([["ab"]], { maxWidth: 2.5 }), "maxWidth non-integer");
++throws(() => renderTable([["ab"]], { maxWidth: NaN }), "maxWidth NaN");
++throws(() => renderTable([["ab"]], { align: ["middle"] }), "bad align");
++throws(() => renderTable([["ab", "cd", "ef"]], { maxWidth: 3 }), "gaps alone exceed maxWidth");
++
++// 15. Every line exactly table width
++const out = renderTable([["hdr1", "hdr2"], ["a b c", "你你"]], { maxWidth: 11, header: true, align: ["left", "right"] });
++console.log("sample output:");
++console.log(out);
++eq(out.endsWith("\n"), false, "no trailing newline");
++
++// 16. header separator uses '-+-'
++eq(renderTable([["h1", "h2"]], { header: true }).split("\n")[1], "--+--", "separator -+-");
++
++// 17. exact fit at maxWidth
++eq(renderTable([["abc"]], { maxWidth: 3 }), "abc", "exact fit");
++
++console.log(`\n${pass} passed, ${fail} failed`);
++process.exit(fail ? 1 : 0);

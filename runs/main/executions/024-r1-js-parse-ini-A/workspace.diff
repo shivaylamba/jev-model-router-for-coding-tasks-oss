@@ -1,0 +1,200 @@
+ src/ini.js         | 100 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ test/parse.test.js |  79 ++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 179 insertions(+)
+
+diff --git a/src/ini.js b/src/ini.js
+index d9b9cf5..84580c6 100644
+--- a/src/ini.js
++++ b/src/ini.js
+@@ -15,6 +15,106 @@ function needsQuotes(value) {
+   return value !== value.trim() || /["\\\n\t]/.test(value) || value.startsWith('"');
+ }
+ 
++function fail(line, message) {
++  const error = new SyntaxError(`Line ${line}: ${message}`);
++  error.line = line;
++  return error;
++}
++
++const ESCAPES = { '"': '"', "\\": "\\", n: "\n", t: "\t" };
++
++/** Parse a quoted value starting at the opening quote. Line is for errors. */
++function unquote(text, line) {
++  let value = "";
++  let index = 1;
++  while (index < text.length) {
++    const char = text[index];
++    if (char === '"') {
++      if (text.slice(index + 1).trim() !== "") {
++        throw fail(line, "unexpected text after the closing quote");
++      }
++      return value;
++    }
++    if (char === "\\") {
++      const escaped = ESCAPES[text[index + 1]];
++      if (escaped === undefined) {
++        throw fail(line, "unsupported escape in quoted value");
++      }
++      value += escaped;
++      index += 2;
++    } else {
++      value += char;
++      index += 1;
++    }
++  }
++  throw fail(line, "missing closing quote");
++}
++
++/**
++ * Parse INI text to { section: { key: value } }, the dialect stringifyIni
++ * writes (see docs/INI_FORMAT.md). Keys before the first header land in the
++ * "" section. Duplicate sections merge; a repeated key keeps its last value.
++ * Throws a SyntaxError with a numeric 1-based `line` property on bad input.
++ */
++export function parseIni(text) {
++  const lines = text.replace(/\r\n/g, "\n").split("\n");
++  // A single trailing empty element is just the final newline terminator, not a line
++  const lastLine = lines[lines.length - 1] === "" ? lines.length - 1 : lines.length;
++  const result = {};
++  let section = null;
++
++  for (let index = 0; index < lines.length; index += 1) {
++    const number = index + 1;
++    const line = lines[index].trim();
++    if (line === "" || line.startsWith(";") || line.startsWith("#")) continue;
++
++    if (line.startsWith("[")) {
++      if (!line.endsWith("]")) {
++        throw fail(number, "section header does not end with ']'");
++      }
++      const name = line.slice(1, -1).trim();
++      if (name === "") {
++        throw fail(number, "section name must not be empty");
++      }
++      if (!(name in result)) result[name] = {};
++      section = name;
++      continue;
++    }
++
++    const split = line.indexOf("=");
++    if (split === -1) {
++      throw fail(number, "expected a section header or 'key = value'");
++    }
++
++    const key = line.slice(0, split).trim();
++    if (key === "") {
++      throw fail(number, "key must not be empty");
++    }
++
++    let value = line.slice(split + 1).trim();
++    if (value.startsWith('"')) {
++      value = unquote(value, number);
++    } else {
++      while (value.endsWith("\\")) {
++        if (index + 1 >= lastLine) {
++          throw fail(index + 1, "line continuation on the last line of the file");
++        }
++        index += 1;
++        value = `${value.slice(0, -1).trimEnd()} ${lines[index].trim()}`;
++      }
++    }
++
++    const target = section === null ? "" : section;
++    if (!(target in result)) result[target] = {};
++    result[target][key] = value;
++  }
++
++  if ("" in result && Object.keys(result[""]).length === 0) {
++    delete result[""];
++  }
++  return result;
++}
++
+ /**
+  * Serialize { section: { key: value } } to INI text. Keys of the "" section
+  * are written first, without a header. Values are converted with String().
+diff --git a/test/parse.test.js b/test/parse.test.js
+new file mode 100644
+index 0000000..98cf277
+--- /dev/null
++++ b/test/parse.test.js
+@@ -0,0 +1,79 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { parseIni, stringifyIni } from "../src/ini.js";
++
++test("parses the basic example", () => {
++  assert.deepEqual(parseIni("[server]\nport = 8080\n"), { server: { port: "8080" } });
++});
++
++test("keys before the first header go to the '' section; comments and \r\n", () => {
++  const text = "name = api\r\n; note\r\n# other\r\n[s]\r\nx = 1\r\n";
++  assert.deepEqual(parseIni(text), { "": { name: "api" }, s: { x: "1" } });
++});
++
++test("the '' section only appears when it has keys", () => {
++  assert.deepEqual(parseIni("# c\n\n[s]\nx = 1\n"), { s: { x: "1" } });
++});
++
++test("duplicate sections merge, last value wins; empty section and value kept", () => {
++  const text = "[a]\nk = 1\n[b]\n[a]\nk = 2\ne =\n";
++  assert.deepEqual(parseIni(text), { a: { k: "2", e: "" }, b: {} });
++});
++
++test("section order follows first appearance", () => {
++  assert.deepEqual(Object.keys(parseIni("[b]\nx = 1\n[a]\ny = 2\n[b]\nz = 3\n")), ["b", "a"]);
++});
++
++test("no inline comments: ';' and '#' mid-line are ordinary text", () => {
++  assert.deepEqual(parseIni("[s]\nx = a;b # c\n"), { s: { x: "a;b # c" } });
++});
++
++test("quoted values: four escapes, whitespace inside kept", () => {
++  const text = '[s]\nv = " hi \\"x\\"\\\\\\n\\t "\n';
++  assert.deepEqual(parseIni(text), { s: { v: ' hi "x"\\\n\t ' } });
++});
++
++test("a value starting with a real quote must then parse as quoted", () => {
++  const text = '[s]\nv = ""\n';
++  assert.deepEqual(parseIni(text), { s: { v: "" } });
++});
++
++test("line continuation joins trimmed lines with one space and chains", () => {
++  const text = "[s]\na = one\\\n two\\\n;three\nb = x\\\n[not-a-header]\n";
++  assert.deepEqual(parseIni(text), { s: { a: "one two ;three", b: "x [not-a-header]" } });
++});
++
++test("continuation backslash on the last line throws at that line", () => {
++  assert.throws(
++    () => parseIni("ok = 1\n\ncont = a\\\n"),
++    (e) => e instanceof SyntaxError && e.line === 3,
++  );
++});
++
++test("errors are SyntaxError with a numeric 1-based line property", () => {
++  const cases = [
++    ["[]\n", 1],
++    ["[  ]\n", 1],
++    ["[oops\n", 1],
++    ["= v\n", 1],
++    ["just text\n", 1],
++    ['[s]\nv = "x" tail\n', 2],
++    ['[s]\nv = "x\n', 2],
++    ['[s]\nv = "\\q"\n', 2],
++  ];
++  for (const [text, line] of cases) {
++    assert.throws(
++      () => parseIni(text),
++      (e) => e instanceof SyntaxError && typeof e.line === "number" && e.line === line,
++      JSON.stringify(text),
++    );
++  }
++});
++
++test("round-trip: parseIni(stringifyIni(data)) returns the data", () => {
++  const data = {
++    "": { name: "api", padded: " x " },
++    server: { port: "8080", motd: ' hi "there"\nnext\ttab\\' },
++  };
++  assert.deepEqual(parseIni(stringifyIni(data)), data);
++});

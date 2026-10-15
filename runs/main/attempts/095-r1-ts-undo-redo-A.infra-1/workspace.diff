@@ -1,0 +1,253 @@
+ src/editor.ts  |  86 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ src/history.ts | 100 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 185 insertions(+), 1 deletion(-)
+
+diff --git a/src/editor.ts b/src/editor.ts
+index 0544862..6a75eb7 100644
+--- a/src/editor.ts
++++ b/src/editor.ts
+@@ -1,4 +1,5 @@
+ import { isEmpty, normalizeSelection, replaceRange, type Selection } from "./text.ts";
++import { History, type Snapshot } from "./history.ts";
+ 
+ export interface EditorOptions {
+   /** Milliseconds clock used by undo grouping. Defaults to Date.now. */
+@@ -10,11 +11,15 @@ export interface EditorOptions {
+ export class Editor {
+   private content: string;
+   private sel: Selection;
++  private clock: () => number;
++  private history: History;
++  private txBefore: Snapshot[] = [];
+ 
+   constructor(text: string = "", options: EditorOptions = {}) {
+     this.content = text;
+     this.sel = { start: text.length, end: text.length };
+-    void options;
++    this.clock = options.clock ?? Date.now;
++    this.history = new History(options.historyLimit ?? 100);
+   }
+ 
+   get text(): string {
+@@ -28,19 +33,24 @@ export class Editor {
+ 
+   /** Set the selection; offsets are clamped to the text and ordered. `end` defaults to `start`. */
+   select(start: number, end: number = start): void {
++    this.history.closeGroup();
+     this.sel = normalizeSelection(this.content.length, start, end);
+   }
+ 
+   /** Replace the selection with `str` and put the cursor right after it. */
+   insert(str: string): void {
++    const before = this.snapshot();
++    const typing = isEmpty(this.sel) && str.length === 1 && str !== "\n" && this.txBefore.length === 0;
+     const { start, end } = this.sel;
+     this.content = replaceRange(this.content, start, end, str);
+     const cursor = start + str.length;
+     this.sel = { start: cursor, end: cursor };
++    this.history.record(before, this.snapshot(), typing, this.clock);
+   }
+ 
+   /** Delete the selection, or the character before the cursor when the selection is empty. */
+   deleteBackward(): void {
++    const before = this.snapshot();
+     const { start, end } = this.sel;
+     if (!isEmpty(this.sel)) {
+       this.content = replaceRange(this.content, start, end, "");
+@@ -49,10 +59,12 @@ export class Editor {
+       this.content = replaceRange(this.content, start - 1, start, "");
+       this.sel = { start: start - 1, end: start - 1 };
+     }
++    this.history.record(before, this.snapshot(), false, this.clock);
+   }
+ 
+   /** Delete the selection, or the character after the cursor when the selection is empty. */
+   deleteForward(): void {
++    const before = this.snapshot();
+     const { start, end } = this.sel;
+     if (!isEmpty(this.sel)) {
+       this.content = replaceRange(this.content, start, end, "");
+@@ -60,5 +72,77 @@ export class Editor {
+     } else if (start < this.content.length) {
+       this.content = replaceRange(this.content, start, start + 1, "");
+     }
++    this.history.record(before, this.snapshot(), false, this.clock);
++  }
++
++  /** Revert the most recent step, restoring text and selection. False when nothing to undo. */
++  undo(): boolean {
++    this.checkTransaction("undo");
++    const snapshot = this.history.undo();
++    this.history.closeGroup();
++    if (!snapshot) return false;
++    this.restore(snapshot);
++    return true;
++  }
++
++  /** Re-apply the most recently undone step. False when nothing to redo. */
++  redo(): boolean {
++    this.checkTransaction("redo");
++    const snapshot = this.history.redo();
++    this.history.closeGroup();
++    if (!snapshot) return false;
++    this.restore(snapshot);
++    return true;
++  }
++
++  canUndo(): boolean {
++    return this.history.canUndo();
++  }
++
++  canRedo(): boolean {
++    return this.history.canRedo();
++  }
++
++  /**
++   * Run fn as one undo step: before = state at the call, after = state when fn
++   * returns. Nested calls join the outermost one. If fn throws, text and
++   * selection are restored, no step is created and the error is rethrown.
++   */
++  transact<T>(fn: () => T): T {
++    const outermost = this.txBefore.length === 0;
++    if (outermost) {
++      this.history.closeGroup();
++    }
++    const before = this.snapshot();
++    this.txBefore.push(before);
++    let result: T;
++    try {
++      result = fn();
++    } catch (error) {
++      this.txBefore.pop();
++      this.restore(before);
++      throw error;
++    }
++    this.txBefore.pop();
++    if (outermost) {
++      this.history.record(before, this.snapshot(), false, this.clock);
++      this.history.closeGroup();
++    }
++    return result;
++  }
++
++  private snapshot(): Snapshot {
++    return { text: this.content, selection: { ...this.sel } };
++  }
++
++  private restore(snapshot: Snapshot): void {
++    this.content = snapshot.text;
++    this.sel = { ...snapshot.selection };
++  }
++
++  private checkTransaction(method: string): void {
++    if (this.txBefore.length > 0) {
++      throw new Error(`${method}() cannot be called while a transaction is running`);
++    }
+   }
+ }
+diff --git a/src/history.ts b/src/history.ts
+new file mode 100644
+index 0000000..415147a
+--- /dev/null
++++ b/src/history.ts
+@@ -0,0 +1,100 @@
++import type { Selection } from "./text.ts";
++
++/** The text and the selection at one point in time, the state an undo step restores. */
++export interface Snapshot {
++  text: string;
++  selection: Selection;
++}
++
++/** A revertible change: the state before and after it. */
++interface Step {
++  before: Snapshot;
++  after: Snapshot;
++}
++
++const DEFAULT_LIMIT = 100;
++
++/**
++ * Undo/redo bookkeeping for the Editor: sees every edit as the state before
++ * and after it, groups single-character typing, and enforces the step limit.
++ * Editing itself stays in editor.ts.
++ */
++export class History {
++  private limit: number;
++  private steps: Step[] = [];
++  private next = 0; // steps[0:next] are undoable, steps[next:] are redoable
++  private group: Step | null = null;
++  private groupAt = 0;
++
++  constructor(limit: number = DEFAULT_LIMIT) {
++    if (!Number.isInteger(limit) || limit < 0) {
++      throw new RangeError(`historyLimit must be an integer >= 0, got ${limit}`);
++    }
++    this.limit = limit;
++  }
++
++  canUndo(): boolean {
++    return this.next > 0;
++  }
++
++  canRedo(): boolean {
++    return this.next < this.steps.length;
++  }
++
++  /**
++   * Record an edit. True typing inserts may extend the open typing group
++   * (see docs/UNDO.md); anything else is its own step. No-op edits leave both
++   * stacks alone. Returns the step the undo stack grew by (0 or 1).
++   */
++  record(before: Snapshot, after: Snapshot, isTyping: boolean, clock: () => number): void {
++    if (before.text === after.text) return;
++    if (isTyping) {
++      const now = clock();
++      if (this.group !== null && this.next === this.steps.length && now - this.groupAt < 1000) {
++        // Chained onto a keystroke less than a second ago: same group, same
++        // original "before", the latest state is the new "after". Not a new
++        // step for the limit, but anything undone is obsolete either way.
++        this.group.after = after;
++        this.groupAt = now;
++        this.steps.length = this.next;
++        return;
++      }
++      this.group = null;
++    } else {
++      this.group = null;
++    }
++    const step: Step = { before, after };
++    this.steps.length = this.next;
++    if (this.limit !== 0) {
++      this.steps.push(step);
++      if (this.steps.length > this.limit) {
++        this.steps.shift();
++      }
++      this.next = this.steps.length;
++      if (isTyping) {
++        this.group = step;
++        this.groupAt = clock();
++      }
++    }
++  }
++
++  /** Undo the latest step; returns its "before" state, or null when empty. */
++  undo(): Snapshot | null {
++    if (!this.canUndo()) return null;
++    this.next -= 1;
++    return this.steps[this.next].before;
++  }
++
++  /** Redo the latest undone step; returns its "after" state, or null when empty. */
++  redo(): Snapshot | null {
++    if (!this.canRedo()) return null;
++    const step = this.steps[this.next];
++    this.next += 1;
++    return step.after;
++  }
++
++  /** Close the open typing group without touching the stacks. */
++  closeGroup(): void {
++    this.group = null;
++  }
++}

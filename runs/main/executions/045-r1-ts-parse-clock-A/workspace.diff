@@ -1,0 +1,45 @@
+ src/clock.ts | 34 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
+
+diff --git a/src/clock.ts b/src/clock.ts
+index e742cdb..20ab333 100644
+--- a/src/clock.ts
++++ b/src/clock.ts
+@@ -9,3 +9,37 @@ export function formatClock(minutes: number): string {
+   const mins = minutes % 60;
+   return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+ }
++
++/**
++ * Parse a shift-time string into minutes after midnight.
++ *
++ * Accepts 24-hour ("19:30", "7:05") and 12-hour ("7:30 pm", "7pm", "9 Am")
++ * forms, ignoring surrounding whitespace. Throws RangeError when the shape
++ * matches but a number is out of range, SyntaxError otherwise.
++ */
++export function parseClock(input: string): number {
++  const text = input.trim();
++
++  const m24 = /^(\d{1,2}):(\d{2})$/.exec(text);
++  if (m24) {
++    const hours = Number(m24[1]);
++    const mins = Number(m24[2]);
++    if (hours > 23 || mins > 59) {
++      throw new RangeError(`time out of range: ${input}`);
++    }
++    return hours * 60 + mins;
++  }
++
++  const m12 = /^(\d{1,2})(?::(\d{2}))?\s*([aApP])[mM]$/.exec(text);
++  if (m12) {
++    const hour = Number(m12[1]);
++    const mins = m12[2] === undefined ? 0 : Number(m12[2]);
++    if (hour < 1 || hour > 12 || mins > 59) {
++      throw new RangeError(`time out of range: ${input}`);
++    }
++    const pm = m12[3] === "p" || m12[3] === "P";
++    return ((hour % 12) + (pm ? 12 : 0)) * 60 + mins;
++  }
++
++  throw new SyntaxError(`unrecognized time: ${input}`);
++}

@@ -1,0 +1,27 @@
+
+test_confirm_after_expiry_is_refused (acceptance_tests.test_reservation_bugs.ConfirmTest.test_confirm_after_expiry_is_refused) ... ok
+test_confirm_released (acceptance_tests.test_reservation_bugs.ConfirmTest.test_confirm_released) ... ok
+test_confirm_stays_confirmed_after_ttl (acceptance_tests.test_reservation_bugs.ConfirmTest.test_confirm_stays_confirmed_after_ttl) ... ok
+test_double_confirm (acceptance_tests.test_reservation_bugs.ConfirmTest.test_double_confirm) ... ok
+test_expired_holds_stop_counting_without_a_sweep (acceptance_tests.test_reservation_bugs.ExpiryTest.test_expired_holds_stop_counting_without_a_sweep) ... ok
+test_expiry_boundary (acceptance_tests.test_reservation_bugs.ExpiryTest.test_expiry_boundary) ... ok
+test_stock_freed_by_expiry_can_be_reserved (acceptance_tests.test_reservation_bugs.ExpiryTest.test_stock_freed_by_expiry_can_be_reserved) ... ok
+test_sweep_makes_no_difference (acceptance_tests.test_reservation_bugs.ExpiryTest.test_sweep_makes_no_difference) ... ok
+test_sweep_returns_number_marked (acceptance_tests.test_reservation_bugs.ExpiryTest.test_sweep_returns_number_marked) ... ok
+test_distinct_requests_get_distinct_holds (acceptance_tests.test_reservation_bugs.IdempotencyTest.test_distinct_requests_get_distinct_holds) ... ok
+test_failed_reservation_is_not_remembered (acceptance_tests.test_reservation_bugs.IdempotencyTest.test_failed_reservation_is_not_remembered) ... ok
+test_retry_after_confirm (acceptance_tests.test_reservation_bugs.IdempotencyTest.test_retry_after_confirm) ... ok
+test_retry_after_expiry_returns_expired_hold (acceptance_tests.test_reservation_bugs.IdempotencyTest.test_retry_after_expiry_returns_expired_hold) ... ok
+test_retry_does_not_fail_when_stock_is_now_short (acceptance_tests.test_reservation_bugs.IdempotencyTest.test_retry_does_not_fail_when_stock_is_now_short) ... ok
+test_retry_returns_same_hold (acceptance_tests.test_reservation_bugs.IdempotencyTest.test_retry_returns_same_hold) ... ok
+test_retry_with_different_parameters (acceptance_tests.test_reservation_bugs.IdempotencyTest.test_retry_with_different_parameters) ... ok
+test_validation (acceptance_tests.test_reservation_bugs.IdempotencyTest.test_validation) ... ok
+test_double_release (acceptance_tests.test_reservation_bugs.ReleaseTest.test_double_release) ... ok
+test_double_release_does_not_allow_overselling (acceptance_tests.test_reservation_bugs.ReleaseTest.test_double_release_does_not_allow_overselling) ... ok
+test_release_after_confirm (acceptance_tests.test_reservation_bugs.ReleaseTest.test_release_after_confirm) ... ok
+test_unknown_hold (acceptance_tests.test_reservation_bugs.ReleaseTest.test_unknown_hold) ... ok
+
+----------------------------------------------------------------------
+Ran 21 tests in 0.001s
+
+OK

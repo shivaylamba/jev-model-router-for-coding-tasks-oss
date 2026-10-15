@@ -1,0 +1,130 @@
+ src/site.js | 111 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 104 insertions(+), 7 deletions(-)
+
+diff --git a/src/site.js b/src/site.js
+index 410771c..7e343c5 100644
+--- a/src/site.js
++++ b/src/site.js
+@@ -1,6 +1,108 @@
+ import { defaultLayout } from "./layout.js";
+ import { renderMarkdown } from "./markdown.js";
+ 
++const HOOKS = ["beforeRender", "afterRender", "onComplete"];
++
++/** Error thrown when a plugin hook throws, rejects or returns the wrong type. */
++export class PluginError extends Error {
++  constructor(plugin, hook, cause) {
++    super(`plugin "${plugin}" failed in ${hook}: ${cause?.message ?? cause}`, { cause });
++    this.name = "PluginError";
++    this.plugin = plugin;
++    this.hook = hook;
++  }
++}
++
++function validatePlugin(plugin) {
++  if (typeof plugin !== "object" || plugin === null || Array.isArray(plugin)) {
++    throw new TypeError("plugin must be an object");
++  }
++  if (typeof plugin.name !== "string" || plugin.name === "") {
++    throw new TypeError("plugin.name must be a non-empty string");
++  }
++  for (const hook of HOOKS) {
++    if (hook in plugin && typeof plugin[hook] !== "function") {
++      throw new TypeError(`plugin "${plugin.name}": ${hook} must be a function`);
++    }
++  }
++}
++
++/**
++ * Create a site builder with plugin support. `use(plugin)` registers a plugin
++ * and returns the site so calls chain. `build(pages)` resolves with the same
++ * Map that `buildSite` returns; see docs/plugins.md for hook semantics.
++ */
++export function createSite({ layout = defaultLayout } = {}) {
++  const plugins = [];
++  const names = new Set();
++
++  async function runHook(plugin, hook, args) {
++    try {
++      return await plugin[hook](...args);
++    } catch (err) {
++      throw new PluginError(plugin.name, hook, err);
++    }
++  }
++
++  async function build(pages) {
++    const outputs = new Map();
++    for (const sourcePage of pages) {
++      let page = { ...sourcePage };
++      for (const plugin of plugins) {
++        if (plugin.beforeRender === undefined) continue;
++        const result = await runHook(plugin, "beforeRender", [page]);
++        if (result === undefined) continue;
++        if (typeof result !== "object" || result === null) {
++          throw new PluginError(
++            plugin.name,
++            "beforeRender",
++            new TypeError("beforeRender must return an object or undefined"),
++          );
++        }
++        page = result;
++      }
++
++      const content = renderMarkdown(page.body);
++      let html = layout({ title: page.title, content, path: page.path });
++      for (const plugin of plugins) {
++        if (plugin.afterRender === undefined) continue;
++        const result = await runHook(plugin, "afterRender", [html, page]);
++        if (result === undefined) continue;
++        if (typeof result !== "string") {
++          throw new PluginError(
++            plugin.name,
++            "afterRender",
++            new TypeError("afterRender must return a string or undefined"),
++          );
++        }
++        html = result;
++      }
++
++      outputs.set(outputPath(page.path), html);
++    }
++
++    for (const plugin of plugins) {
++      if (plugin.onComplete !== undefined) {
++        await runHook(plugin, "onComplete", [outputs]);
++      }
++    }
++    return outputs;
++  }
++
++  return {
++    use(plugin) {
++      validatePlugin(plugin);
++      if (names.has(plugin.name)) {
++        throw new Error(`a plugin named "${plugin.name}" is already registered`);
++      }
++      names.add(plugin.name);
++      plugins.push(plugin);
++      return this;
++    },
++    build,
++  };
++}
++
+ /** "guide/intro.md" -> "guide/intro.html" */
+ export function outputPath(sourcePath) {
+   return sourcePath.replace(/\.md$/, "") + ".html";
+@@ -10,11 +112,6 @@ export function outputPath(sourcePath) {
+  * Render every page. Pages are { path, title, body }; the result maps each
+  * output path to its HTML, in page order.
+  */
+-export async function buildSite(pages, { layout = defaultLayout } = {}) {
+-  const outputs = new Map();
+-  for (const page of pages) {
+-    const content = renderMarkdown(page.body);
+-    outputs.set(outputPath(page.path), layout({ title: page.title, content, path: page.path }));
+-  }
+-  return outputs;
++export async function buildSite(pages, options) {
++  return createSite(options).build(pages);
+ }

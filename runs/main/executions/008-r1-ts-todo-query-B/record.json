@@ -1,0 +1,357 @@
+{
+  "run_id": "main",
+  "seq": 8,
+  "repetition": 1,
+  "task_id": "ts-todo-query",
+  "category": "feature",
+  "difficulty": "medium",
+  "language": "typescript",
+  "condition": "B",
+  "condition_label": "Router on: Auto with Jev",
+  "pair_position": "second",
+  "started_at": "2026-10-14T17:32:05.187Z",
+  "ended_at": "2026-10-14T17:36:50.133Z",
+  "duration_s": 283.35,
+  "termination": "completed",
+  "exit_code": 0,
+  "passed": true,
+  "tests_total": 15,
+  "tests_failed": 0,
+  "grade_timed_out": false,
+  "claude_code_version": "2.1.299",
+  "claude_session_model": "nebius-auto[1m]",
+  "claude_tools_available": 18,
+  "assistant_messages": 27,
+  "tool_calls": 29,
+  "tool_calls_by_name": {
+    "Read": 7,
+    "Bash": 15,
+    "Edit": 6,
+    "Write": 1
+  },
+  "tool_errors": 9,
+  "output_limit_resumes": 0,
+  "ttft_visible_s": 179.666,
+  "first_output_s": 31.113,
+  "first_assistant_text_s": 180.047,
+  "first_stream_event_s": 1.026,
+  "result_subtype": "success",
+  "result_is_error": false,
+  "num_turns": 30,
+  "claude_duration_ms": 281621,
+  "claude_api_duration_ms": 280054,
+  "claude_reported_usage": {
+    "input_tokens": 521873,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 20625,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "",
+    "iterations": [],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "claude_reported_cost_usd_not_applicable": 3.12499,
+  "has_result_event": true,
+  "upstream_requests": 29,
+  "upstream_requests_by_kind": {
+    "jev_warmup": 1,
+    "jev": 1,
+    "agent": 27
+  },
+  "upstream_status_counts": {
+    "200": 29
+  },
+  "upstream_retries": 0,
+  "upstream_errors": 0,
+  "upstream_aborted": 0,
+  "upstream_requests_without_usage": 0,
+  "unknown_price_models": [],
+  "by_model": {
+    "zai-org/GLM-5.3": {
+      "requests": 7,
+      "prompt_tokens": 103316,
+      "completion_tokens": 9308,
+      "cached_tokens": 35392,
+      "reasoning_tokens": 8812,
+      "cost_usd": 0.185598,
+      "cost_usd_cache_free": 0.136049,
+      "requests_without_usage": 0,
+      "estimated_cost_usd": 0.0
+    },
+    "moonshotai/Kimi-K3": {
+      "requests": 20,
+      "prompt_tokens": 418557,
+      "completion_tokens": 11317,
+      "cached_tokens": 384384,
+      "reasoning_tokens": 0,
+      "cost_usd": 1.425426,
+      "cost_usd_cache_free": 0.272274,
+      "requests_without_usage": 0,
+      "estimated_cost_usd": 0.0
+    }
+  },
+  "tokens": {
+    "jev_input_tokens": 1040,
+    "foreground_prompt_tokens": 521873,
+    "foreground_completion_tokens": 20625,
+    "foreground_cached_tokens": 419776,
+    "foreground_reasoning_tokens": 8812
+  },
+  "cost_foreground_usd": 1.611024,
+  "cost_background_usd": 0.0,
+  "cost_jev_usd": 4.4e-05,
+  "cost_unmetered_estimate_usd": 0.0,
+  "cost_foreground_cache_free_usd": 0.408323,
+  "cost_background_cache_free_usd": 0.0,
+  "jev_calls": [
+    {
+      "kind": "jev_warmup",
+      "ms": 441,
+      "status": 200,
+      "error": null,
+      "response_model": "jev-1.13.0",
+      "choice": "routine",
+      "probabilities": {
+        "routine": 1,
+        "moderate": 0,
+        "hard": 0
+      },
+      "input_tokens": 417,
+      "usage_estimated": false,
+      "cost_usd": 1.7514e-05
+    },
+    {
+      "kind": "jev",
+      "ms": 329,
+      "status": 200,
+      "error": null,
+      "response_model": "jev-1.13.0",
+      "choice": "moderate",
+      "probabilities": {
+        "routine": 0,
+        "moderate": 0.96,
+        "hard": 0.04
+      },
+      "input_tokens": 623,
+      "usage_estimated": false,
+      "cost_usd": 2.6166e-05
+    }
+  ],
+  "upstream_header_ms_median": 629,
+  "foreground_models": [
+    "moonshotai/Kimi-K3",
+    "zai-org/GLM-5.3"
+  ],
+  "auto_routes": [
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "zai-org/GLM-5.3"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "zai-org/GLM-5.3"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "zai-org/GLM-5.3"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "zai-org/GLM-5.3"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "zai-org/GLM-5.3"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "zai-org/GLM-5.3"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "zai-org/GLM-5.3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    }
+  ],
+  "auto_tier_counts": {
+    "balanced": 7,
+    "strong": 20
+  },
+  "auto_reason_counts": {
+    "decider_moderate": 7,
+    "stuck": 20
+  },
+  "auto_first_tier": "balanced",
+  "auto_tiers_used": [
+    "balanced",
+    "strong"
+  ],
+  "auto_escalations": 1,
+  "auto_downshifts": 0,
+  "auto_stuck_routes": 20,
+  "decider_events": [
+    {
+      "decider": "jev",
+      "difficulty": 0,
+      "ms": 445
+    },
+    {
+      "decider": "jev",
+      "difficulty": 0.52,
+      "ms": 330
+    }
+  ],
+  "decider_no_answer": 0,
+  "decider_late": 0,
+  "nconnect_estimated_cost_usd": 1.611022,
+  "reasoning_effort_counts": {
+    "None": 7,
+    "none": 20
+  },
+  "nebius_stream_requests_logged": 27,
+  "nconnect_session_cost_usd": 1.611,
+  "nconnect_session_input_tokens": 521873,
+  "nconnect_session_cached_tokens": 419776,
+  "nconnect_session_output_tokens": 20625,
+  "nconnect_by_model_line": "Kimi K3 $1.4254 \u00b7 GLM 5.3 $0.1856",
+  "nconnect_session_id": "nconnect-9uE4V9LwP4QnjYayT5xXJnPqaDRQajen",
+  "jev_task_decisions": 1,
+  "jev_decision_ms": 329,
+  "jev_decision_choice": "moderate",
+  "jev_model_version": "jev-1.13.0",
+  "cost_total_usd": 1.611068,
+  "cost_basis": "estimated: provider-reported tokens x prices snapshotted in the manifest; cached input at the full input rate (no published cached price)",
+  "contamination_flags": [],
+  "anomalies": [],
+  "versions": {
+    "nconnect_bundle_sha256": "db122e2754730104b6dd6854ad39161018a219c09baeb53090bd1684331ef9b0",
+    "nconnect_version": "nconnect v0.23.0",
+    "nconnect_source_commit": "66bf93fd609b30f1ce40e44d748bcb1b025355a7",
+    "nconnect_provenance": "The installed bundle (~/.nconnect/bin/nconnect.js) is byte-identical to https://nconnect.sh/nconnect.js, which Vercel builds from main at 66bf93f (PR #32 merge, v0.23.0).",
+    "claude_code": "2.1.299 (Claude Code)",
+    "claude_code_binary_sha256": "ba5ab7b8c195fa03ab8d5bf3915c76153b576a2c40e79a5c46e265e7ed9744b3",
+    "node": "v24.18.1",
+    "node_binary_sha256": "f480e325ee0ca9cb9eef00b5ca6057a2a104807a1b073f1bc373a55c67facff5",
+    "python": "Python 3.11.5",
+    "bun": "1.4.2",
+    "os": "26.5.2"
+  }
+}

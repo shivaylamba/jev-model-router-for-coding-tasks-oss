@@ -1,0 +1,510 @@
+ src/equality.ts       |  31 ++++++++
+ src/ref.ts            |  49 ++++++++++++
+ src/validate.ts       | 150 ++++++++++++++++++++++++++++++++++--
+ test/validate.test.ts | 206 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 428 insertions(+), 8 deletions(-)
+
+diff --git a/src/equality.ts b/src/equality.ts
+new file mode 100644
+index 0000000..f76b42d
+--- /dev/null
++++ b/src/equality.ts
+@@ -0,0 +1,31 @@
++import type { Json } from "./types.ts";
++
++/**
++ * Deep JSON equality (SPEC.md "Equality"): different JSON types are never
++ * equal; arrays compare element-wise in order; objects compare by member set,
++ * ignoring member order.
++ */
++export function jsonEquals(a: Json, b: Json): boolean {
++  if (a === b) return true;
++  if (typeof a !== typeof b) return false;
++  if (a === null || b === null) return false;
++
++  if (Array.isArray(a)) {
++    if (!Array.isArray(b) || a.length !== b.length) return false;
++    for (let i = 0; i < a.length; i++) {
++      if (!jsonEquals(a[i], b[i])) return false;
++    }
++    return true;
++  }
++
++  if (typeof b !== "object" || Array.isArray(b)) return false;
++
++  const keysA = Object.keys(a);
++  const keysB = Object.keys(b);
++  if (keysA.length !== keysB.length) return false;
++  for (const key of keysA) {
++    if (!Object.hasOwn(b, key)) return false;
++    if (!jsonEquals(a[key], b[key])) return false;
++  }
++  return true;
++}
+diff --git a/src/ref.ts b/src/ref.ts
+new file mode 100644
+index 0000000..b7a08d6
+--- /dev/null
++++ b/src/ref.ts
+@@ -0,0 +1,49 @@
++import type { Schema } from "./types.ts";
++import { SchemaError } from "./types.ts";
++
++/** Decode one JSON Pointer reference token (~1 → /, ~0 → ~; decode ~1 first). */
++export function decodeToken(token: string): string {
++  return token.replace(/~1/g, "/").replace(/~0/g, "~");
++}
++
++/**
++ * Resolve a local $ref ("#" or "#/...") against the root schema.
++ * Throws SchemaError for non-local refs or refs that point to nothing.
++ */
++export function resolveRef(ref: string, rootSchema: Schema): Schema {
++  if (typeof ref !== "string" || !ref.startsWith("#")) {
++    throw new SchemaError(`Unsupported $ref "${ref}": only local refs starting with "#" are supported`);
++  }
++  const pointer = ref.slice(1);
++  if (pointer === "") return rootSchema;
++  if (!pointer.startsWith("/")) {
++    throw new SchemaError(`Unsupported $ref "${ref}": not a JSON Pointer`);
++  }
++
++  let current: unknown = rootSchema;
++  for (const rawToken of pointer.slice(1).split("/")) {
++    const token = decodeToken(rawToken);
++    if (Array.isArray(current)) {
++      const index = Number(token);
++      if (!Number.isInteger(index) || index < 0 || index >= current.length) {
++        throw new SchemaError(`Unresolvable $ref "${ref}": no element at "${token}"`);
++      }
++      current = current[index];
++    } else if (typeof current === "object" && current !== null) {
++      if (!Object.hasOwn(current, token)) {
++        throw new SchemaError(`Unresolvable $ref "${ref}": no member "${token}"`);
++      }
++      current = (current as Record<string, unknown>)[token];
++    } else {
++      throw new SchemaError(`Unresolvable $ref "${ref}": cannot descend into "${token}"`);
++    }
++  }
++
++  const isSchema =
++    typeof current === "boolean" ||
++    (typeof current === "object" && current !== null && !Array.isArray(current));
++  if (!isSchema) {
++    throw new SchemaError(`Unresolvable $ref "${ref}": target is not a schema`);
++  }
++  return current as Schema;
++}
+diff --git a/src/validate.ts b/src/validate.ts
+index 69928a2..36cb74c 100644
+--- a/src/validate.ts
++++ b/src/validate.ts
+@@ -1,8 +1,10 @@
+ import { appendPointer } from "./pointer.ts";
++import { jsonEquals } from "./equality.ts";
++import { resolveRef } from "./ref.ts";
+ import type { Json, Schema, SchemaObject, ValidationError } from "./types.ts";
+ 
+-// First version: supports `type`, `required` and `properties` only.
+-// See SPEC.md for the full set of keywords we need.
++// Validators for the tinyschema keyword subset — see SPEC.md for the
++// reporting rules each keyword follows.
+ 
+ function isPlainObject(value: unknown): value is { [key: string]: Json } {
+   return typeof value === "object" && value !== null && !Array.isArray(value);
+@@ -29,7 +31,37 @@ function matchesType(value: Json, type: string): boolean {
+   }
+ }
+ 
+-function check(schema: Schema, value: Json, path: string, errors: ValidationError[]): void {
++/** Length in Unicode code points, not UTF-16 code units. */
++function codePointLength(value: string): number {
++  return [...value].length;
++}
++
++function compilePattern(source: unknown): RegExp | undefined {
++  if (typeof source !== "string") return undefined;
++  try {
++    return new RegExp(source, "u");
++  } catch {
++    return undefined;
++  }
++}
++
++interface Context {
++  rootSchema: Schema;
++  /** (ref, path) pairs currently being resolved, to break $ref cycles. */
++  resolving: Set<string>;
++}
++
++function checkAny(schema: Schema, value: Json, path: string, ctx: Context, errors: ValidationError[]): void {
++  check(schema, value, path, ctx, errors);
++}
++
++function countErrors(schema: Schema, value: Json, path: string, ctx: Context): number {
++  const sub: ValidationError[] = [];
++  check(schema, value, path, ctx, sub);
++  return sub.length;
++}
++
++function check(schema: Schema, value: Json, path: string, ctx: Context, errors: ValidationError[]): void {
+   if (schema === true) return;
+   if (schema === false) {
+     errors.push({ path, keyword: "false" });
+@@ -37,28 +69,130 @@ function check(schema: Schema, value: Json, path: string, errors: ValidationErro
+   }
+   const s = schema as SchemaObject;
+ 
++  if (typeof s.$ref === "string") {
++    const key = `${s.$ref}@${path}`;
++    if (!ctx.resolving.has(key)) {
++      ctx.resolving.add(key);
++      try {
++        check(resolveRef(s.$ref, ctx.rootSchema), value, path, ctx, errors);
++      } finally {
++        ctx.resolving.delete(key);
++      }
++    }
++    // Other keywords next to $ref still apply — fall through.
++  }
++
+   if (s.type !== undefined) {
+     const types = Array.isArray(s.type) ? (s.type as string[]) : [s.type as string];
+     if (!types.some((t) => matchesType(value, t))) errors.push({ path, keyword: "type" });
+   }
+ 
++  if (Array.isArray(s.enum)) {
++    if (!(s.enum as Json[]).some((candidate) => jsonEquals(candidate, value))) {
++      errors.push({ path, keyword: "enum" });
++    }
++  }
++
++  if (s.const !== undefined) {
++    if (!jsonEquals(s.const as Json, value)) errors.push({ path, keyword: "const" });
++  }
++
++  // Numbers — ignored for non-numbers.
++  if (typeof value === "number") {
++    if (typeof s.minimum === "number" && value < s.minimum) errors.push({ path, keyword: "minimum" });
++    if (typeof s.maximum === "number" && value > s.maximum) errors.push({ path, keyword: "maximum" });
++    if (typeof s.exclusiveMinimum === "number" && value <= s.exclusiveMinimum) {
++      errors.push({ path, keyword: "exclusiveMinimum" });
++    }
++    if (typeof s.exclusiveMaximum === "number" && value >= s.exclusiveMaximum) {
++      errors.push({ path, keyword: "exclusiveMaximum" });
++    }
++  }
++
++  // Strings — ignored for non-strings.
++  if (typeof value === "string") {
++    if (typeof s.minLength === "number" && codePointLength(value) < s.minLength) {
++      errors.push({ path, keyword: "minLength" });
++    }
++    if (typeof s.maxLength === "number" && codePointLength(value) > s.maxLength) {
++      errors.push({ path, keyword: "maxLength" });
++    }
++    const pattern = compilePattern(s.pattern);
++    if (pattern && !pattern.test(value)) errors.push({ path, keyword: "pattern" });
++  }
++
++  // Objects — ignored for non-objects.
+   if (isPlainObject(value)) {
+     if (Array.isArray(s.required)) {
+       for (const name of s.required as string[]) {
+         if (!Object.hasOwn(value, name)) errors.push({ path: appendPointer(path, name), keyword: "required" });
+       }
+     }
+-    if (isPlainObject(s.properties)) {
+-      const properties = s.properties as { [key: string]: Schema };
++    const properties = isPlainObject(s.properties) ? (s.properties as { [key: string]: Schema }) : undefined;
++    if (properties) {
+       for (const [name, sub] of Object.entries(properties)) {
+-        if (Object.hasOwn(value, name)) check(sub, value[name], appendPointer(path, name), errors);
++        if (Object.hasOwn(value, name)) checkAny(sub, value[name], appendPointer(path, name), ctx, errors);
++      }
++    }
++    if (s.additionalProperties !== undefined && s.additionalProperties !== true) {
++      const extras = Object.keys(value).filter((name) => !properties || !Object.hasOwn(properties, name));
++      for (const name of extras) {
++        const memberPath = appendPointer(path, name);
++        if (s.additionalProperties === false) {
++          errors.push({ path: memberPath, keyword: "additionalProperties" });
++        } else if (isPlainObject(s.additionalProperties)) {
++          checkAny(s.additionalProperties as Schema, value[name], memberPath, ctx, errors);
++        }
+       }
+     }
+   }
++
++  // Arrays — ignored for non-arrays.
++  if (Array.isArray(value)) {
++    if (typeof s.minItems === "number" && value.length < s.minItems) errors.push({ path, keyword: "minItems" });
++    if (typeof s.maxItems === "number" && value.length > s.maxItems) errors.push({ path, keyword: "maxItems" });
++    if (s.items !== undefined && (typeof s.items === "boolean" || isPlainObject(s.items))) {
++      const itemSchema = s.items as Schema;
++      value.forEach((element, index) => checkAny(itemSchema, element, appendPointer(path, index), ctx, errors));
++    }
++    if (s.uniqueItems === true) {
++      const seen: Json[] = [];
++      let duplicate = false;
++      for (const element of value) {
++        if (seen.some((prev) => jsonEquals(prev, element))) {
++          duplicate = true;
++          break;
++        }
++        seen.push(element);
++      }
++      if (duplicate) errors.push({ path, keyword: "uniqueItems" });
++    }
++  }
++
++  // Combining schemas.
++  if (Array.isArray(s.allOf)) {
++    for (const sub of s.allOf as Schema[]) checkAny(sub, value, path, ctx, errors);
++  }
++  if (Array.isArray(s.anyOf)) {
++    const matches = (s.anyOf as Schema[]).filter((sub) => countErrors(sub, value, path, ctx) === 0).length;
++    if (matches === 0) errors.push({ path, keyword: "anyOf" });
++  }
++  if (Array.isArray(s.oneOf)) {
++    const matches = (s.oneOf as Schema[]).filter((sub) => countErrors(sub, value, path, ctx) === 0).length;
++    if (matches !== 1) errors.push({ path, keyword: "oneOf" });
++  }
+ }
+ 
+ export function validate(schema: Schema, data: Json): ValidationError[] {
+   const errors: ValidationError[] = [];
+-  check(schema, data, "", errors);
+-  return errors;
++  check(schema, data, "", { rootSchema: schema, resolving: new Set() }, errors);
++  // SPEC: the list contains no duplicates — the same {path, keyword} pair at
++  // most once (a repeated subschema via allOf/$ref must not double-report).
++  const seen = new Set<string>();
++  return errors.filter((e) => {
++    const key = `${e.keyword}${e.path}`;
++    if (seen.has(key)) return false;
++    seen.add(key);
++    return true;
++  });
+ }
+diff --git a/test/validate.test.ts b/test/validate.test.ts
+index e586718..b71b3ad 100644
+--- a/test/validate.test.ts
++++ b/test/validate.test.ts
+@@ -1,5 +1,6 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
++import { SchemaError } from "../src/types.ts";
+ import { validate } from "../src/validate.ts";
+ 
+ test("type", () => {
+@@ -21,3 +22,208 @@ test("boolean schemas", () => {
+   assert.deepEqual(validate(true, { anything: 1 }), []);
+   assert.deepEqual(validate(false, 1), [{ path: "", keyword: "false" }]);
+ });
++
++test("enum with deep equality", () => {
++  assert.deepEqual(validate({ enum: [1, "two"] }, 2), [{ path: "", keyword: "enum" }]);
++  assert.deepEqual(validate({ enum: [1, "two"] }, "two"), []);
++  // members in different order are still equal
++  assert.deepEqual(validate({ enum: [{ a: 1, b: [2] }] }, { b: [2], a: 1 }), []);
++  assert.deepEqual(validate({ enum: [{ a: 1 }] }, { a: 1, b: 2 }), [{ path: "", keyword: "enum" }]);
++  // different JSON types are never equal
++  assert.deepEqual(validate({ enum: ["1"] }, 1), [{ path: "", keyword: "enum" }]);
++  assert.deepEqual(validate({ enum: [null] }, false), [{ path: "", keyword: "enum" }]);
++});
++
++test("const with deep equality", () => {
++  assert.deepEqual(validate({ const: { a: [1, 2] } }, { a: [1, 2] }), []);
++  assert.deepEqual(validate({ const: { a: [1, 2] } }, { a: [2, 1] }), [{ path: "", keyword: "const" }]);
++});
++
++test("keywords are independent — all failures reported", () => {
++  const errors = validate({ type: "integer", minimum: 5 }, 1.5);
++  assert.deepEqual(errors, [
++    { path: "", keyword: "type" },
++    { path: "", keyword: "minimum" },
++  ]);
++});
++
++test("numeric bounds ignored for non-numbers", () => {
++  assert.deepEqual(validate({ minimum: 5, maximum: 1 }, "x"), []);
++  assert.deepEqual(validate({ exclusiveMinimum: 5 }, null), []);
++});
++
++test("numeric bounds are inclusive / exclusive", () => {
++  assert.deepEqual(validate({ minimum: 5 }, 5), []);
++  assert.deepEqual(validate({ maximum: 5 }, 5), []);
++  assert.deepEqual(validate({ exclusiveMinimum: 5 }, 5), [{ path: "", keyword: "exclusiveMinimum" }]);
++  assert.deepEqual(validate({ exclusiveMaximum: 5 }, 5), [{ path: "", keyword: "exclusiveMaximum" }]);
++  assert.deepEqual(validate({ exclusiveMinimum: 5, exclusiveMaximum: 10 }, 7), []);
++});
++
++test("minLength / maxLength count code points", () => {
++  assert.deepEqual(validate({ minLength: 2 }, "😀"), [{ path: "", keyword: "minLength" }]);
++  assert.deepEqual(validate({ maxLength: 1 }, "😀"), []);
++  assert.deepEqual(validate({ maxLength: 1 }, "ab"), [{ path: "", keyword: "maxLength" }]);
++  // ignored for non-strings
++  assert.deepEqual(validate({ minLength: 5 }, 1), []);
++});
++
++test("pattern with u flag, unanchored", () => {
++  assert.deepEqual(validate({ pattern: "^ä+$" }, "ää"), []);
++  assert.deepEqual(validate({ pattern: "bc" }, "abcd"), []);
++  assert.deepEqual(validate({ pattern: "\\p{Emoji}" }, "hi 😀"), []);
++  assert.deepEqual(validate({ pattern: "bc" }, "ad"), [{ path: "", keyword: "pattern" }]);
++  // ignored for non-strings
++  assert.deepEqual(validate({ pattern: "x" }, 7), []);
++});
++
++test("additionalProperties false reports each extra member", () => {
++  const schema = { properties: { a: true }, additionalProperties: false };
++  assert.deepEqual(validate(schema, { a: 1, b: 2, c: 3 }), [
++    { path: "/b", keyword: "additionalProperties" },
++    { path: "/c", keyword: "additionalProperties" },
++  ]);
++  assert.deepEqual(validate(schema, { a: 1 }), []);
++  // without properties, every member is additional
++  assert.deepEqual(validate({ additionalProperties: false }, { x: 1 }), [
++    { path: "/x", keyword: "additionalProperties" },
++  ]);
++  // ignored for non-objects
++  assert.deepEqual(validate({ additionalProperties: false }, [1]), []);
++});
++
++test("additionalProperties as schema validates extra members", () => {
++  const schema = { properties: { a: true }, additionalProperties: { type: "string" } };
++  assert.deepEqual(validate(schema, { a: 1, b: 2 }), [{ path: "/b", keyword: "type" }]);
++  assert.deepEqual(validate(schema, { a: 1, b: "ok" }), []);
++  assert.deepEqual(validate({ additionalProperties: true }, { x: 1 }), []);
++});
++
++test("minItems / maxItems", () => {
++  assert.deepEqual(validate({ minItems: 2 }, [1]), [{ path: "", keyword: "minItems" }]);
++  assert.deepEqual(validate({ maxItems: 1 }, [1, 2]), [{ path: "", keyword: "maxItems" }]);
++  assert.deepEqual(validate({ minItems: 1, maxItems: 2 }, [1, 2]), []);
++  // ignored for non-arrays
++  assert.deepEqual(validate({ minItems: 5 }, "x"), []);
++});
++
++test("items validates every element at its index path", () => {
++  const errors = validate({ items: { type: "integer" } }, [1, "x", 2.5]);
++  assert.deepEqual(errors, [
++    { path: "/1", keyword: "type" },
++    { path: "/2", keyword: "type" },
++  ]);
++  assert.deepEqual(validate({ items: false }, [1]), [{ path: "/0", keyword: "false" }]);
++});
++
++test("uniqueItems reports a single error", () => {
++  assert.deepEqual(validate({ uniqueItems: true }, [1, 2, 1, 2]), [
++    { path: "", keyword: "uniqueItems" },
++  ]);
++  assert.deepEqual(validate({ uniqueItems: true }, [{ a: 1 }, { a: 1 }]), [
++    { path: "", keyword: "uniqueItems" },
++  ]);
++  assert.deepEqual(validate({ uniqueItems: true }, [1, "1", { a: 1 }]), []);
++  assert.deepEqual(validate({ uniqueItems: false }, [1, 1]), []);
++  // ignored for non-arrays
++  assert.deepEqual(validate({ uniqueItems: true }, "x"), []);
++});
++
++test("allOf reports subschema errors as-is", () => {
++  const errors = validate({ allOf: [{ type: "integer" }, { minimum: 10 }] }, 2.5);
++  assert.deepEqual(errors, [
++    { path: "", keyword: "type" },
++    { path: "", keyword: "minimum" },
++  ]);
++  assert.deepEqual(validate({ allOf: [{ type: "integer" }] }, 2), []);
++});
++
++test("anyOf reports one error only when nothing matches", () => {
++  assert.deepEqual(validate({ anyOf: [{ type: "string" }, { type: "integer" }] }, 1.5), [
++    { path: "", keyword: "anyOf" },
++  ]);
++  assert.deepEqual(validate({ anyOf: [{ type: "string" }, { type: "integer" }] }, 2), []);
++  assert.deepEqual(validate({ anyOf: [{ type: "string" }, { minimum: 10 }] }, 20), []);
++});
++
++test("oneOf requires exactly one match", () => {
++  const schema = { oneOf: [{ type: "number" }, { minimum: 0 }] };
++  assert.deepEqual(validate(schema, 5), [{ path: "", keyword: "oneOf" }]); // both match
++  assert.deepEqual(validate({ oneOf: [{ type: "string" }, { minimum: 0 }] }, -1), [
++    { path: "", keyword: "oneOf" },
++  ]); // none match
++  assert.deepEqual(validate({ oneOf: [{ type: "string" }, { minimum: 0 }] }, 5), []);
++});
++
++test("oneOf does not leak subschema errors", () => {
++  const errors = validate({ oneOf: [{ required: ["a"] }, { required: ["b"] }] }, {});
++  // neither matches (each is missing its key) → single oneOf error at root
++  assert.deepEqual(errors, [{ path: "", keyword: "oneOf" }]);
++});
++
++test("$ref resolves pointers in the root schema", () => {
++  const schema = {
++    definitions: { positive: { minimum: 1 } },
++    properties: { count: { $ref: "#/definitions/positive" } },
++  };
++  assert.deepEqual(validate(schema, { count: 0 }), [{ path: "/count", keyword: "minimum" }]);
++  assert.deepEqual(validate(schema, { count: 3 }), []);
++});
++
++test("$ref decodes escaped tokens", () => {
++  const schema = {
++    "a/b": { type: "string" },
++    properties: { x: { $ref: "#/a~1b" } },
++  };
++  assert.deepEqual(validate(schema, { x: 1 }), [{ path: "/x", keyword: "type" }]);
++});
++
++test("$ref to array element", () => {
++  const schema = { allOf: [{ type: "integer" }, { $ref: "#/allOf/0" }] };
++  assert.deepEqual(validate(schema, "x"), [{ path: "", keyword: "type" }]);
++});
++
++test("$ref to root (#)", () => {
++  const schema = { type: "object", properties: { child: { $ref: "#" } } };
++  assert.deepEqual(validate(schema, { child: { child: {} } }), []);
++  assert.deepEqual(validate(schema, { child: 1 }), [{ path: "/child", keyword: "type" }]);
++});
++
++test("recursive $ref (tree schema)", () => {
++  const schema = {
++    type: "object",
++    required: ["name"],
++    properties: {
++      name: { type: "string" },
++      children: { type: "array", items: { $ref: "#" } },
++    },
++  };
++  const bad = { name: "a", children: [{ name: "b", children: [{ children: [] }] }] };
++  assert.deepEqual(validate(schema, bad), [{ path: "/children/0/children/0/name", keyword: "required" }]);
++  const good = { name: "a", children: [{ name: "b", children: [] }] };
++  assert.deepEqual(validate(schema, good), []);
++});
++
++test("self-referencing $ref cycle does not hang", () => {
++  const schema = { allOf: [{ $ref: "#" }], type: "string" };
++  assert.deepEqual(validate(schema, 1), [{ path: "", keyword: "type" }]);
++});
++
++test("bad $ref throws SchemaError when reached", () => {
++  assert.throws(() => validate({ $ref: "https://x.com/s.json" }, 1), SchemaError);
++  assert.throws(() => validate({ $ref: "#/nope" }, 1), SchemaError);
++  assert.throws(() => validate({ $ref: "#/definitions/9" }, 1), SchemaError);
++  assert.throws(() => validate({ $ref: "#nope" }, 1), SchemaError);
++  // not reached → no throw
++  assert.deepEqual(validate({ properties: { a: { $ref: "#/missing" } } }, { b: 1 }), []);
++  // keywords next to $ref are not evaluated when the throw happens
++  assert.throws(() => validate({ $ref: "#/missing", type: "string" }, "ok"), SchemaError);
++});
++
++test("error list contains no duplicates", () => {
++  // same subschema applied twice via allOf + $ref would report twice
++  const schema = { allOf: [{ minimum: 5 }, { $ref: "#/allOf/0" }] };
++  const errors = validate(schema, 1);
++  const keys = errors.map((e) => `${e.path} ${e.keyword}`);
++  assert.equal(new Set(keys).size, keys.length);
++});

@@ -1,0 +1,151 @@
+ src/duration.js       | 75 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ test/duration.test.js | 60 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 135 insertions(+)
+
+diff --git a/src/duration.js b/src/duration.js
+new file mode 100644
+index 0000000..393319b
+--- /dev/null
++++ b/src/duration.js
+@@ -0,0 +1,75 @@
++/**
++ * @typedef {"d" | "h" | "m" | "s" | "ms"} UnitAbbr
++ */
++
++/**
++ * @typedef {object} FormatOptions
++ * @property {number} [units] Show at most this many of the largest non-zero units.
++ * @property {"long" | "compact"} [style] "long" gives "1 hour, 5 minutes"; "compact" gives "1h 5m".
++ * @property {UnitAbbr} [smallest] The smallest unit that may appear; anything smaller is ignored.
++ */
++
++/**
++ * Time units from largest to smallest; sizes are in milliseconds.
++ */
++const UNITS = [
++  { abbr: "d", name: "day", ms: 24 * 60 * 60 * 1000 },
++  { abbr: "h", name: "hour", ms: 60 * 60 * 1000 },
++  { abbr: "m", name: "minute", ms: 60 * 1000 },
++  { abbr: "s", name: "second", ms: 1000 },
++  { abbr: "ms", name: "millisecond", ms: 1 },
++];
++
++/**
++ * A duration in milliseconds as a readable string, e.g. "1 hour, 5 minutes"
++ * or "1h 5m". `ms` is floored to a whole number, then split into units from
++ * largest to smallest. Zero units are skipped and don't count against
++ * `units`; whatever falls below the last shown unit is dropped, never
++ * rounded. A value below one `smallest` unit (including 0) renders as zero
++ * in that unit: "0 seconds" / "0s" by default.
++ *
++ * @param {number} ms
++ * @param {FormatOptions} [options]
++ * @returns {string}
++ * @throws {TypeError} If `ms` is not a number.
++ * @throws {RangeError} If `ms` is negative, NaN or Infinity, or `units`,
++ *   `style` or `smallest` is invalid.
++ */
++export function formatDuration(ms, options = {}) {
++  const { units = 2, style = "long", smallest = "s" } = options;
++
++  if (typeof ms !== "number") {
++    throw new TypeError(`ms must be a number, got ${typeof ms}`);
++  }
++  if (!Number.isFinite(ms) || ms < 0) {
++    throw new RangeError(`ms must be a non-negative finite number, got ${ms}`);
++  }
++  if (!Number.isInteger(units) || units < 1) {
++    throw new RangeError(`units must be a positive integer, got ${units}`);
++  }
++  if (style !== "long" && style !== "compact") {
++    throw new RangeError(`style must be "long" or "compact", got ${style}`);
++  }
++  const smallestIndex = UNITS.findIndex((u) => u.abbr === smallest);
++  if (smallestIndex === -1) {
++    throw new RangeError(`smallest must be one of "d", "h", "m", "s", "ms", got ${smallest}`);
++  }
++
++  let remaining = Math.floor(ms);
++  const parts = [];
++  for (const unit of UNITS.slice(0, smallestIndex + 1)) {
++    const value = Math.floor(remaining / unit.ms);
++    remaining %= unit.ms;
++    if (value === 0) continue;
++    parts.push({ value, unit });
++    if (parts.length === units) break;
++  }
++
++  const shown = parts.length > 0 ? parts : [{ value: 0, unit: UNITS[smallestIndex] }];
++  if (style === "compact") {
++    return shown.map(({ value, unit }) => `${value}${unit.abbr}`).join(" ");
++  }
++  return shown
++    .map(({ value, unit }) => `${value} ${unit.name}${value === 1 ? "" : "s"}`)
++    .join(", ");
++}
+diff --git a/test/duration.test.js b/test/duration.test.js
+new file mode 100644
+index 0000000..7db2c72
+--- /dev/null
++++ b/test/duration.test.js
+@@ -0,0 +1,60 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { formatDuration } from "../src/duration.js";
++
++const SECOND = 1000;
++const MINUTE = 60 * SECOND;
++const HOUR = 60 * MINUTE;
++const DAY = 24 * HOUR;
++
++test("shows the largest non-zero units, skipping zeros", () => {
++  assert.equal(formatDuration(SECOND + 500), "1 second");
++  assert.equal(formatDuration(SECOND + 500, { smallest: "ms" }), "1 second, 500 milliseconds");
++  assert.equal(formatDuration(DAY + 5 * MINUTE), "1 day, 5 minutes");
++  assert.equal(formatDuration(HOUR + 30 * SECOND), "1 hour, 30 seconds");
++  assert.equal(formatDuration(DAY + 5 * MINUTE, { units: 1 }), "1 day");
++});
++
++test("floors ms first and never rounds the remainder", () => {
++  assert.equal(formatDuration(59 * MINUTE + 59 * SECOND + 999), "59 minutes, 59 seconds");
++  assert.equal(formatDuration(3599999.999), "59 minutes, 59 seconds");
++  assert.equal(formatDuration(5999.9, { smallest: "ms" }), "5 seconds, 999 milliseconds");
++});
++
++test("compact style", () => {
++  assert.equal(formatDuration(HOUR + 5 * MINUTE, { style: "compact" }), "1h 5m");
++  assert.equal(formatDuration(DAY + HOUR + MINUTE + SECOND, { style: "compact", units: 3 }), "1d 1h 1m");
++  assert.equal(formatDuration(DAY + HOUR + MINUTE + SECOND, { style: "compact", units: 4 }), "1d 1h 1m 1s");
++});
++
++test("smallest hides smaller units", () => {
++  assert.equal(formatDuration(MINUTE + 30 * SECOND, { smallest: "m" }), "1 minute");
++  assert.equal(formatDuration(2 * DAY, { smallest: "d" }), "2 days");
++  assert.equal(formatDuration(HOUR - 1, { smallest: "h" }), "0 hours");
++  assert.equal(formatDuration(MINUTE / 2, { smallest: "m" }), "0 minutes");
++});
++
++test("values below the smallest unit render as zero", () => {
++  assert.equal(formatDuration(0), "0 seconds");
++  assert.equal(formatDuration(0, { style: "compact" }), "0s");
++  assert.equal(formatDuration(-0), "0 seconds");
++  assert.equal(formatDuration(SECOND - 1), "0 seconds");
++});
++
++test("singular only for 1", () => {
++  assert.equal(formatDuration(DAY), "1 day");
++  assert.equal(formatDuration(2 * HOUR), "2 hours");
++  assert.equal(formatDuration(1, { smallest: "ms" }), "1 millisecond");
++});
++
++test("rejects invalid input", () => {
++  assert.throws(() => formatDuration("1000"), TypeError);
++  assert.throws(() => formatDuration(null), TypeError);
++  assert.throws(() => formatDuration(-1), RangeError);
++  assert.throws(() => formatDuration(NaN), RangeError);
++  assert.throws(() => formatDuration(Infinity), RangeError);
++  assert.throws(() => formatDuration(1000, { units: 0 }), RangeError);
++  assert.throws(() => formatDuration(1000, { units: 1.5 }), RangeError);
++  assert.throws(() => formatDuration(1000, { style: "short" }), RangeError);
++  assert.throws(() => formatDuration(1000, { smallest: "min" }), RangeError);
++});

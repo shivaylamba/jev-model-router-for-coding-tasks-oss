@@ -1,0 +1,26 @@
+
+test_cursor_mode_default (acceptance_tests.test_cursor_pagination.ApiTest.test_cursor_mode_default) ... ok
+test_cursor_mode_paging_with_filters (acceptance_tests.test_cursor_pagination.ApiTest.test_cursor_mode_paging_with_filters) ... ok
+test_empty_cursor_param_means_first_page (acceptance_tests.test_cursor_pagination.ApiTest.test_empty_cursor_param_means_first_page) ... ok
+test_errors_are_400 (acceptance_tests.test_cursor_pagination.ApiTest.test_errors_are_400) ... ok
+test_legacy_mode (acceptance_tests.test_cursor_pagination.ApiTest.test_legacy_mode) ... ok
+test_list_page_validation_unchanged (acceptance_tests.test_cursor_pagination.LegacyWrapperTest.test_list_page_validation_unchanged) ... ok
+test_list_page_warns_and_still_works (acceptance_tests.test_cursor_pagination.LegacyWrapperTest.test_list_page_warns_and_still_works) ... ok
+test_cursor_is_url_safe (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_cursor_is_url_safe) ... ok
+test_cursor_with_other_filters_is_rejected (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_cursor_with_other_filters_is_rejected) ... ok
+test_default_limit_is_20 (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_default_limit_is_20) ... ok
+test_deleting_the_cursor_article (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_deleting_the_cursor_article) ... ok
+test_empty_result (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_empty_result) ... ok
+test_filters (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_filters) ... ok
+test_first_page_and_order (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_first_page_and_order) ... ok
+test_garbage_cursors (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_garbage_cursors) ... ok
+test_inserts_during_paging (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_inserts_during_paging) ... ok
+test_limit_and_status_validation (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_limit_and_status_validation) ... ok
+test_limit_may_change_between_pages (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_limit_may_change_between_pages) ... ok
+test_no_cursor_when_exactly_exhausted (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_no_cursor_when_exactly_exhausted) ... ok
+test_walk_all_pages_with_ties (acceptance_tests.test_cursor_pagination.ServiceCursorTest.test_walk_all_pages_with_ties) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 0.001s
+
+OK

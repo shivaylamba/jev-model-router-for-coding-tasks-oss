@@ -1,0 +1,14 @@
+
+test_empty_input (acceptance_tests.test_chunk_evenly.ChunkEvenlyTest.test_empty_input) ... ok
+test_even_split (acceptance_tests.test_chunk_evenly.ChunkEvenlyTest.test_even_split) ... ok
+test_example (acceptance_tests.test_chunk_evenly.ChunkEvenlyTest.test_example) ... ok
+test_input_not_modified (acceptance_tests.test_chunk_evenly.ChunkEvenlyTest.test_input_not_modified) ... ok
+test_invalid_n (acceptance_tests.test_chunk_evenly.ChunkEvenlyTest.test_invalid_n) ... ok
+test_longer_chunks_first (acceptance_tests.test_chunk_evenly.ChunkEvenlyTest.test_longer_chunks_first) ... ok
+test_more_chunks_than_items (acceptance_tests.test_chunk_evenly.ChunkEvenlyTest.test_more_chunks_than_items) ... ok
+test_single_chunk (acceptance_tests.test_chunk_evenly.ChunkEvenlyTest.test_single_chunk) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.000s
+
+OK

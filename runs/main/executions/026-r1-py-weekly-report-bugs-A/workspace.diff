@@ -1,0 +1,61 @@
+ tests/__pycache__/__init__.cpython-311.pyc      | Bin 0 -> 206 bytes
+ tests/__pycache__/test_report.cpython-311.pyc   | Bin 0 -> 3959 bytes
+ timesheets/__pycache__/__init__.cpython-311.pyc | Bin 0 -> 250 bytes
+ timesheets/__pycache__/entries.cpython-311.pyc  | Bin 0 -> 1060 bytes
+ timesheets/__pycache__/report.cpython-311.pyc   | Bin 0 -> 2738 bytes
+ timesheets/__pycache__/weeks.cpython-311.pyc    | Bin 0 -> 1240 bytes
+ timesheets/report.py                            |   2 +-
+ timesheets/weeks.py                             |   3 ++-
+ 8 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/tests/__pycache__/__init__.cpython-311.pyc b/tests/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..0f0ed42
+Binary files /dev/null and b/tests/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/tests/__pycache__/test_report.cpython-311.pyc b/tests/__pycache__/test_report.cpython-311.pyc
+new file mode 100644
+index 0000000..215433e
+Binary files /dev/null and b/tests/__pycache__/test_report.cpython-311.pyc differ
+diff --git a/timesheets/__pycache__/__init__.cpython-311.pyc b/timesheets/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..31a68f7
+Binary files /dev/null and b/timesheets/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/timesheets/__pycache__/entries.cpython-311.pyc b/timesheets/__pycache__/entries.cpython-311.pyc
+new file mode 100644
+index 0000000..8758fb8
+Binary files /dev/null and b/timesheets/__pycache__/entries.cpython-311.pyc differ
+diff --git a/timesheets/__pycache__/report.cpython-311.pyc b/timesheets/__pycache__/report.cpython-311.pyc
+new file mode 100644
+index 0000000..315bbb5
+Binary files /dev/null and b/timesheets/__pycache__/report.cpython-311.pyc differ
+diff --git a/timesheets/__pycache__/weeks.cpython-311.pyc b/timesheets/__pycache__/weeks.cpython-311.pyc
+new file mode 100644
+index 0000000..e5f2ba3
+Binary files /dev/null and b/timesheets/__pycache__/weeks.cpython-311.pyc differ
+diff --git a/timesheets/report.py b/timesheets/report.py
+index 8f17561..ae7e48d 100644
+--- a/timesheets/report.py
++++ b/timesheets/report.py
+@@ -27,7 +27,7 @@ def paginate_rows(rows, per_page):
+     if per_page < 1:
+         raise ValueError("per_page must be at least 1")
+     pages = []
+-    for start in range(0, len(rows) - per_page + 1, per_page):
++    for start in range(0, len(rows), per_page):
+         pages.append(rows[start:start + per_page])
+     return pages
+ 
+diff --git a/timesheets/weeks.py b/timesheets/weeks.py
+index 34aac19..2c7a5f8 100644
+--- a/timesheets/weeks.py
++++ b/timesheets/weeks.py
+@@ -11,7 +11,8 @@ def week_key(day):
+     the year's first Thursday, so a few days around New Year belong to a week
+     of the neighbouring year. Keys sort chronologically as strings.
+     """
+-    return day.strftime("%Y-W%W")
++    iso_year, iso_week, _ = day.isocalendar()
++    return "%04d-W%02d" % (iso_year, iso_week)
+ 
+ 
+ def week_start(day):

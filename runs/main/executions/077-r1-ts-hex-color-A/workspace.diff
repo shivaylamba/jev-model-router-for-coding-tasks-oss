@@ -1,0 +1,89 @@
+ src/color.ts       | 20 ++++++++++++++++++++
+ test/color.test.ts | 45 ++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 64 insertions(+), 1 deletion(-)
+
+diff --git a/src/color.ts b/src/color.ts
+index 39f1ad2..2f9ee54 100644
+--- a/src/color.ts
++++ b/src/color.ts
+@@ -9,3 +9,23 @@ function channel(value: number): string {
+ export function rgbToHex(r: number, g: number, b: number): string {
+   return `#${channel(r)}${channel(g)}${channel(b)}`;
+ }
++
++/**
++ * Normalize a hex colour string to its canonical lowercase form.
++ *
++ * Accepts "#rgb", "#rgba", "#rrggbb" and "#rrggbbaa" (any letter case,
++ * optional surrounding whitespace). Short forms are expanded by doubling
++ * each digit. Returns null for anything else.
++ */
++export function normalizeHexColor(input: string): string | null {
++  const match = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec(
++    input.trim(),
++  );
++  if (!match) return null;
++
++  const digits = match[1].toLowerCase();
++  if (digits.length <= 4) {
++    return `#${[...digits].map((d) => d + d).join("")}`;
++  }
++  return `#${digits}`;
++}
+diff --git a/test/color.test.ts b/test/color.test.ts
+index 8107290..ae74818 100644
+--- a/test/color.test.ts
++++ b/test/color.test.ts
+@@ -1,8 +1,51 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+-import { rgbToHex } from "../src/color.ts";
++import { normalizeHexColor, rgbToHex } from "../src/color.ts";
+ 
+ test("rgbToHex", () => {
+   assert.equal(rgbToHex(255, 136, 0), "#ff8800");
+   assert.throws(() => rgbToHex(256, 0, 0), RangeError);
+ });
++
++test("normalizeHexColor lowercases 6- and 8-digit forms", () => {
++  assert.equal(normalizeHexColor("#FF8800"), "#ff8800");
++  assert.equal(normalizeHexColor("#11223344"), "#11223344");
++  assert.equal(normalizeHexColor("#AABBCCDD"), "#aabbccdd");
++});
++
++test("normalizeHexColor expands 3- and 4-digit forms", () => {
++  assert.equal(normalizeHexColor("#AbC"), "#aabbcc");
++  assert.equal(normalizeHexColor("#abcd"), "#aabbccdd");
++  assert.equal(normalizeHexColor("#FFFF"), "#ffffffff");
++});
++
++test("normalizeHexColor keeps the alpha channel, even when ff", () => {
++  assert.equal(normalizeHexColor("#ff8800ff"), "#ff8800ff");
++  assert.equal(normalizeHexColor("#f80f"), "#ff8800ff");
++});
++
++test("normalizeHexColor ignores surrounding whitespace", () => {
++  assert.equal(normalizeHexColor("  #ff8800  "), "#ff8800");
++  assert.equal(normalizeHexColor("\t#abc\n"), "#aabbcc");
++});
++
++test("normalizeHexColor rejects invalid input", () => {
++  for (const bad of [
++    "ff8800", // missing "#"
++    "##ff8800", // more than one "#"
++    "#1", // wrong digit counts
++    "#12",
++    "#12345",
++    "#1234567",
++    "#123456789",
++    "#gggggg", // non-hex characters
++    "#ff 8800", // whitespace inside the value
++    "# ff8800",
++    "red", // named colours
++    "",
++    "   ",
++    "#",
++  ]) {
++    assert.equal(normalizeHexColor(bad), null, JSON.stringify(bad));
++  }
++});

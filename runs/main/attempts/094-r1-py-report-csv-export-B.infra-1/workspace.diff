@@ -1,0 +1,173 @@
+ README.md                     |  3 ++-
+ reports/cli.py                |  4 ++--
+ reports/exporters/__init__.py |  3 ++-
+ reports/exporters/csv.py      | 34 ++++++++++++++++++++++++++++++++++
+ tests/test_reports.py         | 39 ++++++++++++++++++++++++++++++++++++++-
+ 5 files changed, 78 insertions(+), 5 deletions(-)
+
+diff --git a/README.md b/README.md
+index e107de7..e532941 100644
+--- a/README.md
++++ b/README.md
+@@ -1,10 +1,11 @@
+ # reports
+ 
+-Turns tabular report data (JSON) into human-readable output.
++Turns tabular report data (JSON) into human-readable output, or CSV for machines.
+ 
+ ```
+ python3 -m reports.cli examples/sales.json                 # plain text table
+ python3 -m reports.cli --format markdown examples/sales.json
++python3 -m reports.cli --format csv examples/sales.json    # CSV for spreadsheets
+ python3 -m reports.cli --format markdown --output out.md examples/sales.json
+ python3 -m reports.cli --list-formats
+ ```
+diff --git a/reports/cli.py b/reports/cli.py
+index 014f7ba..a9320c5 100644
+--- a/reports/cli.py
++++ b/reports/cli.py
+@@ -10,7 +10,7 @@ from .model import load_report
+ def build_parser():
+     parser = argparse.ArgumentParser(prog="reports")
+     parser.add_argument("report", nargs="?", help="report JSON file")
+-    parser.add_argument("--format", default="text", choices=["text", "markdown"])
++    parser.add_argument("--format", default="text", choices=["text", "markdown", "csv"])
+     parser.add_argument("--output", help="write to this file instead of stdout")
+     parser.add_argument("--list-formats", action="store_true", help="print the available formats and exit")
+     return parser
+@@ -32,7 +32,7 @@ def main(argv=None, stdout=None):
+         return 2
+     output = get_exporter(args.format).export(load_report(args.report))
+     if args.output:
+-        with open(args.output, "w", encoding="utf-8") as handle:
++        with open(args.output, "w", encoding="utf-8", newline="") as handle:
+             handle.write(output)
+     else:
+         stdout.write(output)
+diff --git a/reports/exporters/__init__.py b/reports/exporters/__init__.py
+index 43f92f2..b0df6c9 100644
+--- a/reports/exporters/__init__.py
++++ b/reports/exporters/__init__.py
+@@ -1,5 +1,6 @@
+ """Output formats."""
+ 
++from .csv import CsvExporter
+ from .markdown import MarkdownExporter
+ from .text import TextExporter
+ 
+@@ -8,7 +9,7 @@ class UnknownFormatError(LookupError):
+     """Raised by get_exporter for a format name that is not registered."""
+ 
+ 
+-EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter())}
++EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter(), CsvExporter())}
+ 
+ 
+ def get_exporter(name):
+diff --git a/reports/exporters/csv.py b/reports/exporters/csv.py
+new file mode 100644
+index 0000000..be940bd
+--- /dev/null
++++ b/reports/exporters/csv.py
+@@ -0,0 +1,34 @@
++"""CSV for machines: a header line, then one line per report row."""
++
++_QUOTE_TRIGGERS = (",", '"', "\n", "\r")
++
++
++def _quote(text):
++    """Standard CSV quoting: wrap in double quotes only if the text contains a comma, a double quote or a line break."""
++    if any(trigger in text for trigger in _QUOTE_TRIGGERS):
++        return '"' + text.replace('"', '""') + '"'
++    return text
++
++
++def _field(value):
++    """Format a cell for machines: plain ints, two-decimal floats, true/false, empty for null."""
++    if value is None:
++        text = ""
++    elif isinstance(value, bool):
++        text = "true" if value else "false"
++    elif isinstance(value, float):
++        text = format(value, ".2f")
++    else:
++        text = str(value)
++    return _quote(text)
++
++
++class CsvExporter:
++    name = "csv"
++    extension = ".csv"
++
++    def export(self, report):
++        lines = [",".join(_field(column.label) for column in report.columns)]
++        for row in report.rows:
++            lines.append(",".join(_field(report.cell(row, column)) for column in report.columns))
++        return "\n".join(lines) + "\n"
+diff --git a/tests/test_reports.py b/tests/test_reports.py
+index f21c646..6b63833 100644
+--- a/tests/test_reports.py
++++ b/tests/test_reports.py
+@@ -1,10 +1,11 @@
+ import io
+ import os
++import tempfile
+ import unittest
+ 
+ from reports.cli import main
+ from reports.exporters import UnknownFormatError, format_names, get_exporter
+-from reports.model import load_report
++from reports.model import load_report, report_from_dict
+ 
+ EXAMPLE = os.path.join(os.path.dirname(__file__), "..", "examples", "sales.json")
+ 
+@@ -22,6 +23,26 @@ class ExporterTest(unittest.TestCase):
+         with self.assertRaises(UnknownFormatError):
+             get_exporter("pdf")
+ 
++    def test_csv(self):
++        out = get_exporter("csv").export(load_report(EXAMPLE))
++        self.assertEqual(
++            out,
++            "Region,Orders,Revenue,Target met\n"
++            "North,1204,98213.50,true\n"
++            '"South, coastal",87,4410.00,false\n'
++            "West,0,,\n",
++        )
++
++    def test_csv_quoting(self):
++        report = report_from_dict(
++            {"columns": [{"key": "a", "label": 'Say "hi", ok'}], "rows": [{"a": "x,y"}, {"a": None}]}
++        )
++        self.assertEqual(get_exporter("csv").export(report), '"Say ""hi"", ok"\n"x,y"\n\n')
++
++    def test_csv_no_rows(self):
++        report = report_from_dict({"columns": [{"key": "a", "label": "A"}, {"key": "b", "label": "B"}]})
++        self.assertEqual(get_exporter("csv").export(report), "A,B\n")
++
+ 
+ class CliTest(unittest.TestCase):
+     def test_default_text(self):
+@@ -34,6 +55,22 @@ class CliTest(unittest.TestCase):
+         self.assertEqual(main(["--list-formats"], stdout=buf), 0)
+         self.assertEqual(buf.getvalue().split(), format_names())
+ 
++    def test_csv_stdout(self):
++        buf = io.StringIO()
++        self.assertEqual(main(["--format", "csv", EXAMPLE], stdout=buf), 0)
++        self.assertTrue(buf.getvalue().startswith("Region,Orders,Revenue,Target met\n"))
++
++    def test_csv_output_file(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            path = os.path.join(tmp, "sales.csv")
++            buf = io.StringIO()
++            self.assertEqual(main(["--format", "csv", "--output", path, EXAMPLE], stdout=buf), 0)
++            self.assertEqual(buf.getvalue(), "")
++            with open(path, encoding="utf-8", newline="") as handle:
++                contents = handle.read()
++        self.assertNotIn("\r", contents)
++        self.assertTrue(contents.endswith("West,0,,\n"))
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

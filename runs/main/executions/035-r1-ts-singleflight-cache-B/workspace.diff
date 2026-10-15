@@ -1,0 +1,711 @@
+ src/asyncCache.ts       | 182 +++++++++++++++++
+ test/asyncCache.test.ts | 513 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 695 insertions(+)
+
+diff --git a/src/asyncCache.ts b/src/asyncCache.ts
+new file mode 100644
+index 0000000..b34148a
+--- /dev/null
++++ b/src/asyncCache.ts
+@@ -0,0 +1,182 @@
++export type AsyncCacheOptions<V> = {
++  load: (key: string) => Promise<V>;
++  ttlMs: number; // finite, > 0
++  staleMs: number; // finite, >= 0
++  maxEntries: number; // integer, >= 1
++  now?: () => number; // current time in ms; defaults to Date.now
++  onRefreshError?: (key: string, error: unknown) => void;
++};
++
++type Entry<V> = {
++  value: V;
++  storedAt: number;
++};
++
++// One load in flight for a key. `isRefresh` records whether the load was
++// started by a background refresh, which decides how rejection is handled.
++type Flight<V> = {
++  promise: Promise<V>;
++  isRefresh: boolean;
++};
++
++export class AsyncCache<V> {
++  #load: (key: string) => Promise<V>;
++  #ttlMs: number;
++  #staleMs: number;
++  #maxEntries: number;
++  #now: () => number;
++  #onRefreshError?: (key: string, error: unknown) => void;
++
++  // Stored values, in least-recently-used first order (Map preserves
++  // insertion order; using an entry moves it to the end).
++  #entries = new Map<string, Entry<V>>();
++
++  // At most one *active* load per key. Invalidation/clear removes a flight
++  // so it will neither store its result nor be joined by later gets.
++  #flights = new Map<string, Flight<V>>();
++
++  constructor(options: AsyncCacheOptions<V>) {
++    this.#load = options.load;
++    this.#now = options.now ?? Date.now;
++
++    if (!Number.isFinite(options.ttlMs) || options.ttlMs <= 0) {
++      throw new RangeError("ttlMs must be a finite number > 0");
++    }
++    if (!Number.isFinite(options.staleMs) || options.staleMs < 0) {
++      throw new RangeError("staleMs must be a finite number >= 0");
++    }
++    if (!Number.isInteger(options.maxEntries) || options.maxEntries < 1) {
++      throw new RangeError("maxEntries must be an integer >= 1");
++    }
++
++    this.#ttlMs = options.ttlMs;
++    this.#staleMs = options.staleMs;
++    this.#maxEntries = options.maxEntries;
++    this.#onRefreshError = options.onRefreshError;
++  }
++
++  // Expired entries are still stored physically, but never served.
++  #isExpired(entry: Entry<V>, now: number): boolean {
++    return now - entry.storedAt >= this.#ttlMs + this.#staleMs;
++  }
++
++  get(key: string): Promise<V> {
++    const now = this.#now();
++    const entry = this.#entries.get(key);
++
++    if (entry !== undefined && !this.#isExpired(entry, now)) {
++      // Fresh or stale: serve the stored value and become most recently used.
++      this.#entries.delete(key);
++      this.#entries.set(key, entry);
++
++      if (now - entry.storedAt < this.#ttlMs) {
++        return Promise.resolve(entry.value); // fresh: no load
++      }
++      // stale: serve it right away, refresh in the background if none is running
++      if (!this.#flights.has(key)) {
++        this.#startLoad(key, true);
++      }
++      return Promise.resolve(entry.value);
++    }
++
++    // No value, or an expired one: the expired value is dropped.
++    if (entry !== undefined) {
++      this.#entries.delete(key);
++    }
++    const flight = this.#flights.get(key);
++    if (flight) {
++      return flight.promise; // join an earlier get or a refresh
++    }
++    return this.#startLoad(key, false).promise;
++  }
++
++  peek(key: string): V | undefined {
++    const now = this.#now();
++    const entry = this.#entries.get(key);
++    if (entry === undefined || this.#isExpired(entry, now)) {
++      return undefined;
++    }
++    return entry.value;
++  }
++
++  invalidate(key: string): boolean {
++    const hadEntry = this.#entries.delete(key);
++    // A load already in flight must not store its result, and the next
++    // get starts a new load instead of waiting on it.
++    this.#flights.delete(key);
++    return hadEntry;
++  }
++
++  clear(): void {
++    this.#entries.clear();
++    this.#flights.clear();
++  }
++
++  get size(): number {
++    const now = this.#now();
++    let count = 0;
++    for (const entry of this.#entries.values()) {
++      if (!this.#isExpired(entry, now)) count += 1;
++    }
++    return count;
++  }
++
++  // Loads in flight do not count towards the size limit, and evicting a key
++  // does not stop its in-flight load from storing its result later.
++  #startLoad(key: string, isRefresh: boolean): Flight<V> {
++    let promise: Promise<V>;
++    try {
++      promise = Promise.resolve(this.#load(key));
++    } catch (error) {
++      promise = Promise.reject(error); // sync throw behaves like a rejection
++    }
++
++    const flight: Flight<V> = { promise, isRefresh };
++    this.#flights.set(key, flight);
++
++    promise.then(
++      (value) => this.#onLoadSettled(key, flight, value),
++      (error) => this.#onLoadRejected(key, flight, error),
++    );
++    return flight;
++  }
++
++  #onLoadSettled(key: string, flight: Flight<V>, value: V): void {
++    if (this.#flights.get(key) !== flight) {
++      // The key was invalidated (or cleared) after this load started, or a
++      // newer load has been started since: do not store.
++      return;
++    }
++    this.#flights.delete(key);
++    this.#entries.delete(key); // re-insert as most recently used
++    this.#entries.set(key, { value, storedAt: this.#now() });
++    this.#enforceLimit();
++  }
++
++  #onLoadRejected(key: string, flight: Flight<V>, error: unknown): void {
++    if (this.#flights.get(key) === flight) {
++      this.#flights.delete(key);
++    }
++    if (flight.isRefresh) {
++      // Never surfaces as an unhandled rejection.
++      this.#onRefreshError?.(key, error);
++    }
++    // Nothing is stored; any stored value is left as it is.
++  }
++
++  // Only runs when more than maxEntries values are stored: drop every
++  // expired value, then evict least-recently-used values while still over.
++  #enforceLimit(): void {
++    if (this.#entries.size <= this.#maxEntries) return;
++
++    const now = this.#now();
++    for (const [key, entry] of this.#entries) {
++      if (this.#isExpired(entry, now)) this.#entries.delete(key);
++    }
++    while (this.#entries.size > this.#maxEntries) {
++      const lru = this.#entries.keys().next().value;
++      if (lru === undefined) break;
++      this.#entries.delete(lru);
++    }
++  }
++}
+diff --git a/test/asyncCache.test.ts b/test/asyncCache.test.ts
+new file mode 100644
+index 0000000..257f65b
+--- /dev/null
++++ b/test/asyncCache.test.ts
+@@ -0,0 +1,513 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { AsyncCache, type AsyncCacheOptions } from "../src/asyncCache.ts";
++
++// A controllable clock: tests move it forward with tick().
++function makeClock() {
++  let t = 1000;
++  return {
++    now: () => t,
++    tick(ms: number) {
++      t += ms;
++    },
++  };
++}
++
++function deferred<V>() {
++  let resolve!: (v: V) => void;
++  let reject!: (e: unknown) => void;
++  const promise = new Promise<V>((res, rej) => {
++    resolve = res;
++    reject = rej;
++  });
++  return { promise, resolve, reject };
++}
++
++// Options whose load records every call and can be scripted per key.
++type Recorder = {
++  calls: string[];
++  loaders: Map<string, Array<Promise<string> | string>>;
++  options: AsyncCacheOptions<string>;
++};
++
++function makeCache(
++  overrides: Partial<AsyncCacheOptions<string>> & { now?: () => number } = {},
++): Recorder {
++  const calls: string[] = [];
++  const loaders = new Map<string, Array<Promise<string> | string>>();
++  const options: AsyncCacheOptions<string> = {
++    load: (key) => {
++      calls.push(key);
++      const next = loaders.get(key)?.shift();
++      if (next !== undefined) return Promise.resolve(next);
++      return Promise.resolve(`value:${key}`);
++    },
++    ttlMs: 100,
++    staleMs: 100,
++    maxEntries: 10,
++    ...overrides,
++  };
++  return { calls, loaders, options };
++}
++
++test("constructor throws RangeError on bad options", () => {
++  for (const [ttlMs, staleMs, maxEntries] of [
++    [0, 0, 1],
++    [-1, 0, 1],
++    [Infinity, 0, 1],
++    [NaN, 0, 1],
++    [100, -1, 1],
++    [100, Infinity, 1],
++    [100, NaN, 1],
++    [100, 0, 0],
++    [100, 0, -1],
++    [100, 0, 1.5],
++    [100, 0, Infinity],
++    [100, 0, NaN],
++  ] as const) {
++    assert.throws(
++      () => new AsyncCache({ load: async () => "x", ttlMs, staleMs, maxEntries }),
++      RangeError,
++      `ttlMs=${ttlMs} staleMs=${staleMs} maxEntries=${maxEntries}`,
++    );
++  }
++  // Valid boundaries are accepted.
++  new AsyncCache({ load: async () => "x", ttlMs: 1, staleMs: 0, maxEntries: 1 });
++});
++
++test("caches a fresh value without re-loading", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now });
++  const cache = new AsyncCache(rec.options);
++
++  assert.equal(await cache.get("a"), "value:a");
++  assert.equal(await cache.get("a"), "value:a");
++  assert.deepEqual(rec.calls, ["a"]);
++});
++
++test("expired values are never returned; a new load starts", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 50 });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  clock.tick(149); // still stale (age 149 < 150)
++  assert.equal(cache.peek("a"), "value:a");
++  clock.tick(1); // age 150 >= 150: expired
++  assert.equal(cache.peek("a"), undefined);
++
++  rec.loaders.set("a", ["value:a2"]);
++  assert.equal(await cache.get("a"), "value:a2");
++  assert.deepEqual(rec.calls, ["a", "a"]);
++  clock.tick(10);
++  assert.equal(await cache.get("a"), "value:a2");
++  assert.deepEqual(rec.calls, ["a", "a"]);
++});
++
++test("stale values are served immediately with a background refresh", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 100 });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  clock.tick(100); // age 100: stale
++  rec.loaders.set("a", [deferred<string>().promise]);
++  assert.equal(await cache.get("a"), "value:a"); // stale value, right away
++  assert.deepEqual(rec.calls, ["a", "a"]); // refresh started in background
++});
++
++test("a refresh rejection is delivered to onRefreshError, not thrown", async () => {
++  const clock = makeClock();
++  const errors: Array<[string, unknown]> = [];
++  const rec = makeCache({
++    now: clock.now,
++    ttlMs: 100,
++    staleMs: 100,
++    onRefreshError: (key, error) => errors.push([key, error]),
++  });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  clock.tick(100);
++  const gate = deferred<string>();
++  rec.loaders.set("a", [gate.promise]);
++  await cache.get("a"); // serves stale, starts refresh
++  assert.deepEqual(rec.calls, ["a", "a"]);
++  gate.reject(new Error("boom"));
++
++  // Give microtasks a chance to run; must not produce an unhandled rejection.
++  await new Promise<void>((r) => setTimeout(r, 0));
++  assert.deepEqual(errors, [["a", new Error("boom")]]);
++
++  // The stale value keeps being served while nothing is in flight.
++  assert.equal(cache.peek("a"), "value:a");
++  clock.tick(50); // age 150, still stale, no load in flight
++  const gate2 = deferred<string>();
++  rec.loaders.set("a", [gate2.promise]);
++  await cache.get("a"); // starts another refresh, serves stale
++  assert.equal(await cache.get("a"), "value:a"); // still the stale value
++  assert.deepEqual(rec.calls, ["a", "a", "a"]);
++
++  gate2.resolve("value:a2"); // the refresh settles
++  await new Promise<void>((r) => setTimeout(r, 0));
++  assert.equal(await cache.get("a"), "value:a2"); // now fresh
++  assert.deepEqual(rec.calls, ["a", "a", "a"]);
++});
++
++test("without onRefreshError a refresh rejection is swallowed", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 100 });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  clock.tick(100);
++  const gate = deferred<string>();
++  rec.loaders.set("a", [gate.promise]);
++  await cache.get("a");
++  gate.reject(new Error("boom"));
++  await new Promise<void>((r) => setTimeout(r, 0));
++  assert.equal(cache.peek("a"), "value:a");
++});
++
++test("concurrent gets for one key share a single load", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now });
++  const cache = new AsyncCache(rec.options);
++
++  const gate = deferred<string>();
++  rec.loaders.set("a", [gate.promise]);
++  const p1 = cache.get("a");
++  const p2 = cache.get("a");
++  const p3 = cache.get("a");
++  assert.deepEqual(rec.calls, ["a"]);
++  gate.resolve("loaded");
++  assert.equal(await p1, "loaded");
++  assert.equal(await p2, "loaded");
++  assert.equal(await p3, "loaded");
++  assert.deepEqual(rec.calls, ["a"]);
++});
++
++test("a sync throw from load behaves like a rejection", async () => {
++  const clock = makeClock();
++  const calls: string[] = [];
++  const cache = new AsyncCache<string>({
++    now: clock.now,
++    ttlMs: 100,
++    staleMs: 100,
++    maxEntries: 10,
++    load: (key) => {
++      calls.push(key);
++      if (calls.length === 1) throw new Error("sync boom");
++      return Promise.resolve(`value:${key}`);
++    },
++  });
++
++  await assert.rejects(cache.get("a"), { message: "sync boom" });
++  assert.deepEqual(calls, ["a"]);
++  // Nothing was stored, and the flight is gone: a new load can start.
++  assert.equal(cache.peek("a"), undefined);
++  assert.equal(await cache.get("a"), "value:a");
++  assert.deepEqual(calls, ["a", "a"]);
++});
++
++test("a rejected load rejects every waiting get with the same error", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now });
++  const cache = new AsyncCache(rec.options);
++
++  const gate = deferred<string>();
++  rec.loaders.set("a", [gate.promise]);
++  const p1 = cache.get("a");
++  const p2 = cache.get("a");
++  gate.reject(new Error("nope"));
++  await assert.rejects(p1, { message: "nope" });
++  await assert.rejects(p2, { message: "nope" });
++  // No value stored; a later get starts a fresh load.
++  rec.loaders.set("a", ["recovered"]);
++  assert.equal(await cache.get("a"), "recovered");
++});
++
++test("storedAt is taken when the load settles, not when it starts", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 0 });
++  const cache = new AsyncCache(rec.options);
++
++  const gate = deferred<string>();
++  rec.loaders.set("a", [gate.promise]);
++  const p = cache.get("a");
++  clock.tick(90); // load started at t=1000, settles at t=1090
++  gate.resolve("slow");
++  await p;
++  // Age counts from the settle time: still fresh.
++  clock.tick(99);
++  assert.equal(await cache.get("a"), "slow");
++  assert.deepEqual(rec.calls, ["a"]);
++  clock.tick(1); // age 100 from the settle time: expired (staleMs is 0)
++  rec.loaders.set("a", ["value:a2"]);
++  await cache.get("a");
++  assert.deepEqual(rec.calls, ["a", "a"]);
++});
++
++test("invalidate drops the value and retires the in-flight load", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  assert.equal(cache.invalidate("a"), true);
++  assert.equal(cache.invalidate("a"), false);
++  assert.equal(cache.peek("a"), undefined);
++
++  // A load already in flight will not store its result.
++  const gate = deferred<string>();
++  rec.loaders.set("a", [gate.promise, "fresh-load"]);
++  const inFlight = cache.get("a");
++  assert.deepEqual(rec.calls, ["a", "a"]);
++  cache.invalidate("a");
++  gate.resolve("discarded");
++  assert.equal(await inFlight, "discarded"); // waiters still receive it
++  assert.equal(cache.peek("a"), undefined);
++
++  // The next get starts a new load instead of waiting on the old one.
++  assert.equal(await cache.get("a"), "fresh-load");
++  assert.deepEqual(rec.calls, ["a", "a", "a"]);
++});
++
++test("invalidate also retires an in-flight background refresh", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 100 });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  clock.tick(100);
++  const gate = deferred<string>();
++  rec.loaders.set("a", [gate.promise]);
++  await cache.get("a"); // starts refresh
++  cache.invalidate("a");
++  gate.resolve("discarded");
++  await new Promise<void>((r) => setTimeout(r, 0));
++  assert.equal(cache.peek("a"), undefined); // refresh result not stored
++
++  rec.loaders.set("a", ["reloaded"]);
++  assert.equal(await cache.get("a"), "reloaded");
++});
++
++test("invalidate returns true for an expired stored value", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 0 });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  clock.tick(200);
++  assert.equal(cache.invalidate("a"), true);
++});
++
++test("clear() retires every in-flight load", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now });
++  const cache = new AsyncCache(rec.options);
++
++  const gateA = deferred<string>();
++  const gateB = deferred<string>();
++  rec.loaders.set("a", [gateA.promise]);
++  rec.loaders.set("b", [gateB.promise]);
++  const pa = cache.get("a");
++  const pb = cache.get("b");
++  cache.clear();
++  gateA.resolve("discarded-a");
++  gateB.resolve("discarded-b");
++  assert.equal(await pa, "discarded-a");
++  assert.equal(await pb, "discarded-b");
++  assert.equal(cache.peek("a"), undefined);
++  assert.equal(cache.size, 0);
++
++  rec.loaders.set("a", ["fresh-a"]);
++  assert.equal(await cache.get("a"), "fresh-a");
++  assert.deepEqual(rec.calls, ["a", "b", "a"]);
++});
++
++test("peek serves fresh and stale, never expired, without loads", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 100 });
++  const cache = new AsyncCache(rec.options);
++
++  assert.equal(cache.peek("a"), undefined);
++  await cache.get("a");
++  assert.equal(cache.peek("a"), "value:a");
++  clock.tick(150); // stale
++  assert.equal(cache.peek("a"), "value:a");
++  assert.deepEqual(rec.calls, ["a"]); // no load started
++  clock.tick(60); // expired
++  assert.equal(cache.peek("a"), undefined);
++  assert.deepEqual(rec.calls, ["a"]);
++});
++
++test("peek does not change recency", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, maxEntries: 2 });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  await cache.get("b"); // order: a, b
++  assert.equal(cache.peek("a"), "value:a"); // no recency change
++  rec.loaders.set("c", ["value:c"]);
++  await cache.get("c"); // stores 'c': evicts the LRU, which is 'a' — if peek
++  // had marked 'a' as used, 'b' would have been evicted instead
++  assert.equal(cache.peek("a"), undefined);
++  assert.equal(cache.peek("b"), "value:b");
++  assert.equal(cache.peek("c"), "value:c");
++});
++
++test("get updates recency for fresh and stale hits", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, maxEntries: 2 });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  await cache.get("b");
++  clock.tick(50); // stale
++  await cache.get("a"); // stale hit moves 'a' to most recently used
++  await cache.get("c"); // evicts 'b'
++  assert.equal(cache.peek("a"), "value:a");
++  assert.equal(cache.peek("b"), undefined);
++  assert.equal(cache.peek("c"), "value:c");
++});
++
++test("size counts only fresh and stale values", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 100 });
++  const cache = new AsyncCache(rec.options);
++
++  assert.equal(cache.size, 0);
++  await cache.get("a");
++  await cache.get("b");
++  assert.equal(cache.size, 2);
++  clock.tick(50);
++  assert.equal(cache.size, 2); // stale still counts
++  clock.tick(150); // both expired
++  assert.equal(cache.size, 0);
++  // size is not a mutation: rewinding re-ages the untouched entries.
++  clock.tick(-150);
++  assert.equal(cache.size, 2);
++});
++
++test("storing past maxEntries drops expired values first, then evicts LRU", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 100, maxEntries: 3 });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  await cache.get("b");
++  await cache.get("c");
++  clock.tick(50);
++  await cache.get("a"); // 'a' becomes MRU: order is b, c, a
++  clock.tick(200); // all three expired
++  assert.equal(cache.size, 0); // but they are still stored physically
++
++  rec.loaders.set("d", ["value:d"]);
++  await cache.get("d"); // 4 stored > 3: every expired value is dropped first
++  assert.equal(cache.peek("a"), undefined);
++  assert.equal(cache.peek("b"), undefined);
++  assert.equal(cache.peek("c"), undefined);
++  assert.equal(cache.peek("d"), "value:d");
++
++  // Now store while all values are fresh: LRU eviction applies.
++  await cache.get("x"); // order: d, x
++  await cache.get("y"); // order: d, x, y
++  rec.loaders.set("z", ["value:z"]);
++  await cache.get("z"); // evicts 'd' (LRU)
++  assert.equal(cache.peek("d"), undefined);
++  assert.equal(cache.peek("x"), "value:x");
++  assert.equal(cache.peek("y"), "value:y");
++  assert.equal(cache.peek("z"), "value:z");
++});
++
++test("evicting a key does not stop its in-flight load from storing later", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 100, maxEntries: 2 });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  await cache.get("b");
++  const gate = deferred<string>();
++  rec.loaders.set("c", [gate.promise]);
++  const pc = cache.get("c"); // load in flight, nothing stored yet
++  clock.tick(1);
++  rec.loaders.set("d", ["value:d"]);
++  await cache.get("d"); // stores d: 3 physical entries, but only a, b are fresh-or-stale
++  // Loads in flight do not count towards the limit, so 'a' (LRU) is evicted.
++  assert.equal(cache.peek("a"), undefined);
++  assert.equal(cache.peek("b"), "value:b");
++
++  gate.resolve("late");
++  assert.equal(await pc, "late");
++  assert.equal(cache.peek("c"), "late"); // stored after its eviction point
++});
++
++test("a newer load is unaffected when an older load settles after it", async () => {
++  // Spec: "When a load settles, the key no longer has a load in flight
++  // (unless a newer load for the key has been started since, which is
++  // unaffected)." Two loads can only overlap via invalidation.
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now });
++  const cache = new AsyncCache(rec.options);
++
++  const gate1 = deferred<string>();
++  rec.loaders.set("a", [gate1.promise]);
++  const p1 = cache.get("a");
++
++  const gate2 = deferred<string>();
++  rec.loaders.set("a", [gate2.promise]);
++  cache.invalidate("a"); // retires the first load
++  const p2 = cache.get("a"); // starts the second load
++  assert.deepEqual(rec.calls, ["a", "a"]);
++
++  gate2.resolve("second");
++  assert.equal(await p2, "second");
++  assert.equal(cache.peek("a"), "second");
++
++  gate1.resolve("first"); // settles after the newer load: must not overwrite
++  assert.equal(await p1, "first");
++  assert.equal(cache.peek("a"), "second");
++});
++
++test("replacing a stored value on a load resets its age and recency", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 0, maxEntries: 2 });
++  const cache = new AsyncCache(rec.options);
++
++  await cache.get("a");
++  clock.tick(150); // 'a' expired
++  rec.loaders.set("a", ["value:a2"]);
++  await cache.get("b"); // stores b while 'a' is expired
++  clock.tick(10);
++  await cache.get("a"); // replaces the expired entry, storedAt resets
++  clock.tick(90);
++  assert.equal(await cache.get("a"), "value:a2"); // fresh again
++  assert.deepEqual(rec.calls, ["a", "b", "a"]);
++  clock.tick(11); // age 101 from the second store: expired again
++  rec.loaders.set("a", ["value:a3"]);
++  await cache.get("a");
++  assert.equal(await cache.get("a"), "value:a3");
++  assert.deepEqual(rec.calls, ["a", "b", "a", "a"]);
++});
++
++test("loads in flight do not count towards the size limit", async () => {
++  const clock = makeClock();
++  const rec = makeCache({ now: clock.now, ttlMs: 100, staleMs: 0, maxEntries: 1 });
++  const cache = new AsyncCache(rec.options);
++
++  const gate = deferred<string>();
++  rec.loaders.set("a", [gate.promise]);
++  const pa = cache.get("a"); // in flight, nothing stored
++  assert.equal(cache.size, 0);
++  rec.loaders.set("b", ["value:b"]);
++  await cache.get("b"); // b stored; 'a' has no stored entry to evict
++  assert.equal(cache.size, 1);
++  gate.resolve("late");
++  assert.equal(await pa, "late");
++  // 'a' now stores: 'b' (older) is evicted.
++  assert.equal(cache.peek("a"), "late");
++  assert.equal(cache.peek("b"), undefined);
++  assert.equal(cache.size, 1);
++});

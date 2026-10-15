@@ -1,0 +1,74 @@
+ src/text.js       | 30 ++++++++++++++++++++++++++++++
+ test/text.test.js | 18 +++++++++++++++++-
+ 2 files changed, 47 insertions(+), 1 deletion(-)
+
+diff --git a/src/text.js b/src/text.js
+index fcabc22..4519275 100644
+--- a/src/text.js
++++ b/src/text.js
+@@ -14,3 +14,33 @@ export function capitalize(s) {
+ export function truncate(s, max) {
+   return s.length <= max ? s : s.slice(0, Math.max(0, max - 1)) + "…";
+ }
++
++/**
++ * A count with the matching word form: `pluralize(1, "file")` is
++ * `"1 file"`, `pluralize(0, "file")` is `"0 files"`.
++ * @param {number} count
++ * @param {string} singular
++ * @param {string} [plural]
++ */
++export function pluralize(count, singular, plural) {
++  if (typeof count !== "number" || !Number.isFinite(count)) {
++    throw new TypeError("count must be a finite number");
++  }
++  const word = count === 1 ? singular : plural ?? pluralOf(singular);
++  return String(count) + " " + word;
++}
++
++/**
++ * Build the plural form of `singular`: buses, boxes, cities, days, files.
++ * @param {string} singular
++ */
++function pluralOf(singular) {
++  if (["s", "x", "z", "ch", "sh"].some((end) => singular.endsWith(end))) {
++    return singular + "es";
++  }
++  const before = singular.at(-2);
++  if (singular.endsWith("y") && before !== undefined && !"aeiou".includes(before)) {
++    return singular.slice(0, -1) + "ies";
++  }
++  return singular + "s";
++}
+diff --git a/test/text.test.js b/test/text.test.js
+index d0918a6..c28fa43 100644
+--- a/test/text.test.js
++++ b/test/text.test.js
+@@ -1,6 +1,6 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+-import { capitalize, truncate } from "../src/text.js";
++import { capitalize, pluralize, truncate } from "../src/text.js";
+ 
+ test("capitalize", () => {
+   assert.equal(capitalize("hello"), "Hello");
+@@ -11,3 +11,19 @@ test("truncate", () => {
+   assert.equal(truncate("abcdef", 10), "abcdef");
+   assert.equal(truncate("abcdef", 4), "abc…");
+ });
++
++test("pluralize", () => {
++  assert.equal(pluralize(1, "file"), "1 file");
++  assert.equal(pluralize(0, "file"), "0 files");
++  assert.equal(pluralize(2, "file"), "2 files");
++  assert.equal(pluralize(-3, "city"), "-3 cities");
++  assert.equal(pluralize(1.5, "day"), "1.5 days");
++  assert.equal(pluralize(2, "child", "children"), "2 children");
++  assert.equal(pluralize(2, "bus"), "2 buses");
++  assert.equal(pluralize(2, "box"), "2 boxes");
++  assert.equal(pluralize(2, "quiz"), "2 quizes");
++  assert.equal(pluralize(2, "match"), "2 matches");
++  assert.throws(() => pluralize(NaN, "file"), TypeError);
++  assert.throws(() => pluralize(Infinity, "file"), TypeError);
++  assert.throws(() => pluralize("2", "file"), TypeError);
++});

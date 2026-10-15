@@ -1,0 +1,82 @@
+ src/paginate.ts       |  6 +++---
+ test/paginate.test.ts | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 49 insertions(+), 3 deletions(-)
+
+diff --git a/src/paginate.ts b/src/paginate.ts
+index c25874c..7078d93 100644
+--- a/src/paginate.ts
++++ b/src/paginate.ts
+@@ -25,8 +25,8 @@ export function paginate<T>(items: readonly T[], page: number, pageSize: number)
+   if (!Number.isInteger(pageSize) || pageSize < 1) throw new RangeError("pageSize must be an integer >= 1");
+ 
+   const totalItems = items.length;
+-  const totalPages = Math.floor(totalItems / pageSize);
+-  const start = page * pageSize;
++  const totalPages = Math.ceil(totalItems / pageSize);
++  const start = (page - 1) * pageSize;
+   const pageItems = items.slice(start, start + pageSize);
+ 
+   return {
+@@ -35,7 +35,7 @@ export function paginate<T>(items: readonly T[], page: number, pageSize: number)
+     pageSize,
+     totalItems,
+     totalPages,
+-    hasNext: page <= totalPages,
++    hasNext: page < totalPages,
+     hasPrev: page > 1 && totalItems > 0,
+   };
+ }
+diff --git a/test/paginate.test.ts b/test/paginate.test.ts
+index 54ea158..d4081aa 100644
+--- a/test/paginate.test.ts
++++ b/test/paginate.test.ts
+@@ -7,3 +7,49 @@ test("rejects invalid arguments", () => {
+   assert.throws(() => paginate([1, 2, 3], 1, 0), RangeError);
+   assert.throws(() => paginate([1, 2, 3], 1.5, 10), RangeError);
+ });
++
++test("pages are 1-based and the last page may be shorter", () => {
++  const items = Array.from({ length: 25 }, (_, i) => i + 1);
++
++  assert.deepEqual(paginate(items, 1, 10), {
++    items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
++    page: 1,
++    pageSize: 10,
++    totalItems: 25,
++    totalPages: 3,
++    hasNext: true,
++    hasPrev: false,
++  });
++
++  const last = paginate(items, 3, 10);
++  assert.deepEqual(last.items, [21, 22, 23, 24, 25]);
++  assert.equal(last.hasNext, false);
++  assert.equal(last.hasPrev, true);
++});
++
++test("a page past the end has no items", () => {
++  const page = paginate([1, 2, 3], 4, 10);
++  assert.deepEqual(page.items, []);
++  assert.equal(page.totalPages, 1);
++  assert.equal(page.hasNext, false);
++});
++
++test("totalPages is 0 for an empty list", () => {
++  const page = paginate([], 1, 10);
++  assert.deepEqual(page, {
++    items: [],
++    page: 1,
++    pageSize: 10,
++    totalItems: 0,
++    totalPages: 0,
++    hasNext: false,
++    hasPrev: false,
++  });
++});
++
++test("an exact multiple of pageSize has no empty trailing page", () => {
++  const page = paginate([1, 2, 3, 4], 2, 2);
++  assert.deepEqual(page.items, [3, 4]);
++  assert.equal(page.totalPages, 2);
++  assert.equal(page.hasNext, false);
++});

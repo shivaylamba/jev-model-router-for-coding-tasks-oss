@@ -1,0 +1,133 @@
+ src/config.ts       | 39 ++++++++++++++++++++-------------------
+ test/config.test.ts | 53 +++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 71 insertions(+), 21 deletions(-)
+
+diff --git a/src/config.ts b/src/config.ts
+index 80b782b..245a719 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,4 +1,4 @@
+-import { readFile } from "node:fs";
++import { readFile } from "node:fs/promises";
+ 
+ export type Config = {
+   host: string;
+@@ -8,7 +8,7 @@ export type Config = {
+ 
+ export type ConfigCallback = (err: Error | null, config?: Config) => void;
+ 
+-/** Thrown (or passed to the callback) when the file parses but holds bad values. */
++/** Thrown (or passed to the callback, or used to reject the promise) when the file parses but holds bad values. */
+ export class ConfigError extends Error {
+   constructor(message: string) {
+     super(message);
+@@ -39,22 +39,23 @@ export function applyDefaults(raw: unknown): Config {
+ /**
+  * Read and validate a JSON config file.
+  *
+- * Errors from the file system (for example ENOENT), a SyntaxError for
+- * malformed JSON, or a ConfigError for bad values are passed to the callback.
++ * Without a callback, returns a promise that resolves with the config, or
++ * rejects with the file-system error as-is (for example ENOENT), a
++ * SyntaxError for malformed JSON, or a ConfigError for bad values.
++ *
++ * With a callback, those same errors are passed to the callback as the
++ * first argument — exactly once — and readConfig returns undefined.
+  */
+-export function readConfig(path: string, callback: ConfigCallback): void {
+-  readFile(path, "utf8", (err, text) => {
+-    if (err) {
+-      callback(err);
+-      return;
+-    }
+-    let config: Config;
+-    try {
+-      config = applyDefaults(JSON.parse(text));
+-    } catch (parseErr) {
+-      callback(parseErr as Error);
+-      return;
+-    }
+-    callback(null, config);
+-  });
++export function readConfig(path: string): Promise<Config>;
++export function readConfig(path: string, callback: ConfigCallback): undefined;
++export function readConfig(path: string, callback?: ConfigCallback): Promise<Config> | undefined {
++  const promise = readFile(path, "utf8").then((text) => applyDefaults(JSON.parse(text)));
++  if (callback === undefined) {
++    return promise;
++  }
++  promise.then(
++    (config) => callback(null, config),
++    (err: Error) => callback(err),
++  );
++  return undefined;
+ }
+diff --git a/test/config.test.ts b/test/config.test.ts
+index f132e61..7540f66 100644
+--- a/test/config.test.ts
++++ b/test/config.test.ts
+@@ -5,9 +5,13 @@ import { tmpdir } from "node:os";
+ import { join } from "node:path";
+ import { ConfigError, readConfig } from "../src/config.ts";
+ 
+-function fileWith(text: string): string {
++function tempPath(): string {
+   const dir = mkdtempSync(join(tmpdir(), "cfg-"));
+-  const path = join(dir, "devserver.json");
++  return join(dir, "devserver.json");
++}
++
++function fileWith(text: string): string {
++  const path = tempPath();
+   writeFileSync(path, text);
+   return path;
+ }
+@@ -26,3 +30,48 @@ test("callback receives a ConfigError for a bad port", (_t, done) => {
+     done();
+   });
+ });
++
++test("with a callback, readConfig returns undefined", (_t, done) => {
++  const result = readConfig(fileWith("{}"), (err) => {
++    assert.equal(err, null);
++    done();
++  });
++  assert.equal(result, undefined);
++});
++
++test("without a callback, resolves with the merged config", async () => {
++  const config = await readConfig(fileWith('{"port": 3000}'));
++  assert.deepEqual(config, { host: "localhost", port: 3000, debug: false });
++});
++
++test("without a callback, rejects with the file-system error for a missing file", async () => {
++  await assert.rejects(readConfig(tempPath()), { code: "ENOENT" });
++});
++
++test("without a callback, rejects with a SyntaxError for malformed JSON", async () => {
++  await assert.rejects(readConfig(fileWith("{")), SyntaxError);
++});
++
++test("with a callback, failures reach the callback instead of an unhandled rejection", (_t, done) => {
++  let callbackErr = null;
++  const onUnhandled = () => {
++    process.off("unhandledRejection", onUnhandled);
++    done(new Error("callback-form failure surfaced as an unhandled rejection"));
++  };
++  process.on("unhandledRejection", onUnhandled);
++  // Missing file: ENOENT, a guaranteed rejection if the promise had no handler.
++  readConfig(tempPath(), (err) => {
++    callbackErr = err;
++  });
++  // Let several macrotasks pass so any stray rejection would have fired.
++  setTimeout(() => {
++    process.off("unhandledRejection", onUnhandled);
++    assert.ok(callbackErr !== null);
++    assert.equal(callbackErr.code, "ENOENT");
++    done();
++  }, 50);
++});
++
++test("without a callback, rejects with a ConfigError for a bad port", async () => {
++  await assert.rejects(readConfig(fileWith('{"port": 0}')), ConfigError);
++});

@@ -1,0 +1,275 @@
+ README.md                |   1 +
+ httpclient.py            |  17 +++---
+ retry.py                 |  42 +++++++++++++++
+ tests/test_httpclient.py |  24 ++++++++-
+ tests/test_retry.py      | 132 +++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 207 insertions(+), 9 deletions(-)
+
+diff --git a/README.md b/README.md
+index 300d3c2..bc96b4e 100644
+--- a/README.md
++++ b/README.md
+@@ -4,6 +4,7 @@ Pulls JSON feeds from partner endpoints and stores them locally.
+ 
+ - `errors.py` - the exception types the transport raises
+ - `httpclient.py` - `fetch_json`, which talks to a transport object and retries transient failures
++- `retry.py` - `retry`/`retrying`, exponential backoff for calls that may fail transiently
+ 
+ Standard library only (Python 3.11). Every function that waits takes a `sleep`
+ argument so tests never sleep for real.
+diff --git a/httpclient.py b/httpclient.py
+index a0657fe..c835539 100644
+--- a/httpclient.py
++++ b/httpclient.py
+@@ -8,15 +8,16 @@ import json
+ import time
+ 
+ from errors import TransientError
++from retry import retry
+ 
+ 
+ def fetch_json(transport, url, sleep=time.sleep):
+     """Return the decoded JSON body at `url`, retrying transient failures."""
+-    last = None
+-    for _ in range(3):
+-        try:
+-            return json.loads(transport.get(url))
+-        except TransientError as exc:
+-            last = exc
+-            sleep(1)
+-    raise last
++    return retry(
++        lambda: json.loads(transport.get(url)),
++        attempts=4,
++        base_delay=0.5,
++        max_delay=4.0,
++        retry_on=TransientError,
++        sleep=sleep,
++    )
+diff --git a/retry.py b/retry.py
+new file mode 100644
+index 0000000..db3db5a
+--- /dev/null
++++ b/retry.py
+@@ -0,0 +1,42 @@
++"""Retry a call with exponential backoff."""
++
++import functools
++import time
++
++
++def retry(fn, *, attempts=3, base_delay=0.1, max_delay=5.0,
++          retry_on=(Exception,), sleep=time.sleep, on_retry=None):
++    """Call `fn()` and return its result, retrying matching failures.
++
++    `attempts` is the total number of calls, including the first. A failed
++    call leads to another only if its exception is an instance of `retry_on`
++    (a class or tuple of classes); anything else propagates immediately.
++    Before each wait, calls `on_retry(attempt, exc, delay)` when given, where
++    `attempt` is the 1-based number of the call that just failed and `delay`
++    grows from `base_delay` by powers of two, capped at `max_delay`.
++    """
++    if attempts < 1:
++        raise ValueError("attempts must be at least 1")
++    if base_delay < 0 or max_delay < 0:
++        raise ValueError("delays must be non-negative")
++
++    for attempt in range(1, attempts + 1):
++        try:
++            return fn()
++        except retry_on as exc:
++            if attempt == attempts:
++                raise
++            delay = min(max_delay, base_delay * 2 ** (attempt - 1))
++            if on_retry is not None:
++                on_retry(attempt, exc, delay)
++            sleep(delay)
++
++
++def retrying(**options):
++    """Decorate a function so its calls run through `retry`."""
++    def decorate(fn):
++        @functools.wraps(fn)
++        def wrapper(*args, **kwargs):
++            return retry(lambda: fn(*args, **kwargs), **options)
++        return wrapper
++    return decorate
+diff --git a/tests/test_httpclient.py b/tests/test_httpclient.py
+index 05ef04e..69cc81f 100644
+--- a/tests/test_httpclient.py
++++ b/tests/test_httpclient.py
+@@ -1,6 +1,6 @@
+ import unittest
+ 
+-from errors import PermanentError
++from errors import PermanentError, TransientError
+ from httpclient import fetch_json
+ 
+ 
+@@ -29,6 +29,28 @@ class FetchJsonTest(unittest.TestCase):
+             fetch_json(transport, "https://x/feed", sleep=lambda s: None)
+         self.assertEqual(len(transport.calls), 1)
+ 
++    def test_transient_errors_back_off_then_succeed(self):
++        transport = FakeTransport([
++            TransientError("503"),
++            TransientError("503"),
++            TransientError("503"),
++            '{"ok": true}',
++        ])
++        sleeps = []
++        result = fetch_json(transport, "https://x/feed", sleep=sleeps.append)
++        self.assertEqual(result, {"ok": True})
++        self.assertEqual(sleeps, [0.5, 1.0, 2.0])
++
++    def test_transient_errors_exhaust_attempts(self):
++        exc = TransientError("503")
++        transport = FakeTransport([exc] * 4)
++        sleeps = []
++        with self.assertRaises(TransientError) as ctx:
++            fetch_json(transport, "https://x/feed", sleep=sleeps.append)
++        self.assertIs(ctx.exception, exc)
++        self.assertEqual(len(transport.calls), 4)
++        self.assertEqual(sleeps, [0.5, 1.0, 2.0])
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/tests/test_retry.py b/tests/test_retry.py
+new file mode 100644
+index 0000000..62cb1d3
+--- /dev/null
++++ b/tests/test_retry.py
+@@ -0,0 +1,132 @@
++import unittest
++
++from retry import retry, retrying
++
++
++class Boom(Exception):
++    pass
++
++
++class Ignore(Exception):
++    pass
++
++
++class Script:
++    """Callable that raises the given exceptions in order, then returns."""
++
++    def __init__(self, outcomes):
++        self.outcomes = list(outcomes)
++        self.calls = 0
++
++    def __call__(self):
++        self.calls += 1
++        item = self.outcomes.pop(0)
++        if isinstance(item, Exception):
++            raise item
++        return item
++
++
++class RetryTest(unittest.TestCase):
++    def test_success_returns_without_sleeping(self):
++        sleeps = []
++        result = retry(Script(["ok"]), sleep=sleeps.append)
++        self.assertEqual(result, "ok")
++        self.assertEqual(sleeps, [])
++
++    def test_retries_then_succeeds(self):
++        sleeps = []
++        script = Script([Boom(), Boom(), "ok"])
++        result = retry(script, base_delay=0.5, max_delay=4.0, sleep=sleeps.append)
++        self.assertEqual(result, "ok")
++        self.assertEqual(script.calls, 3)
++        self.assertEqual(sleeps, [0.5, 1.0])
++
++    def test_backoff_doubles_and_caps(self):
++        sleeps = []
++        script = [Boom()] * 5 + ["ok"]
++        retry(Script(script), attempts=6, base_delay=0.1, max_delay=0.3, sleep=sleeps.append)
++        self.assertEqual(sleeps, [0.1, 0.2, 0.3, 0.3, 0.3])
++
++    def test_last_failure_reraises_same_exception_without_final_wait(self):
++        sleeps = []
++        retries = []
++        exc = Boom()
++        with self.assertRaises(Boom) as ctx:
++            retry(
++                Script([exc, exc, exc]),
++                attempts=3,
++                sleep=sleeps.append,
++                on_retry=lambda attempt, e, d: retries.append(attempt),
++            )
++        self.assertIs(ctx.exception, exc)
++        self.assertEqual(sleeps, [0.1, 0.2])
++        self.assertEqual(retries, [1, 2])
++
++    def test_unmatched_exception_propagates_immediately(self):
++        sleeps = []
++        script = Script([Ignore(), Boom(), "ok"])
++        with self.assertRaises(Ignore):
++            retry(script, retry_on=Boom, sleep=sleeps.append)
++        self.assertEqual(script.calls, 1)
++        self.assertEqual(sleeps, [])
++
++    def test_on_retry_runs_before_each_wait(self):
++        events = []
++        exc = Boom()
++        retry(
++            Script([exc, exc, "ok"]),
++            base_delay=0.2,
++            sleep=lambda d: events.append(("sleep", d)),
++            on_retry=lambda attempt, e, d: events.append(("retry", attempt, e, d)),
++        )
++        self.assertEqual(events, [
++            ("retry", 1, exc, 0.2),
++            ("sleep", 0.2),
++            ("retry", 2, exc, 0.4),
++            ("sleep", 0.4),
++        ])
++
++
++class ValidationTest(unittest.TestCase):
++    def test_attempts_below_one_raises_before_calling_fn(self):
++        script = Script(["ok"])
++        with self.assertRaises(ValueError):
++            retry(script, attempts=0)
++        self.assertEqual(script.calls, 0)
++
++    def test_negative_delays_raise_before_calling_fn(self):
++        script = Script(["ok"])
++        with self.assertRaises(ValueError):
++            retry(script, base_delay=-1)
++        with self.assertRaises(ValueError):
++            retry(script, max_delay=-0.1)
++        self.assertEqual(script.calls, 0)
++
++
++class RetryingTest(unittest.TestCase):
++    def test_forwards_arguments_and_retries(self):
++        sleeps = []
++        calls = []
++
++        @retrying(attempts=3, base_delay=0.1, retry_on=Boom, sleep=sleeps.append)
++        def divide(n, by):
++            calls.append((n, by))
++            if len(calls) < 2:
++                raise Boom()
++            return n / by
++
++        self.assertEqual(divide(6, by=3), 2.0)
++        self.assertEqual(calls, [(6, 3), (6, 3)])
++        self.assertEqual(sleeps, [0.1])
++
++    def test_keeps_name_and_doc(self):
++        @retrying()
++        def fetch():
++            """Fetch it."""
++
++        self.assertEqual(fetch.__name__, "fetch")
++        self.assertEqual(fetch.__doc__, "Fetch it.")
++
++
++if __name__ == "__main__":
++    unittest.main()

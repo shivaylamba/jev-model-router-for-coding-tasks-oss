@@ -1,0 +1,35 @@
+ __pycache__/contacts.cpython-311.pyc | Bin 0 -> 2883 bytes
+ contacts.py                          |  19 +++++++++++++++++++
+ 2 files changed, 19 insertions(+)
+
+diff --git a/__pycache__/contacts.cpython-311.pyc b/__pycache__/contacts.cpython-311.pyc
+new file mode 100644
+index 0000000..ba5e4d1
+Binary files /dev/null and b/__pycache__/contacts.cpython-311.pyc differ
+diff --git a/contacts.py b/contacts.py
+index f36e8f9..cdab52d 100644
+--- a/contacts.py
++++ b/contacts.py
+@@ -10,3 +10,22 @@ def format_name(first, last):
+ def normalize_email(email):
+     """Trim and lowercase an e-mail address."""
+     return email.strip().lower()
++
++
++_DIGITS = set("0123456789")
++_IGNORED = set(" ()-.+")  # separators users type but we don't care about
++
++
++def format_us_phone(raw):
++    """'415-555-0123' -> '(415) 555-0123'. A leading country-code '1' is
++    dropped; anything that isn't a valid US number raises ValueError."""
++    digits = "".join(c for c in raw if c not in _IGNORED)
++    if not all(c in _DIGITS for c in digits):
++        raise ValueError(f"invalid characters in phone number: {raw!r}")
++    if len(digits) == 11 and digits[0] == "1":
++        digits = digits[1:]
++    if len(digits) != 10:
++        raise ValueError(f"phone number needs 10 digits (or 11 with a leading 1): {raw!r}")
++    if digits[0] in "01" or digits[3] in "01":
++        raise ValueError(f"area code and exchange must start with 2-9: {raw!r}")
++    return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"

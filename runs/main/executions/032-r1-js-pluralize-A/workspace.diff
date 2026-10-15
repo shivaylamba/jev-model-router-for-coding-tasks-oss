@@ -1,0 +1,39 @@
+ src/text.js | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
+
+diff --git a/src/text.js b/src/text.js
+index fcabc22..9fb1619 100644
+--- a/src/text.js
++++ b/src/text.js
+@@ -14,3 +14,31 @@ export function capitalize(s) {
+ export function truncate(s, max) {
+   return s.length <= max ? s : s.slice(0, Math.max(0, max - 1)) + "…";
+ }
++
++/**
++ * Format "N word(s)"; singular only when count is exactly 1.
++ * @param {number} count
++ * @param {string} singular
++ * @param {string} [plural]
++ */
++export function pluralize(count, singular, plural) {
++  if (typeof count !== "number" || !Number.isFinite(count)) {
++    throw new TypeError(`count must be a finite number, got ${String(count)}`);
++  }
++  const word =
++    count === 1 ? singular : plural !== undefined ? plural : defaultPlural(singular);
++  return `${String(count)} ${word}`;
++}
++
++function defaultPlural(singular) {
++  if (/(?:s|x|z|ch|sh)$/.test(singular)) {
++    return singular + "es";
++  }
++  const yMatch = /(.)y$/.exec(singular);
++  if (yMatch) {
++    return /[aeiou]/.test(yMatch[1])
++      ? singular + "s"
++      : singular.slice(0, -1) + "ies";
++  }
++  return singular + "s";
++}

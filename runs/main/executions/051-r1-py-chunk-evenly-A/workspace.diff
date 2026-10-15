@@ -1,0 +1,38 @@
+ __pycache__/listutil.cpython-311.pyc            | Bin 0 -> 1542 bytes
+ listutil.py                                     |  17 +++++++++++++++++
+ tests/__pycache__/test_listutil.cpython-311.pyc | Bin 0 -> 987 bytes
+ 3 files changed, 17 insertions(+)
+
+diff --git a/__pycache__/listutil.cpython-311.pyc b/__pycache__/listutil.cpython-311.pyc
+new file mode 100644
+index 0000000..a474b76
+Binary files /dev/null and b/__pycache__/listutil.cpython-311.pyc differ
+diff --git a/listutil.py b/listutil.py
+index a345f6f..a0b8d7f 100644
+--- a/listutil.py
++++ b/listutil.py
+@@ -4,3 +4,20 @@
+ def flatten(nested):
+     """Flatten one level of nesting: [[1, 2], [3]] -> [1, 2, 3]."""
+     return [item for group in nested for item in group]
++
++
++def chunk_evenly(items, n):
++    """Split items into exactly n consecutive chunks with sizes differing by
++    at most one, longer chunks first. Extra chunks are empty when n exceeds
++    len(items). Raise ValueError if n < 1. Does not modify items."""
++    if n < 1:
++        raise ValueError("n must be at least 1")
++    count = len(items)
++    base, extra = divmod(count, n)
++    chunks = []
++    start = 0
++    for i in range(n):
++        size = base + (1 if i < extra else 0)
++        chunks.append(list(items[start:start + size]))
++        start += size
++    return chunks
+diff --git a/tests/__pycache__/test_listutil.cpython-311.pyc b/tests/__pycache__/test_listutil.cpython-311.pyc
+new file mode 100644
+index 0000000..7738a53
+Binary files /dev/null and b/tests/__pycache__/test_listutil.cpython-311.pyc differ

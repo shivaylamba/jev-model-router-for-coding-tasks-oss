@@ -1,0 +1,474 @@
+ articles/api.py                 |  42 ++++++--
+ articles/errors.py              |   4 +
+ articles/repository.py          |  24 ++++-
+ articles/service.py             |  97 ++++++++++++++++-
+ tests/test_cursor_pagination.py | 227 ++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 384 insertions(+), 10 deletions(-)
+
+diff --git a/articles/api.py b/articles/api.py
+index a0e378f..b8be4ab 100644
+--- a/articles/api.py
++++ b/articles/api.py
+@@ -22,6 +22,15 @@ def _int_param(params, name, default):
+     return int(raw)
+ 
+ 
++def _limit_param(params):
++    raw = params.get("limit")
++    if raw is None:
++        return 20
++    if not raw.isascii() or not raw.isdigit():
++        raise ValidationError("limit must be a positive integer")
++    return int(raw)
++
++
+ class ArticlesApi:
+     def __init__(self, service):
+         self._service = service
+@@ -29,14 +38,35 @@ class ArticlesApi:
+     def handle_list(self, params):
+         """`params` maps query-string names to string values. Returns (status, body)."""
+         try:
+-            result = self._service.list_page(
+-                page=_int_param(params, "page", 1),
+-                per_page=_int_param(params, "per_page", 20),
+-                author=params.get("author"),
+-                status=params.get("status"),
+-            )
++            return self._list(params)
+         except ValidationError as err:
+             return 400, {"error": str(err)}
++
++    def _list(self, params):
++        legacy = "page" in params or "per_page" in params
++        cursor = params.get("cursor") or None  # an empty cursor value means no cursor
++        if legacy:
++            if cursor is not None or "limit" in params:
++                raise ValidationError("page/per_page cannot be combined with cursor/limit")
++            return self._legacy_list(params)
++        return self._cursor_list(params, cursor)
++
++    def _legacy_list(self, params):
++        result = self._service.list_page(
++            page=_int_param(params, "page", 1),
++            per_page=_int_param(params, "per_page", 20),
++            author=params.get("author"),
++            status=params.get("status"),
++        )
+         body = dict(result)
+         body["items"] = [serialize(a) for a in result["items"]]
+         return 200, body
++
++    def _cursor_list(self, params, cursor):
++        result = self._service.list_articles(
++            limit=_limit_param(params),
++            cursor=cursor,
++            author=params.get("author"),
++            status=params.get("status"),
++        )
++        return 200, {"items": [serialize(a) for a in result.items], "next_cursor": result.next_cursor}
+diff --git a/articles/errors.py b/articles/errors.py
+index db324be..d5d71a9 100644
+--- a/articles/errors.py
++++ b/articles/errors.py
+@@ -3,3 +3,7 @@
+ 
+ class ValidationError(ValueError):
+     """A request parameter is invalid. The API turns it into a 400 response."""
++
++
++class InvalidCursorError(ValidationError):
++    """A cursor string is not one produced by `list_articles`, or does not match the filters it was created with."""
+diff --git a/articles/repository.py b/articles/repository.py
+index 3df2305..1a3b552 100644
+--- a/articles/repository.py
++++ b/articles/repository.py
+@@ -13,10 +13,28 @@ class ArticleRepository:
+             rows = [a for a in rows if a.status == status]
+         return rows
+ 
++    def _ordered(self, author=None, status=None):
++        """Matching articles in listing order: published_at descending, id descending."""
++        return sorted(self._filtered(author, status), key=lambda a: (a.published_at, a.id), reverse=True)
++
+     def count(self, author=None, status=None):
+         return len(self._filtered(author, status))
+ 
+     def list_offset(self, offset, limit, author=None, status=None):
+-        """Newest first."""
+-        rows = sorted(self._filtered(author, status), key=lambda a: a.published_at, reverse=True)
+-        return rows[offset:offset + limit]
++        """A window of the listing starting at `offset`."""
++        return self._ordered(author, status)[offset:offset + limit]
++
++    def list_first(self, limit, author=None, status=None):
++        """The first `limit` matching articles of the listing."""
++        return self._ordered(author, status)[:limit]
++
++    def list_after(self, published_at, article_id, limit, author=None, status=None):
++        """Up to `limit` matching articles strictly after the (published_at, article_id) position."""
++        position = (published_at, article_id)
++        out = []
++        for article in self._ordered(author, status):
++            if (article.published_at, article.id) < position:
++                out.append(article)
++                if len(out) == limit:
++                    break
++        return out
+diff --git a/articles/service.py b/articles/service.py
+index f74ddc9..fc8f93a 100644
+--- a/articles/service.py
++++ b/articles/service.py
+@@ -1,10 +1,71 @@
+ """Listing rules for articles."""
+ 
+-from .errors import ValidationError
++import base64
++import json
++import re
++import warnings
++from dataclasses import dataclass
++
++from .errors import InvalidCursorError, ValidationError
+ from .store import STATUSES
+ 
+ MAX_PER_PAGE = 100
+ 
++_CURSOR_RE = re.compile(r"[A-Za-z0-9_-]+")
++_CURSOR_VERSION = 1
++
++
++@dataclass
++class Page:
++    """One page of the listing; `next_cursor` continues it, or is None at the end."""
++
++    items: list
++    next_cursor: str | None
++
++
++def _encode_cursor(published_at, article_id, author, status):
++    """Opaque cursor for a listing position and the filters it belongs to."""
++    payload = {
++        "version": _CURSOR_VERSION,
++        "published_at": published_at,
++        "id": article_id,
++        "author": author,
++        "status": status,
++    }
++    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
++    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
++
++
++def _is_int(value):
++    return isinstance(value, int) and not isinstance(value, bool)
++
++
++def _decode_cursor(cursor):
++    """Return ((published_at, id), author, status) for a cursor from `list_articles`.
++
++    Raises InvalidCursorError for anything else, including strings that decode
++    as base64 or JSON but are not a cursor we produced.
++    """
++    if not isinstance(cursor, str) or not _CURSOR_RE.fullmatch(cursor):
++        raise InvalidCursorError("cursor is not a valid cursor")
++    padded = cursor + "=" * (-len(cursor) % 4)
++    try:
++        payload = json.loads(base64.urlsafe_b64decode(padded.encode("ascii")))
++    except (ValueError, RecursionError):  # bad base64, bad JSON, or pathologically nested JSON
++        raise InvalidCursorError("cursor is not a valid cursor") from None
++    if not isinstance(payload, dict) or not _is_int(payload.get("version")) or payload["version"] != _CURSOR_VERSION:
++        raise InvalidCursorError("cursor is not a valid cursor")
++    if not _is_int(payload.get("published_at")) or not _is_int(payload.get("id")):
++        raise InvalidCursorError("cursor is not a valid cursor")
++    author = payload.get("author")
++    status = payload.get("status")
++    if author is not None and not isinstance(author, str):
++        raise InvalidCursorError("cursor is not a valid cursor")
++    if status is not None and status not in STATUSES:
++        raise InvalidCursorError("cursor is not a valid cursor")
++    position = (payload["published_at"], payload["id"])
++    return position, author, status
++
+ 
+ class ArticleService:
+     def __init__(self, repository):
+@@ -14,12 +75,46 @@ class ArticleService:
+         if status is not None and status not in STATUSES:
+             raise ValidationError(f"status must be one of {', '.join(STATUSES)}")
+ 
++    def _check_limit(self, limit):
++        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= MAX_PER_PAGE:
++            raise ValidationError(f"limit must be an integer from 1 to {MAX_PER_PAGE}")
++
++    def list_articles(self, limit=20, cursor=None, author=None, status=None):
++        """One page of articles, newest first, continuing at `cursor` when given.
++
++        Returns a Page. `next_cursor` continues the listing after the last item
++        of `items`, or is None when no matching article is left.
++        """
++        self._check_limit(limit)
++        self._check_filters(author, status)
++        position = None
++        if cursor is not None:
++            position, cursor_author, cursor_status = _decode_cursor(cursor)
++            if cursor_author != author or cursor_status != status:
++                raise InvalidCursorError("cursor does not match the author/status filters it was created with")
++        if position is None:
++            rows = self._repo.list_first(limit + 1, author, status)
++        else:
++            rows = self._repo.list_after(position[0], position[1], limit + 1, author, status)
++        has_more = len(rows) > limit
++        items = rows[:limit]
++        next_cursor = None
++        if has_more:
++            last = items[-1]
++            next_cursor = _encode_cursor(last.published_at, last.id, author, status)
++        return Page(items=items, next_cursor=next_cursor)
++
+     def list_page(self, page=1, per_page=20, author=None, status=None):
+         """One page of articles, newest first.
+ 
+         Returns {"items": [Article, ...], "page": page, "per_page": per_page, "total": total}
+         where total counts every article matching the filters.
+         """
++        warnings.warn(
++            "list_page is deprecated; use list_articles for cursor-based paging",
++            DeprecationWarning,
++            stacklevel=2,
++        )
+         if not isinstance(page, int) or page < 1:
+             raise ValidationError("page must be an integer >= 1")
+         if not isinstance(per_page, int) or not 1 <= per_page <= MAX_PER_PAGE:
+diff --git a/tests/test_cursor_pagination.py b/tests/test_cursor_pagination.py
+new file mode 100644
+index 0000000..027ea59
+--- /dev/null
++++ b/tests/test_cursor_pagination.py
+@@ -0,0 +1,227 @@
++import base64
++import json
++import unittest
++import warnings
++
++from articles.api import ArticlesApi
++from articles.errors import InvalidCursorError, ValidationError
++from articles.repository import ArticleRepository
++from articles.service import ArticleService
++from articles.store import ArticleStore
++
++
++def build():
++    store = ArticleStore()
++    store.insert("Hello", "ana", "published", 1000)
++    store.insert("Draft notes", "ana", "draft", 2000)
++    store.insert("Release 2", "bo", "published", 3000)
++    store.insert("Old news", "bo", "archived", 500)
++    service = ArticleService(ArticleRepository(store))
++    return store, service, ArticlesApi(service)
++
++
++def walk(service, **kwargs):
++    """Collect every page of a cursor walk; fails on a cursor that loops forever."""
++    items, cursor, steps = [], None, 0
++    while True:
++        page = service.list_articles(cursor=cursor, **kwargs)
++        items.extend(page.items)
++        cursor = page.next_cursor
++        steps += 1
++        if cursor is None:
++            return items
++        assert steps < 100, "cursor walk did not terminate"
++
++
++class CursorListingTest(unittest.TestCase):
++    def setUp(self):
++        warnings.simplefilter("ignore", DeprecationWarning)
++        self.addCleanup(warnings.resetwarnings)
++
++    def test_order_descends_published_at_then_id(self):
++        store, service, _ = build()
++        for title in ("tie a", "tie b", "tie c"):  # same published_at, increasing ids
++            store.insert(title, "ana", "published", 2500)
++        page = service.list_articles(limit=100)
++        # 3000, the 2500 ties by id descending, then 2000, 1000, 500.
++        self.assertEqual([a.id for a in page.items], [3, 7, 6, 5, 2, 1, 4])
++
++    def test_walk_is_complete_and_terminates(self):
++        store, service, _ = build()
++        items = walk(service, limit=2)
++        self.assertEqual([a.id for a in items], [3, 2, 1, 4])
++        self.assertEqual(len(items), len({a.id for a in items}))
++
++    def test_next_cursor_none_exactly_at_the_end(self):
++        _, service, _ = build()
++        self.assertIsNone(service.list_articles(limit=100).next_cursor)
++        page = service.list_articles(limit=3)
++        self.assertIsNotNone(page.next_cursor)
++        self.assertIsNone(service.list_articles(limit=3, cursor=page.next_cursor).next_cursor)
++
++    def test_newer_insert_while_paging_is_never_reshown(self):
++        _, service, _ = build()
++        first = service.list_articles(limit=2)
++        self.assertEqual([a.title for a in first.items], ["Release 2", "Draft notes"])
++        store = service._repo._store
++        store.insert("Breaking", "bo", "published", 4000)
++        store.insert("Flashback", "bo", "published", 400)
++        second = service.list_articles(limit=2, cursor=first.next_cursor)
++        third = service.list_articles(limit=2, cursor=second.next_cursor)
++        seen = [a.title for a in first.items] + [a.title for a in second.items] + [a.title for a in third.items]
++        # "Breaking" sorts before the cursor's position and never appears;
++        # "Flashback" sorts after it and shows up on a later page.
++        self.assertEqual(seen, ["Release 2", "Draft notes", "Hello", "Old news", "Flashback"])
++
++    def test_cursor_survives_deleting_its_article(self):
++        _, service, _ = build()
++        page = service.list_articles(limit=2)
++        service._repo._store.delete(page.items[-1].id)  # the article the cursor points at
++        following = service.list_articles(cursor=page.next_cursor)
++        self.assertEqual([a.title for a in following.items], ["Hello", "Old news"])
++
++    def test_limit_may_change_between_pages(self):
++        _, service, _ = build()
++        first = service.list_articles(limit=1)
++        rest = service.list_articles(limit=100, cursor=first.next_cursor)
++        self.assertEqual([a.title for a in rest.items], ["Draft notes", "Hello", "Old news"])
++
++    def test_cursor_is_opaque_base64url(self):
++        _, service, _ = build()
++        cursor = service.list_articles(limit=1).next_cursor
++        self.assertTrue(cursor)
++        self.assertTrue(all(c.isalnum() or c in "-_" for c in cursor))
++
++    def test_cursor_rejects_different_filters(self):
++        _, service, _ = build()
++        for kwargs, changed in [
++            ({"author": "bo"}, {}),
++            ({"author": "bo"}, {"author": "ana"}),
++            ({"status": "published"}, {}),
++            ({"status": "published"}, {"status": "draft"}),
++            ({}, {"author": "bo"}),
++        ]:
++            cursor = service.list_articles(limit=1, **kwargs).next_cursor
++            with self.assertRaises(InvalidCursorError):
++                service.list_articles(cursor=cursor, **changed)
++
++    def test_cursor_keeps_working_with_same_filters(self):
++        _, service, _ = build()
++        first = service.list_articles(limit=1, author="bo")
++        rest = service.list_articles(cursor=first.next_cursor, author="bo", limit=10)
++        self.assertEqual([a.title for a in rest.items], ["Old news"])
++
++    def test_bad_cursors_raise_invalid_cursor_error(self):
++        _, service, _ = build()
++
++        def forge(payload):
++            raw = json.dumps(payload).encode("utf-8")
++            return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
++
++        junk_b64 = base64.urlsafe_b64encode(b"not json").rstrip(b"=").decode("ascii")
++        for cursor in [
++            "",
++            "abc",
++            "wrong-length-b64",
++            forge({"version": 1, "id": 1}),  # well-formed base64, not a cursor payload
++            forge({"version": 2, "published_at": 1, "id": 1, "author": None, "status": None}),
++            forge({"version": 1, "published_at": 1.5, "id": 1, "author": None, "status": None}),
++            forge({"version": 1, "published_at": 1, "id": 1, "author": None, "status": "nonsense"}),
++            junk_b64,
++        ]:
++            with self.assertRaises(InvalidCursorError):
++                service.list_articles(cursor=cursor)
++
++    def test_invalid_cursor_error_is_a_validation_error(self):
++        from articles.errors import ValidationError
++
++        self.assertTrue(issubclass(InvalidCursorError, ValidationError))
++
++    def test_limit_validation(self):
++        _, service, _ = build()
++        for bad in (0, 101, -1, True, "20", 1.5, None):
++            with self.assertRaises(ValidationError):
++                service.list_articles(limit=bad)
++        self.assertEqual(len(service.list_articles(limit=1).items), 1)
++        self.assertEqual(len(service.list_articles(limit=100).items), 4)
++
++    def test_status_validation(self):
++        _, service, _ = build()
++        with self.assertRaises(ValidationError):
++            service.list_articles(status="deleted")
++
++    def test_list_page_deprecated_on_every_call(self):
++        _, service, _ = build()
++        with warnings.catch_warnings(record=True) as caught:
++            warnings.simplefilter("always")
++            service.list_page(page=1)
++            service.list_page(page=2)
++        messages = [str(w.message) for w in caught if issubclass(w.category, DeprecationWarning)]
++        self.assertEqual(len(messages), 2)
++        self.assertIn("list_articles", messages[0])
++
++
++class CursorApiTest(unittest.TestCase):
++    def setUp(self):
++        warnings.simplefilter("ignore", DeprecationWarning)
++        self.addCleanup(warnings.resetwarnings)
++
++    def test_cursor_mode_is_the_default(self):
++        _, _, api = build()
++        status, body = api.handle_list({})
++        self.assertEqual(status, 200)
++        self.assertEqual(set(body), {"items", "next_cursor"})
++        self.assertEqual([a["id"] for a in body["items"]], [3, 2, 1, 4])
++        self.assertIsNone(body["next_cursor"])
++
++    def test_pages_follow_next_cursor(self):
++        _, _, api = build()
++        _, first = api.handle_list({"limit": "2"})
++        self.assertEqual([a["id"] for a in first["items"]], [3, 2])
++        status, second = api.handle_list({"limit": "2", "cursor": first["next_cursor"]})
++        self.assertEqual(status, 200)
++        self.assertEqual([a["id"] for a in second["items"]], [1, 4])
++        self.assertIsNone(second["next_cursor"])
++
++    def test_empty_cursor_param_means_no_cursor(self):
++        _, _, api = build()
++        status, body = api.handle_list({"cursor": ""})
++        self.assertEqual(status, 200)
++        self.assertEqual([a["id"] for a in body["items"]], [3, 2, 1, 4])
++
++    def test_filters_flow_through(self):
++        _, _, api = build()
++        status, body = api.handle_list({"author": "bo", "limit": "1"})
++        self.assertEqual(status, 200)
++        self.assertEqual([a["id"] for a in body["items"]], [3])
++        status, body = api.handle_list({"author": "bo", "limit": "1", "cursor": body["next_cursor"]})
++        self.assertEqual([a["id"] for a in body["items"]], [4])
++
++    def test_invalid_parameters_answer_400(self):
++        _, _, api = build()
++        cursor = api.handle_list({"limit": "1"})[1]["next_cursor"]
++        for params in [
++            {"limit": "abc"},
++            {"limit": "0"},
++            {"limit": "101"},
++            {"limit": ""},
++            {"status": "deleted"},
++            {"cursor": "garbage"},
++            {"cursor": cursor, "author": "bo"},  # cursor created without the filter
++            {"page": "1", "cursor": cursor},
++            {"per_page": "5", "limit": "5"},
++        ]:
++            status, body = api.handle_list(params)
++            self.assertEqual((status, "error" in body), (400, True), params)
++
++    def test_legacy_mode_kept(self):
++        _, _, api = build()
++        status, body = api.handle_list({"page": "2", "per_page": "2"})
++        self.assertEqual(status, 200)
++        self.assertEqual(set(body), {"items", "page", "per_page", "total"})
++        self.assertEqual([a["id"] for a in body["items"]], [1, 4])
++        self.assertEqual((body["page"], body["per_page"], body["total"]), (2, 2, 4))
++
++
++if __name__ == "__main__":
++    unittest.main()

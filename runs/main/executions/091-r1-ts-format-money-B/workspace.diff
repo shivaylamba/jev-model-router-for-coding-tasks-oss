@@ -1,0 +1,91 @@
+ src/money.ts       | 43 +++++++++++++++++++++++++++++++++++++++++++
+ test/money.test.ts | 22 +++++++++++++++++++++-
+ 2 files changed, 64 insertions(+), 1 deletion(-)
+
+diff --git a/src/money.ts b/src/money.ts
+index 0d9ecc8..f950777 100644
+--- a/src/money.ts
++++ b/src/money.ts
+@@ -10,3 +10,46 @@ export interface LineItem {
+ export function totalCents(items: readonly LineItem[]): number {
+   return items.reduce((acc, item) => acc + item.quantity * item.unitCents, 0);
+ }
++
++const CURRENCY_SYMBOLS: Record<Currency, string> = {
++  USD: "$",
++  EUR: "€",
++  GBP: "£",
++};
++
++/** Insert commas every three digits, e.g. "1234567" -> "1,234,567". */
++function groupThousands(digits: string): string {
++  let grouped = "";
++  for (let i = 0; i < digits.length; i++) {
++    if (i > 0 && (digits.length - i) % 3 === 0) {
++      grouped += ",";
++    }
++    grouped += digits[i];
++  }
++  return grouped;
++}
++
++/**
++ * Format an integer amount of cents for display on invoices, e.g.
++ * formatCents(123456, "USD") === "$1,234.56". Locale-independent.
++ *
++ * @throws TypeError if cents is not an integer number
++ * @throws RangeError if currency is not supported
++ */
++export function formatCents(cents: number, currency: Currency): string {
++  if (typeof cents !== "number" || !Number.isInteger(cents)) {
++    throw new TypeError(`formatCents: cents must be an integer, got ${String(cents)}`);
++  }
++  const symbol = (CURRENCY_SYMBOLS as Record<string, string | undefined>)[currency];
++  if (symbol === undefined) {
++    throw new RangeError(`formatCents: unsupported currency ${String(currency)}`);
++  }
++
++  const magnitude = Math.abs(cents);
++  const whole = Math.floor(magnitude / 100);
++  const fraction = magnitude % 100;
++  const sign = cents < 0 ? "-" : "";
++  return (
++    sign + symbol + groupThousands(String(whole)) + "." + String(fraction).padStart(2, "0")
++  );
++}
+diff --git a/test/money.test.ts b/test/money.test.ts
+index 52b6100..f427781 100644
+--- a/test/money.test.ts
++++ b/test/money.test.ts
+@@ -1,6 +1,6 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+-import { totalCents } from "../src/money.ts";
++import { formatCents, totalCents, type Currency } from "../src/money.ts";
+ 
+ test("totalCents", () => {
+   assert.equal(totalCents([]), 0);
+@@ -12,3 +12,23 @@ test("totalCents", () => {
+     2749,
+   );
+ });
++
++test("formatCents", () => {
++  assert.equal(formatCents(123456, "USD"), "$1,234.56");
++  assert.equal(formatCents(5, "USD"), "$0.05");
++  assert.equal(formatCents(0, "GBP"), "£0.00");
++  assert.equal(formatCents(123456789, "EUR"), "€1,234,567.89");
++  assert.equal(formatCents(-123456, "USD"), "-$1,234.56");
++  assert.equal(formatCents(-5, "GBP"), "-£0.05");
++});
++
++test("formatCents rejects non-integer cents", () => {
++  for (const bad of [1.5, NaN, Infinity, -Infinity, "100" as unknown as number]) {
++    assert.throws(() => formatCents(bad, "USD"), TypeError);
++  }
++});
++
++test("formatCents rejects unsupported currency", () => {
++  assert.throws(() => formatCents(100, "JPY" as unknown as Currency), RangeError);
++  assert.throws(() => formatCents(100, undefined as unknown as Currency), RangeError);
++});

@@ -1,0 +1,18 @@
+
+test_register (acceptance_tests.test_validators.BehaviourUnchangedTest.test_register) ... ok
+test_register_error_fields (acceptance_tests.test_validators.BehaviourUnchangedTest.test_register_error_fields) ... ok
+test_update_profile (acceptance_tests.test_validators.BehaviourUnchangedTest.test_update_profile) ... ok
+test_update_profile_errors (acceptance_tests.test_validators.BehaviourUnchangedTest.test_update_profile_errors) ... ok
+test_old_private_helpers_removed (acceptance_tests.test_validators.ModulesUseValidatorsTest.test_old_private_helpers_removed) ... ok
+test_profile_calls_shared_validators (acceptance_tests.test_validators.ModulesUseValidatorsTest.test_profile_calls_shared_validators) ... ok
+test_signup_calls_shared_validators (acceptance_tests.test_validators.ModulesUseValidatorsTest.test_signup_calls_shared_validators) ... ok
+test_display_name (acceptance_tests.test_validators.ValidatorFunctionsTest.test_display_name) ... ok
+test_email (acceptance_tests.test_validators.ValidatorFunctionsTest.test_email) ... ok
+test_phone (acceptance_tests.test_validators.ValidatorFunctionsTest.test_phone) ... ok
+test_reserved_names_live_in_validators (acceptance_tests.test_validators.ValidatorFunctionsTest.test_reserved_names_live_in_validators) ... ok
+test_username (acceptance_tests.test_validators.ValidatorFunctionsTest.test_username) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.001s
+
+OK

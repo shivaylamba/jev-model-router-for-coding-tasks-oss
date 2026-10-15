@@ -61,11 +61,11 @@
     "DISABLE_AUTOUPDATER": "1",
     "NCONNECT_AUTO_DECIDER": "jev",
     "NCONNECT_AUTO_DECIDER_MODEL": "jev-1.13.0",
-    "NEBIUS_BASE_URL": "http://127.0.0.1:58413/v1",
-    "NCONNECT_HOME": "/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/njb-z20c9hk3/home/.nconnect",
+    "NEBIUS_BASE_URL": "http://127.0.0.1:59146/v1",
+    "NCONNECT_HOME": "/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/njb-xkw1nipk/home/.nconnect",
     "NCONNECT_PORT": "7897",
     "NCONNECT_DEBUG_LOG": "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/runs/main/executions/009-r1-py-memoize-B/nconnect-debug.log",
-    "NCONNECT_AUTO_DECIDER_URL": "http://127.0.0.1:58413/typesafe/v1/systemone"
+    "NCONNECT_AUTO_DECIDER_URL": "http://127.0.0.1:59146/typesafe/v1/systemone"
   },
   "limits": {
     "wall_seconds_per_task": 1200,
@@ -88,6 +88,13 @@
     "os": "26.5.2"
   },
   "anomalies": [],
-  "started_at": "2026-10-14T17:22:20.586Z",
-  "started_ms": 1791998540586
+  "started_at": "2026-10-14T17:37:12.499Z",
+  "started_ms": 1791999432499,
+  "ended_at": "2026-10-14T17:40:47.151Z",
+  "ended_ms": 1791999645531,
+  "duration_s": 213.032,
+  "exit_code": 0,
+  "termination": "completed",
+  "fallback_diagnostics": 0,
+  "contamination_flags": []
 }

@@ -1,0 +1,41 @@
+ latency.py |  2 +-
+ ranking.py | 12 ++++++++----
+ 2 files changed, 9 insertions(+), 5 deletions(-)
+
+diff --git a/latency.py b/latency.py
+index 1dcdc2d..9fe0c73 100644
+--- a/latency.py
++++ b/latency.py
+@@ -10,4 +10,4 @@ def slowest(timings_ms, count=5):
+ 
+ def fastest(timings_ms, count=5):
+     """The `count` fastest request timings, fastest first."""
+-    return sorted(timings_ms)[:count]
++    return top_n(timings_ms, count, reverse=True)
+diff --git a/ranking.py b/ranking.py
+index 3d4ee2c..492fa15 100644
+--- a/ranking.py
++++ b/ranking.py
+@@ -1,14 +1,18 @@
+ """Ranking helpers."""
+ 
+ 
+-def top_n(items, n, key=None):
+-    """Return the n largest items, largest first.
++def top_n(items, n, key=None, *, reverse=False):
++    """Return the n largest items, largest first, or with reverse=True the
++    n smallest items, smallest first.
+ 
+     `key` works like the key argument of sorted(). Items that compare equal
+     keep their original relative order. If n is larger than the number of
+-    items, all items are returned. The input is never modified.
++    items, all items are returned. The input is never modified. Raises
++    ValueError if n is negative.
+     """
+-    return sorted(items, key=key, reverse=True)[:n]
++    if n < 0:
++        raise ValueError(f"n must be non-negative, got {n}")
++    return sorted(items, key=key, reverse=not reverse)[:n]
+ 
+ 
+ def rank_positions(scores):

@@ -1,0 +1,65 @@
+ src/config.ts | 51 +++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 35 insertions(+), 16 deletions(-)
+
+diff --git a/src/config.ts b/src/config.ts
+index 80b782b..4684dcf 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -39,22 +39,41 @@ export function applyDefaults(raw: unknown): Config {
+ /**
+  * Read and validate a JSON config file.
+  *
+- * Errors from the file system (for example ENOENT), a SyntaxError for
+- * malformed JSON, or a ConfigError for bad values are passed to the callback.
++ * Called with a callback, it behaves as a classic Node-style async function:
++ * the callback fires exactly once with (err) on failure or (null, config) on
++ * success, and readConfig returns undefined. Called without a callback, it
++ * returns a Promise that resolves with the same merged, validated config and
++ * rejects with the same errors — the file-system error as-is (for example
++ * ENOENT), a SyntaxError for malformed JSON, or a ConfigError for bad values.
+  */
+-export function readConfig(path: string, callback: ConfigCallback): void {
+-  readFile(path, "utf8", (err, text) => {
+-    if (err) {
+-      callback(err);
+-      return;
+-    }
+-    let config: Config;
+-    try {
+-      config = applyDefaults(JSON.parse(text));
+-    } catch (parseErr) {
+-      callback(parseErr as Error);
+-      return;
+-    }
+-    callback(null, config);
++export function readConfig(path: string): Promise<Config>;
++export function readConfig(path: string, callback: ConfigCallback): void;
++export function readConfig(
++  path: string,
++  callback?: ConfigCallback,
++): Promise<Config> | void {
++  const promise = new Promise<Config>((resolve, reject) => {
++    readFile(path, "utf8", (err, text) => {
++      if (err) {
++        reject(err);
++        return;
++      }
++      try {
++        resolve(applyDefaults(JSON.parse(text)));
++      } catch (parseErr) {
++        reject(parseErr as Error);
++      }
++    });
+   });
++
++  if (callback === undefined) {
++    return promise;
++  }
++
++  // Callback form: deliver the outcome and keep the promise settled so a
++  // failure cannot also surface as an unhandled rejection.
++  promise.then(
++    (config) => callback(null, config),
++    (err) => callback(err as Error),
++  );
+ }

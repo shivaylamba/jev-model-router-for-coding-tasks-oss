@@ -1,0 +1,128 @@
+ __pycache__/dashboard.cpython-311.pyc | Bin 0 -> 1668 bytes
+ __pycache__/emailer.cpython-311.pyc   | Bin 0 -> 877 bytes
+ __pycache__/stats.cpython-311.pyc     | Bin 0 -> 4359 bytes
+ dashboard.py                          |  10 ++++---
+ emailer.py                            |   4 +--
+ stats.py                              |  53 ++++++++++++++++++++++++++++++----
+ 6 files changed, 55 insertions(+), 12 deletions(-)
+
+diff --git a/__pycache__/dashboard.cpython-311.pyc b/__pycache__/dashboard.cpython-311.pyc
+new file mode 100644
+index 0000000..0d0f7c2
+Binary files /dev/null and b/__pycache__/dashboard.cpython-311.pyc differ
+diff --git a/__pycache__/emailer.cpython-311.pyc b/__pycache__/emailer.cpython-311.pyc
+new file mode 100644
+index 0000000..556c7b5
+Binary files /dev/null and b/__pycache__/emailer.cpython-311.pyc differ
+diff --git a/__pycache__/stats.cpython-311.pyc b/__pycache__/stats.cpython-311.pyc
+new file mode 100644
+index 0000000..a86365d
+Binary files /dev/null and b/__pycache__/stats.cpython-311.pyc differ
+diff --git a/dashboard.py b/dashboard.py
+index 62f4e5d..5af8962 100644
+--- a/dashboard.py
++++ b/dashboard.py
+@@ -4,13 +4,15 @@ from stats import get_all_user_stats, get_user_stats
+ 
+ 
+ def render_row(events, user_id):
+-    total, days, last_seen = get_user_stats(events, user_id)
+-    seen = last_seen.strftime("%Y-%m-%d") if last_seen else "never"
+-    return f"{user_id}: {total} events on {days} days, last seen {seen}"
++    stats = get_user_stats(events, user_id)
++    seen = stats.last_seen.strftime("%Y-%m-%d") if stats.last_seen else "never"
++    return f"{user_id}: {stats.total_events} events on {stats.active_days} days, last seen {seen}"
+ 
+ 
+ def most_active(events, limit=3):
+     """User ids with the most events, most first; ties by user id."""
+     all_stats = get_all_user_stats(events)
+-    ranked = sorted(all_stats.items(), key=lambda item: (-item[1][0], item[0]))
++    ranked = sorted(
++        all_stats.items(), key=lambda item: (-item[1].total_events, item[0])
++    )
+     return [user_id for user_id, _ in ranked[:limit]]
+diff --git a/emailer.py b/emailer.py
+index f1cde35..c0ad7e9 100644
+--- a/emailer.py
++++ b/emailer.py
+@@ -10,6 +10,6 @@ QUIET_PERIOD = timedelta(days=14)
+ def should_send_reengagement(events, user_id, now):
+     """Email users who were active on at least 2 days but have been quiet for 14 days or more."""
+     stats = get_user_stats(events, user_id)
+-    if stats[2] is None or stats[1] < 2:
++    if stats.last_seen is None or stats.active_days < 2:
+         return False
+-    return now - stats[2] >= QUIET_PERIOD
++    return now - stats.last_seen >= QUIET_PERIOD
+diff --git a/stats.py b/stats.py
+index 6b231e8..027dccf 100644
+--- a/stats.py
++++ b/stats.py
+@@ -1,19 +1,60 @@
+ """Per-user activity statistics."""
+ 
++from dataclasses import dataclass
++
++
++@dataclass(frozen=True)
++class UserStats:
++    """Summary of one user's events.
++
++    Behaves like the tuple (total_events, active_days, last_seen) it replaces:
++    it unpacks into the three values in order, len() is 3, and integer
++    indexing (including negative indexes) works as on the tuple.
++    """
++
++    total_events: int
++    active_days: int
++    last_seen: object  # datetime or None
++
++    def __iter__(self):
++        yield self.total_events
++        yield self.active_days
++        yield self.last_seen
++
++    def __len__(self):
++        return 3
++
++    def __getitem__(self, index):
++        return (self.total_events, self.active_days, self.last_seen)[index]
++
++    @property
++    def events_per_active_day(self):
++        """Average events per active day; 0.0 when the user was never active."""
++        if self.active_days == 0:
++            return 0.0
++        return self.total_events / self.active_days
++
++    def as_dict(self):
++        return {
++            "total_events": self.total_events,
++            "active_days": self.active_days,
++            "last_seen": self.last_seen,
++        }
++
+ 
+ def get_user_stats(events, user_id):
+     """Summarise one user's events.
+ 
+-    Returns a tuple (total_events, active_days, last_seen):
+-    total_events is the number of events for the user, active_days the number
+-    of distinct UTC calendar dates with at least one event, and last_seen the
+-    latest event time, or None when the user has no events.
++    Returns UserStats: total_events is the number of events for the user,
++    active_days the number of distinct UTC calendar dates with at least one
++    event, and last_seen the latest event time, or None when the user has no
++    events.
+     """
+     mine = [event for event in events if event.user_id == user_id]
+     if not mine:
+-        return (0, 0, None)
++        return UserStats(0, 0, None)
+     days = {event.at.date() for event in mine}
+-    return (len(mine), len(days), max(event.at for event in mine))
++    return UserStats(len(mine), len(days), max(event.at for event in mine))
+ 
+ 
+ def get_all_user_stats(events):

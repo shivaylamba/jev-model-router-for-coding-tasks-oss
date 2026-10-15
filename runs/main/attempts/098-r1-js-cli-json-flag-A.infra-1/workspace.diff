@@ -1,0 +1,89 @@
+ README.md  | 18 +++++++++++++++++-
+ src/cli.js | 23 ++++++++++++++++-------
+ 2 files changed, 33 insertions(+), 8 deletions(-)
+
+diff --git a/README.md b/README.md
+index efc5627..a30c341 100644
+--- a/README.md
++++ b/README.md
+@@ -16,8 +16,24 @@ prints one row per file and, when more than one file is given, a `total` row:
+ ```
+ 
+ Each number is right-aligned in a 7-character column followed by a space.
++
++With `--json` (which may appear anywhere among the arguments) the table is
++replaced by a single JSON document — one line on stdout — with one entry per
++file in command-line order and a `total` entry that is always present:
++
++```
++node bin/tally.js --json notes.txt todo.txt
++{"files":[{"path":"notes.txt","lines":3,"words":12,"chars":80},{"path":"todo.txt","lines":1,"words":4,"chars":19}],"total":{"lines":4,"words":16,"chars":99}}
++```
++
++With no files at all the JSON output is
++`{"files": [], "total": {"lines": 0, "words": 0, "chars": 0}}` (which prints
++`{"files":[],"total":{"lines":0,"words":0,"chars":0}}` — JSON.stringify leaves
++no spaces).
++
+ A file that cannot be read is reported on stderr as `tally: cannot read <path>`,
+-the other files are still counted, and the exit code is 1. An unknown option
++the other files are still counted, and the exit code is 1 (in JSON mode such a
++file is simply left out of `files`). Any option other than `--json`
+ prints a usage line on stderr and exits with code 2. Otherwise the exit code is 0.
+ 
+ Code layout: `src/count.js` does the counting, `src/cli.js` parses arguments and
+diff --git a/src/cli.js b/src/cli.js
+index a7b0671..b1e70b1 100644
+--- a/src/cli.js
++++ b/src/cli.js
+@@ -1,6 +1,6 @@
+ import { addCounts, count } from "./count.js";
+ 
+-const USAGE = "usage: tally [file ...]";
++const USAGE = "usage: tally [--json] [file ...]";
+ 
+ function row(counts, label) {
+   const cell = (n) => String(n).padStart(7) + " ";
+@@ -15,17 +15,21 @@ function row(counts, label) {
+  */
+ export function run(argv, io) {
+   const paths = [];
++  let json = false;
+   for (const arg of argv) {
+-    if (arg.startsWith("-")) {
++    if (arg === "--json") {
++      json = true;
++    } else if (arg.startsWith("-")) {
+       io.stderr(`tally: unknown option ${arg}\n${USAGE}\n`);
+       return 2;
++    } else {
++      paths.push(arg);
+     }
+-    paths.push(arg);
+   }
+ 
+   let exitCode = 0;
+   let total = { lines: 0, words: 0, chars: 0 };
+-  const rows = [];
++  const entries = [];
+   for (const path of paths) {
+     let text;
+     try {
+@@ -37,9 +41,14 @@ export function run(argv, io) {
+     }
+     const counts = count(text);
+     total = addCounts(total, counts);
+-    rows.push(row(counts, path));
++    entries.push({ path, ...counts });
++  }
++  if (json) {
++    io.stdout(JSON.stringify({ files: entries, total }) + "\n");
++  } else {
++    const rows = entries.map((entry) => row(entry, entry.path));
++    if (paths.length > 1) rows.push(row(total, "total"));
++    if (rows.length > 0) io.stdout(rows.join("\n") + "\n");
+   }
+-  if (paths.length > 1) rows.push(row(total, "total"));
+-  if (rows.length > 0) io.stdout(rows.join("\n") + "\n");
+   return exitCode;
+ }

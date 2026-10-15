@@ -1,0 +1,209 @@
+ src/asyncCache.ts | 200 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 200 insertions(+)
+
+diff --git a/src/asyncCache.ts b/src/asyncCache.ts
+new file mode 100644
+index 0000000..ff346c5
+--- /dev/null
++++ b/src/asyncCache.ts
+@@ -0,0 +1,200 @@
++export type AsyncCacheOptions<V> = {
++  load: (key: string) => Promise<V>;
++  ttlMs: number; // finite, > 0
++  staleMs: number; // finite, >= 0
++  maxEntries: number; // integer, >= 1
++  now?: () => number; // current time in ms; defaults to Date.now
++  onRefreshError?: (key: string, error: unknown) => void;
++};
++
++type Entry<V> = {
++  value: V;
++  storedAt: number;
++};
++
++type InFlight = {
++  promise: Promise<unknown>;
++  // Refresh loads run in the background with callers already answered, so
++  // their rejections go to onRefreshError instead of rejecting a get().
++  isRefresh: boolean;
++  // Bumped by invalidate()/clear(); a load whose generation no longer
++  // matches must not store its result.
++  generation: number;
++};
++
++/**
++ * Cache for slow asynchronous lookups: time-to-live, stale-while-revalidate,
++ * single-flight request coalescing and an LRU size limit. See
++ * docs/ASYNC_CACHE.md.
++ */
++export class AsyncCache<V> {
++  #load: (key: string) => Promise<V>;
++  #ttlMs: number;
++  #staleMs: number;
++  #maxEntries: number;
++  #now: () => number;
++  #onRefreshError?: (key: string, error: unknown) => void;
++
++  // Map insertion order doubles as recency order: entries are re-inserted
++  // whenever they are stored or returned by get().
++  #entries = new Map<string, Entry<V>>();
++  #inFlight = new Map<string, InFlight>();
++  #generation = 0;
++
++  constructor(options: AsyncCacheOptions<V>) {
++    const { load, ttlMs, staleMs, maxEntries, now, onRefreshError } = options;
++    if (!Number.isFinite(ttlMs) || ttlMs <= 0) {
++      throw new RangeError(`ttlMs must be finite and > 0, got ${ttlMs}`);
++    }
++    if (!Number.isFinite(staleMs) || staleMs < 0) {
++      throw new RangeError(`staleMs must be finite and >= 0, got ${staleMs}`);
++    }
++    if (!Number.isInteger(maxEntries) || maxEntries < 1) {
++      throw new RangeError(
++        `maxEntries must be an integer >= 1, got ${maxEntries}`,
++      );
++    }
++    this.#load = load;
++    this.#ttlMs = ttlMs;
++    this.#staleMs = staleMs;
++    this.#maxEntries = maxEntries;
++    this.#now = now ?? Date.now;
++    this.#onRefreshError = onRefreshError;
++  }
++
++  #age(entry: Entry<V>): number {
++    return this.#now() - entry.storedAt;
++  }
++
++  #isFresh(entry: Entry<V>): boolean {
++    return this.#age(entry) < this.#ttlMs;
++  }
++
++  #isStale(entry: Entry<V>): boolean {
++    const age = this.#age(entry);
++    return age >= this.#ttlMs && age < this.#ttlMs + this.#staleMs;
++  }
++
++  #isUsable(entry: Entry<V>): boolean {
++    return this.#age(entry) < this.#ttlMs + this.#staleMs;
++  }
++
++  // Re-insert so iteration order reflects most recent use.
++  #touch(key: string, entry: Entry<V>): void {
++    this.#entries.delete(key);
++    this.#entries.set(key, entry);
++  }
++
++  #startLoad(key: string, isRefresh: boolean): Promise<V> {
++    const generation = this.#generation;
++    const promise = Promise.resolve()
++      .then(() => this.#load(key))
++      .then(
++        (value) => {
++          const current = this.#inFlight.get(key);
++          if (current?.generation === generation) {
++            this.#inFlight.delete(key);
++          }
++          if (this.#generation === generation) {
++            this.#touch(key, { value, storedAt: this.#now() });
++            this.#evictOverflow();
++          }
++          return value;
++        },
++        (error: unknown) => {
++          const current = this.#inFlight.get(key);
++          if (current?.generation === generation) {
++            this.#inFlight.delete(key);
++          }
++          if (isRefresh) {
++            this.#onRefreshError?.(key, error);
++            // The background refresh has nobody waiting on it; swallow the
++            // rejection so it never surfaces as an unhandled rejection.
++            return undefined as V;
++          }
++          throw error;
++        },
++      );
++    this.#inFlight.set(key, { promise, isRefresh, generation });
++    return promise as Promise<V>;
++  }
++
++  get(key: string): Promise<V> {
++    const entry = this.#entries.get(key);
++    if (entry !== undefined) {
++      if (this.#isFresh(entry)) {
++        this.#touch(key, entry);
++        return Promise.resolve(entry.value);
++      }
++      if (this.#isStale(entry)) {
++        this.#touch(key, entry);
++        if (!this.#inFlight.has(key)) {
++          this.#startLoad(key, true);
++        }
++        return Promise.resolve(entry.value);
++      }
++      // Expired values are never returned.
++      this.#entries.delete(key);
++    }
++    const inFlight = this.#inFlight.get(key);
++    if (inFlight) {
++      return inFlight.promise as Promise<V>;
++    }
++    return this.#startLoad(key, false);
++  }
++
++  peek(key: string): V | undefined {
++    const entry = this.#entries.get(key);
++    if (entry === undefined || !this.#isUsable(entry)) {
++      return undefined;
++    }
++    return entry.value;
++  }
++
++  invalidate(key: string): boolean {
++    // Invalidate in-flight loads too, so they neither store their result nor
++    // absorb the next get(), but leave their promise alone: callers already
++    // waiting on it must still settle.
++    this.#inFlight.delete(key);
++    this.#generation += 1;
++    return this.#entries.delete(key);
++  }
++
++  clear(): void {
++    this.#inFlight.clear();
++    this.#generation += 1;
++    this.#entries.clear();
++  }
++
++  get size(): number {
++    let count = 0;
++    for (const entry of this.#entries.values()) {
++      if (this.#isUsable(entry)) {
++        count += 1;
++      }
++    }
++    return count;
++  }
++
++  // Drop expired values first, then least recently used (map front) until
++  // within the limit.
++  #evictOverflow(): void {
++    if (this.#entries.size <= this.#maxEntries) {
++      return;
++    }
++    for (const [key, entry] of this.#entries) {
++      if (this.#entries.size <= this.#maxEntries) {
++        return;
++      }
++      if (!this.#isUsable(entry)) {
++        this.#entries.delete(key);
++      }
++    }
++    for (const key of this.#entries.keys()) {
++      if (this.#entries.size <= this.#maxEntries) {
++        return;
++      }
++      this.#entries.delete(key);
++    }
++  }
++}

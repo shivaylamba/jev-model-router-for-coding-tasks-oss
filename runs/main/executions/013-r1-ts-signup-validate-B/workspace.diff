@@ -1,0 +1,307 @@
+ src/signup.ts       | 128 +++++++++++++++++++++++++++++++++++++++++
+ test/signup.test.ts | 162 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 290 insertions(+)
+
+diff --git a/src/signup.ts b/src/signup.ts
+index 0751a59..6f132c0 100644
+--- a/src/signup.ts
++++ b/src/signup.ts
+@@ -1,2 +1,130 @@
+ // Sign-up validation. Rules: docs/signup-rules.md
++import { daysInMonth, isLeapYear } from "./dates.ts";
++import type { SignupErrors, SignupInput, SignupResult, SignupValue } from "./types.ts";
++
+ export type { SignupErrors, SignupInput, SignupResult } from "./types.ts";
++
++/** A calendar date as [year, month (1-12), day]. */
++type CalendarDate = [year: number, month: number, day: number];
++
++const USERNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/;
++const BIRTH_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
++
++/** The UTC calendar date of `today`; only that matters, never its time of day. */
++function utcCalendarDate(today: Date): CalendarDate {
++  return [today.getUTCFullYear(), today.getUTCMonth() + 1, today.getUTCDate()];
++}
++
++/** Whether `a` falls strictly after `b` on the calendar. */
++function isAfter(a: CalendarDate, b: CalendarDate): boolean {
++  return a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] > b[2])));
++}
++
++/** The birthday `years` years after `birth`. A Feb 29 birthday is held on
++ * Mar 1 in non-leap years. */
++function birthday(birth: CalendarDate, years: number): CalendarDate {
++  const [year, month, day] = birth;
++  const target = year + years;
++  return month === 2 && day === 29 && !isLeapYear(target) ? [target, 3, 1] : [target, month, day];
++}
++
++/** Whether the trimmed email has no whitespace, exactly one `@`, a non-empty
++ * local part, and a domain of at least two non-empty `.`-separated labels. */
++function hasValidEmailFormat(email: string): boolean {
++  if (/\s/.test(email)) return false;
++  const parts = email.split("@");
++  if (parts.length !== 2) return false;
++  const [local, domain] = parts;
++  if (local === "") return false;
++  const labels = domain.split(".");
++  return labels.length >= 2 && labels.every((label) => label !== "");
++}
++
++/** Parse a trimmed `YYYY-MM-DD` string into a real calendar date from 1900 on. */
++function parseBirthDate(birthDate: string): CalendarDate | null {
++  const match = BIRTH_DATE_PATTERN.exec(birthDate);
++  if (match === null) return null;
++  const year = Number(match[1]);
++  const month = Number(match[2]);
++  const day = Number(match[3]);
++  if (year < 1900 || month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) {
++    return null;
++  }
++  return [year, month, day];
++}
++
++export function validateSignup(input: SignupInput, today: Date): SignupResult {
++  const errors: SignupErrors = {};
++  const value: Partial<SignupValue> = {};
++  const now = utcCalendarDate(today);
++
++  // username: required, length, format.
++  const username = typeof input.username === "string" ? input.username.trim() : undefined;
++  let usernameValid = false;
++  if (username === undefined || username === "") {
++    errors.username = "required";
++  } else if (username.length < 3 || username.length > 20) {
++    errors.username = "length";
++  } else if (!USERNAME_PATTERN.test(username)) {
++    errors.username = "format";
++  } else {
++    value.username = username.toLowerCase();
++    usernameValid = true;
++  }
++
++  // email: required, format.
++  const email = typeof input.email === "string" ? input.email.trim() : undefined;
++  if (email === undefined || email === "") {
++    errors.email = "required";
++  } else if (!hasValidEmailFormat(email)) {
++    errors.email = "format";
++  } else {
++    value.email = email.toLowerCase();
++  }
++
++  // password: required, length, weak, contains_username. Never trimmed.
++  const password = typeof input.password === "string" ? input.password : undefined;
++  if (password === undefined || password === "") {
++    errors.password = "required";
++  } else if (password.length < 8 || password.length > 64) {
++    errors.password = "length";
++  } else if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
++    errors.password = "weak";
++  } else if (usernameValid && password.toLowerCase().includes(username.toLowerCase())) {
++    errors.password = "contains_username";
++  }
++
++  // confirmPassword: required, mismatch. Never trimmed. Mismatch is checked
++  // even when password has its own error, but not when password is missing or
++  // not a string.
++  const confirmPassword =
++    typeof input.confirmPassword === "string" ? input.confirmPassword : undefined;
++  if (confirmPassword === undefined || confirmPassword === "") {
++    errors.confirmPassword = "required";
++  } else if (password !== undefined && confirmPassword !== password) {
++    errors.confirmPassword = "mismatch";
++  }
++
++  // birthDate: required, format, future, too_young.
++  const birthDate = typeof input.birthDate === "string" ? input.birthDate.trim() : undefined;
++  if (birthDate === undefined || birthDate === "") {
++    errors.birthDate = "required";
++  } else {
++    const birth = parseBirthDate(birthDate);
++    if (birth === null) {
++      errors.birthDate = "format";
++    } else if (isAfter(birth, now)) {
++      errors.birthDate = "future";
++    } else if (isAfter(birthday(birth, 13), now)) {
++      errors.birthDate = "too_young";
++    } else {
++      value.birthDate = birthDate;
++    }
++  }
++
++  if (Object.keys(errors).length > 0) {
++    return { ok: false, errors };
++  }
++  // Every field passed, so the normalized values are all set.
++  return { ok: true, value: value as SignupValue };
++}
+diff --git a/test/signup.test.ts b/test/signup.test.ts
+new file mode 100644
+index 0000000..fcfe7f5
+--- /dev/null
++++ b/test/signup.test.ts
+@@ -0,0 +1,162 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { validateSignup } from "../src/signup.ts";
++import type { SignupInput } from "../src/types.ts";
++
++/** A valid request body, for tests that override one field at a time. */
++const VALID: SignupInput = {
++  username: "Alice_1",
++  email: "Alice@Example.COM",
++  password: "correct horse 9",
++  confirmPassword: "correct horse 9",
++  birthDate: "1990-06-15",
++};
++
++const TODAY = new Date(Date.UTC(2025, 5, 15)); // 2025-06-15 UTC
++
++function errorsOf(overrides: SignupInput, today: Date = TODAY) {
++  const result = validateSignup({ ...VALID, ...overrides }, today);
++  assert.equal(result.ok, false, `expected errors, got ${JSON.stringify(result)}`);
++  if (!result.ok) return result.errors;
++  throw new Error("unreachable");
++}
++
++function valueOf(overrides: SignupInput, today: Date = TODAY) {
++  const result = validateSignup({ ...VALID, ...overrides }, today);
++  assert.equal(result.ok, true, `expected success, got ${JSON.stringify(result)}`);
++  if (result.ok) return result.value;
++  throw new Error("unreachable");
++}
++
++test("valid signup returns normalized username, email and birthDate", () => {
++  assert.deepEqual(valueOf({ username: "  Alice_1 " }), {
++    username: "alice_1",
++    email: "alice@example.com",
++    birthDate: "1990-06-15",
++  });
++});
++
++test("username", () => {
++  assert.equal(errorsOf({ username: undefined }).username, "required");
++  assert.equal(errorsOf({ username: 42 }).username, "required");
++  assert.equal(errorsOf({ username: "   " }).username, "required");
++  assert.equal(errorsOf({ username: "ab" }).username, "length");
++  assert.equal(errorsOf({ username: "a".repeat(21) }).username, "length");
++  // length is checked before format, so an over-long bad username reports length
++  assert.equal(errorsOf({ username: "1".repeat(21) }).username, "length");
++  assert.equal(errorsOf({ username: "1alice" }).username, "format");
++  assert.equal(errorsOf({ username: "_alice" }).username, "format");
++  assert.equal(errorsOf({ username: "ali-ce" }).username, "format");
++  assert.equal(errorsOf({ username: "ali ce" }).username, "format");
++  // trimmed to 3 characters, so valid (and trimmed in the value)
++  assert.equal(valueOf({ username: " abc " }).username, "abc");
++});
++
++test("email", () => {
++  assert.equal(errorsOf({ email: undefined }).email, "required");
++  assert.equal(errorsOf({ email: " \t " }).email, "required");
++  assert.equal(errorsOf({ email: "aliceexample.com" }).email, "format");
++  assert.equal(errorsOf({ email: "alice@@example.com" }).email, "format");
++  assert.equal(errorsOf({ email: "a@b@c.example" }).email, "format");
++  assert.equal(errorsOf({ email: "@example.com" }).email, "format");
++  assert.equal(errorsOf({ email: "alice@example" }).email, "format");
++  assert.equal(errorsOf({ email: "alice@.com" }).email, "format");
++  assert.equal(errorsOf({ email: "alice@example." }).email, "format");
++  assert.equal(errorsOf({ email: "alice@ex..com" }).email, "format");
++  assert.equal(errorsOf({ email: "ali ce@example.com" }).email, "format");
++  assert.deepEqual(valueOf({ email: " Alice@ExAmple.Co.UK " }).email, "alice@example.co.uk");
++});
++
++test("password", () => {
++  assert.equal(errorsOf({ password: undefined }).password, "required");
++  // never trimmed, so whitespace is not "empty"
++  assert.equal(errorsOf({ password: "        " }).password, "weak");
++  assert.equal(errorsOf({ password: "ab1" }).password, "length");
++  assert.equal(errorsOf({ password: "a".repeat(65) }).password, "length");
++  assert.equal(errorsOf({ password: "abcdefgh" }).password, "weak");
++  assert.equal(errorsOf({ password: "12345678" }).password, "weak");
++  assert.equal(errorsOf({ password: "Alice_1 secret" }).password, "contains_username");
++  assert.equal(errorsOf({ password: "  Alice_1  hidden9" }).password, "contains_username");
++  // similar but does not contain the username
++  valueOf({ password: "alias secret 9", confirmPassword: "alias secret 9" });
++  // contains_username is skipped when the username itself is invalid
++  assert.equal(errorsOf({ username: "1x", password: "1x secret" }).password, undefined);
++  assert.equal(errorsOf({ password: "1234567" }).password, "length"); // not weak
++});
++
++test("confirmPassword", () => {
++  assert.equal(errorsOf({ confirmPassword: undefined }).confirmPassword, "required");
++  assert.equal(errorsOf({ confirmPassword: "" }).confirmPassword, "required");
++  assert.equal(
++    errorsOf({ confirmPassword: "different" }).confirmPassword,
++    "mismatch"
++  );
++  // mismatch is checked even when password has its own error
++  assert.deepEqual(errorsOf({ password: "ab", confirmPassword: "cd" }), {
++    password: "length",
++    confirmPassword: "mismatch",
++  });
++  // but skipped when password is missing or not a string
++  assert.deepEqual(errorsOf({ password: undefined, confirmPassword: VALID.confirmPassword }), {
++    password: "required",
++  });
++  // never trimmed: a trailing space mismatches
++  assert.equal(
++    errorsOf({ confirmPassword: "correct horse 9 " }).confirmPassword,
++    "mismatch"
++  );
++});
++
++test("birthDate format", () => {
++  assert.equal(errorsOf({ birthDate: undefined }).birthDate, "required");
++  assert.equal(errorsOf({ birthDate: "" }).birthDate, "required");
++  assert.equal(errorsOf({ birthDate: "1990-6-15" }).birthDate, "format");
++  assert.equal(errorsOf({ birthDate: "90-06-15" }).birthDate, "format");
++  assert.equal(errorsOf({ birthDate: "1990/06/15" }).birthDate, "format");
++  assert.equal(errorsOf({ birthDate: "1990-13-01" }).birthDate, "format");
++  assert.equal(errorsOf({ birthDate: "1990-00-01" }).birthDate, "format");
++  assert.equal(errorsOf({ birthDate: "1990-06-00" }).birthDate, "format");
++  assert.equal(errorsOf({ birthDate: "1990-06-31" }).birthDate, "format");
++  assert.equal(errorsOf({ birthDate: "2023-02-29" }).birthDate, "format");
++  // a real leap day, but a one-year-old
++  assert.equal(errorsOf({ birthDate: "2024-02-29" }).birthDate, "too_young");
++  assert.equal(errorsOf({ birthDate: "1899-12-31" }).birthDate, "format");
++  assert.equal(valueOf({ birthDate: "1900-01-01" }).birthDate, "1900-01-01");
++  assert.deepEqual(valueOf({ birthDate: " 2000-01-02 " }).birthDate, "2000-01-02");
++});
++
++test("birthDate future and too_young", () => {
++  const at = (y: number, m: number, d: number) => new Date(Date.UTC(y, m - 1, d));
++  assert.equal(errorsOf({ birthDate: "2025-06-16" }, at(2025, 6, 15)).birthDate, "future");
++  assert.equal(errorsOf({ birthDate: "2026-01-01" }, at(2025, 6, 15)).birthDate, "future");
++  // same UTC day is not in the future, but is too young
++  assert.equal(errorsOf({ birthDate: "2025-06-15" }, at(2025, 6, 15)).birthDate, "too_young");
++  // exactly 13 today
++  assert.equal(valueOf({ birthDate: "2012-06-15" }, at(2025, 6, 15)).birthDate, "2012-06-15");
++  // one day short of 13
++  assert.equal(errorsOf({ birthDate: "2012-06-16" }, at(2025, 6, 15)).birthDate, "too_young");
++  // a Feb 29 birthday turns 13 on Mar 1 of a non-leap year
++  assert.equal(errorsOf({ birthDate: "2012-02-29" }, at(2025, 2, 28)).birthDate, "too_young");
++  assert.equal(valueOf({ birthDate: "2012-02-29" }, at(2025, 3, 1)).birthDate, "2012-02-29");
++  // only the UTC date of today matters, not its time of day: late on
++  // 2025-02-28 UTC is still before the Mar 1 birthday
++  const lateUtc = new Date(Date.UTC(2025, 1, 28, 23, 59, 59));
++  assert.equal(errorsOf({ birthDate: "2012-02-29" }, lateUtc).birthDate, "too_young");
++});
++
++test("several invalid fields each report their first error", () => {
++  const errors = errorsOf({
++    username: "1",
++    email: "nope",
++    password: "short",
++    confirmPassword: "other",
++    birthDate: "2050-01-01",
++  });
++  assert.deepEqual(errors, {
++    username: "length",
++    email: "format",
++    password: "length",
++    confirmPassword: "mismatch",
++    birthDate: "future",
++  });
++});

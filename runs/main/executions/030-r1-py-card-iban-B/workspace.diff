@@ -1,0 +1,90 @@
+ payment_checks.py | 79 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 79 insertions(+)
+
+diff --git a/payment_checks.py b/payment_checks.py
+index 8cf49c1..fe0b8de 100644
+--- a/payment_checks.py
++++ b/payment_checks.py
+@@ -17,3 +17,82 @@ def mask_card(number):
+     if len(digits) < 4 or not digits.isdigit():
+         raise ValueError("not a card number")
+     return "*" * (len(digits) - 4) + digits[-4:]
++
++
++def _luhn_valid(digits):
++    """Return True if a string of digits passes the Luhn checksum."""
++    total = 0
++    for position, digit in enumerate(reversed(digits)):
++        value = int(digit)
++        if position % 2:
++            value *= 2
++            if value > 9:
++                value -= 9
++        total += value
++    return total % 10 == 0
++
++
++def card_brand(number):
++    """Return the brand of a card number: "visa", "mastercard", "amex" or
++    "discover", or None when the number is not a valid card of one of those
++    brands.
++
++    Spaces and hyphens are separators and are ignored; any other non-digit
++    character makes the number invalid. The digits must pass the Luhn checksum
++    and match a brand's prefix and length. Raises TypeError if number is not
++    a str.
++    """
++    if not isinstance(number, str):
++        raise TypeError("card number must be a str")
++    digits = strip_separators(number)
++    if not (digits.isascii() and digits.isdigit()):
++        return None
++    if not _luhn_valid(digits):
++        return None
++    length = len(digits)
++    if digits.startswith(("34", "37")) and length == 15:
++        return "amex"
++    if digits.startswith("4") and length in (13, 16, 19):
++        return "visa"
++    if length == 16 and (
++        51 <= int(digits[:2]) <= 55 or 2221 <= int(digits[:4]) <= 2720
++    ):
++        return "mastercard"
++    if length in (16, 19) and (
++        digits.startswith(("6011", "65")) or 644 <= int(digits[:3]) <= 649
++    ):
++        return "discover"
++    return None
++
++
++def _iban_mod97(compact):
++    """Return the mod-97 of an uppercase IBAN: move the first four characters
++    to the end, replace each letter with two digits (A=10 ... Z=35) and reduce
++    the resulting number mod 97."""
++    rearranged = compact[4:] + compact[:4]
++    number = "".join(
++        ch if ch.isdigit() else str(ord(ch) - ord("A") + 10) for ch in rearranged
++    )
++    return int(number) % 97
++
++
++def is_valid_iban(iban):
++    """Return True if iban is a valid IBAN for a country in IBAN_LENGTHS.
++
++    Spaces are ignored and letters may be in either case; any other separator
++    (hyphen, dot, ...) makes it invalid. The total length must match the
++    country's entry in IBAN_LENGTHS and the mod-97 check must pass. Raises
++    TypeError if iban is not a str.
++    """
++    if not isinstance(iban, str):
++        raise TypeError("iban must be a str")
++    compact = iban.replace(" ", "")
++    if not (compact.isascii() and compact.isalnum()):
++        return False
++    compact = compact.upper()
++    if not (compact[:2].isalpha() and compact[2:4].isdigit()):
++        return False
++    expected_length = IBAN_LENGTHS.get(compact[:2])
++    if expected_length is None or len(compact) != expected_length:
++        return False
++    return _iban_mod97(compact) == 1

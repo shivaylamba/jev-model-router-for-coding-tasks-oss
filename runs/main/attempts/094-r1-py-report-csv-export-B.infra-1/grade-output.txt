@@ -1,0 +1,19 @@
+
+test_existing_formats_unchanged (acceptance_tests.test_csv_export.CsvCliTest.test_existing_formats_unchanged) ... ok
+test_list_formats (acceptance_tests.test_csv_export.CsvCliTest.test_list_formats) ... ok
+test_output_file (acceptance_tests.test_csv_export.CsvCliTest.test_output_file) ... ok
+test_stdout (acceptance_tests.test_csv_export.CsvCliTest.test_stdout) ... ok
+test_booleans_and_nulls (acceptance_tests.test_csv_export.CsvExporterTest.test_booleans_and_nulls) ... ok
+test_empty_report_is_header_only (acceptance_tests.test_csv_export.CsvExporterTest.test_empty_report_is_header_only) ... ok
+test_floats_two_decimals (acceptance_tests.test_csv_export.CsvExporterTest.test_floats_two_decimals) ... ok
+test_header_labels_quoted_too (acceptance_tests.test_csv_export.CsvExporterTest.test_header_labels_quoted_too) ... ok
+test_integers_have_no_separators (acceptance_tests.test_csv_export.CsvExporterTest.test_integers_have_no_separators) ... ok
+test_no_carriage_returns_and_no_title (acceptance_tests.test_csv_export.CsvExporterTest.test_no_carriage_returns_and_no_title) ... ok
+test_quoting (acceptance_tests.test_csv_export.CsvExporterTest.test_quoting) ... ok
+test_registered (acceptance_tests.test_csv_export.CsvExporterTest.test_registered) ... ok
+test_sales_example (acceptance_tests.test_csv_export.CsvExporterTest.test_sales_example) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.004s
+
+OK

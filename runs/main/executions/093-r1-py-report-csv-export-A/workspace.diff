@@ -1,0 +1,110 @@
+ reports/__pycache__/__init__.cpython-311.pyc       | Bin 0 -> 208 bytes
+ reports/__pycache__/formatting.cpython-311.pyc     | Bin 0 -> 1121 bytes
+ reports/__pycache__/model.cpython-311.pyc          | Bin 0 -> 2635 bytes
+ reports/cli.py                                     |   2 +-
+ reports/exporters/__init__.py                      |   3 +-
+ .../exporters/__pycache__/__init__.cpython-311.pyc | Bin 0 -> 1533 bytes
+ reports/exporters/__pycache__/csv.cpython-311.pyc  | Bin 0 -> 3069 bytes
+ .../exporters/__pycache__/markdown.cpython-311.pyc | Bin 0 -> 3197 bytes
+ reports/exporters/__pycache__/text.cpython-311.pyc | Bin 0 -> 4493 bytes
+ reports/exporters/csv.py                           |  31 +++++++++++++++++++++
+ 10 files changed, 34 insertions(+), 2 deletions(-)
+
+diff --git a/reports/__pycache__/__init__.cpython-311.pyc b/reports/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..71a8b47
+Binary files /dev/null and b/reports/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/reports/__pycache__/formatting.cpython-311.pyc b/reports/__pycache__/formatting.cpython-311.pyc
+new file mode 100644
+index 0000000..b597613
+Binary files /dev/null and b/reports/__pycache__/formatting.cpython-311.pyc differ
+diff --git a/reports/__pycache__/model.cpython-311.pyc b/reports/__pycache__/model.cpython-311.pyc
+new file mode 100644
+index 0000000..e5be4ac
+Binary files /dev/null and b/reports/__pycache__/model.cpython-311.pyc differ
+diff --git a/reports/cli.py b/reports/cli.py
+index 014f7ba..0f58f11 100644
+--- a/reports/cli.py
++++ b/reports/cli.py
+@@ -10,7 +10,7 @@ from .model import load_report
+ def build_parser():
+     parser = argparse.ArgumentParser(prog="reports")
+     parser.add_argument("report", nargs="?", help="report JSON file")
+-    parser.add_argument("--format", default="text", choices=["text", "markdown"])
++    parser.add_argument("--format", default="text", choices=["text", "markdown", "csv"])
+     parser.add_argument("--output", help="write to this file instead of stdout")
+     parser.add_argument("--list-formats", action="store_true", help="print the available formats and exit")
+     return parser
+diff --git a/reports/exporters/__init__.py b/reports/exporters/__init__.py
+index 43f92f2..b0df6c9 100644
+--- a/reports/exporters/__init__.py
++++ b/reports/exporters/__init__.py
+@@ -1,5 +1,6 @@
+ """Output formats."""
+ 
++from .csv import CsvExporter
+ from .markdown import MarkdownExporter
+ from .text import TextExporter
+ 
+@@ -8,7 +9,7 @@ class UnknownFormatError(LookupError):
+     """Raised by get_exporter for a format name that is not registered."""
+ 
+ 
+-EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter())}
++EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter(), CsvExporter())}
+ 
+ 
+ def get_exporter(name):
+diff --git a/reports/exporters/__pycache__/__init__.cpython-311.pyc b/reports/exporters/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..56d90e3
+Binary files /dev/null and b/reports/exporters/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/reports/exporters/__pycache__/csv.cpython-311.pyc b/reports/exporters/__pycache__/csv.cpython-311.pyc
+new file mode 100644
+index 0000000..9555ea8
+Binary files /dev/null and b/reports/exporters/__pycache__/csv.cpython-311.pyc differ
+diff --git a/reports/exporters/__pycache__/markdown.cpython-311.pyc b/reports/exporters/__pycache__/markdown.cpython-311.pyc
+new file mode 100644
+index 0000000..285232f
+Binary files /dev/null and b/reports/exporters/__pycache__/markdown.cpython-311.pyc differ
+diff --git a/reports/exporters/__pycache__/text.cpython-311.pyc b/reports/exporters/__pycache__/text.cpython-311.pyc
+new file mode 100644
+index 0000000..0d18ef4
+Binary files /dev/null and b/reports/exporters/__pycache__/text.cpython-311.pyc differ
+diff --git a/reports/exporters/csv.py b/reports/exporters/csv.py
+new file mode 100644
+index 0000000..70861b6
+--- /dev/null
++++ b/reports/exporters/csv.py
+@@ -0,0 +1,31 @@
++"""CSV export for machines: no display formatting, standard quoting, \n newlines."""
++
++
++def _format_value(value):
++    """Format a raw cell value for CSV; display formatting does not apply."""
++    if value is None:
++        return ""
++    if isinstance(value, bool):
++        return "true" if value else "false"
++    if isinstance(value, int):
++        return str(value)
++    if isinstance(value, float):
++        return format(value, ".2f")
++    return str(value)
++
++
++def _quote(field):
++    if any(ch in field for ch in (",", '"', "\n", "\r")):
++        return '"' + field.replace('"', '""') + '"'
++    return field
++
++
++class CsvExporter:
++    name = "csv"
++    extension = ".csv"
++
++    def export(self, report):
++        lines = [",".join(_quote(c.label) for c in report.columns)]
++        for row in report.rows:
++            lines.append(",".join(_quote(_format_value(report.cell(row, c))) for c in report.columns))
++        return "".join(line + "\n" for line in lines)

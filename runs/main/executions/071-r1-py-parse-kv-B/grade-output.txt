@@ -1,0 +1,16 @@
+
+test_empty_input (acceptance_tests.test_parse_kv.ParseKvTest.test_empty_input) ... ok
+test_empty_key (acceptance_tests.test_parse_kv.ParseKvTest.test_empty_key) ... ok
+test_empty_segments_skipped (acceptance_tests.test_parse_kv.ParseKvTest.test_empty_segments_skipped) ... ok
+test_empty_value_allowed (acceptance_tests.test_parse_kv.ParseKvTest.test_empty_value_allowed) ... ok
+test_example (acceptance_tests.test_parse_kv.ParseKvTest.test_example) ... ok
+test_last_duplicate_wins (acceptance_tests.test_parse_kv.ParseKvTest.test_last_duplicate_wins) ... ok
+test_round_trip (acceptance_tests.test_parse_kv.ParseKvTest.test_round_trip) ... ok
+test_segment_without_equals (acceptance_tests.test_parse_kv.ParseKvTest.test_segment_without_equals) ... ok
+test_split_on_first_equals (acceptance_tests.test_parse_kv.ParseKvTest.test_split_on_first_equals) ... ok
+test_values_are_strings_and_trimmed (acceptance_tests.test_parse_kv.ParseKvTest.test_values_are_strings_and_trimmed) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.000s
+
+OK

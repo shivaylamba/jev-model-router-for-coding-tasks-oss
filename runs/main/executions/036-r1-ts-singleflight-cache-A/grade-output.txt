@@ -1,0 +1,374 @@
+TAP version 13
+# Subtest: invalid options throw RangeError
+ok 1 - invalid options throw RangeError
+  ---
+  duration_ms: 0.810709
+  type: 'test'
+  ...
+# Subtest: a fresh value is served without loading again
+not ok 2 - a fresh value is served without loading again
+  ---
+  duration_ms: 0.296541
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:70:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:72:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)
+  ...
+# Subtest: concurrent gets for one key share a single load
+not ok 3 - concurrent gets for one key share a single load
+  ---
+  duration_ms: 0.993167
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:79:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + []
+    - [
+    -   'a',
+    -   'b'
+    - ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'a'
+    1: 'b'
+  actual:
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:84:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: age is measured from when the load settled
+not ok 4 - age is measured from when the load settled
+  ---
+  duration_ms: 0.742875
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:90:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:94:14)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: a stale value is served at once while one background refresh runs
+not ok 5 - a stale value is served at once while one background refresh runs
+  ---
+  duration_ms: 0.274792
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:101:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:103:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: a failed refresh keeps the stale value and reports the error
+not ok 6 - a failed refresh keeps the stale value and reports the error
+  ---
+  duration_ms: 0.147459
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:117:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:119:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: a failed refresh without onRefreshError is swallowed
+not ok 7 - a failed refresh without onRefreshError is swallowed
+  ---
+  duration_ms: 0.118542
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:131:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:133:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: an expired value is not served; get waits for a new load
+not ok 8 - an expired value is not served; get waits for a new load
+  ---
+  duration_ms: 0.116125
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:141:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:143:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: staleMs of 0 means no stale window
+not ok 9 - staleMs of 0 means no stale window
+  ---
+  duration_ms: 0.139542
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:156:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:158:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: a failed load rejects every waiter and caches nothing
+not ok 10 - a failed load rejects every waiter and caches nothing
+  ---
+  duration_ms: 0.207458
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:165:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:170:14)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: a load that throws synchronously rejects the get
+ok 11 - a load that throws synchronously rejects the get
+  ---
+  duration_ms: 0.25275
+  type: 'test'
+  ...
+# Subtest: a get after expiry joins the refresh already in flight
+not ok 12 - a get after expiry joins the refresh already in flight
+  ---
+  duration_ms: 0.150083
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:195:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:197:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: least recently used values are evicted past maxEntries
+not ok 13 - least recently used values are evicted past maxEntries
+  ---
+  duration_ms: 0.171625
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:207:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:209:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: peek does not refresh recency
+not ok 14 - peek does not refresh recency
+  ---
+  duration_ms: 0.154584
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:218:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:220:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: expired values are dropped before recency eviction
+not ok 15 - expired values are dropped before recency eviction
+  ---
+  duration_ms: 0.131334
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:228:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:230:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: an evicted key's in-flight refresh still stores its result
+not ok 16 - an evicted key's in-flight refresh still stores its result
+  ---
+  duration_ms: 0.105208
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:242:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:244:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: invalidate drops the value and detaches the in-flight load
+not ok 17 - invalidate drops the value and detaches the in-flight load
+  ---
+  duration_ms: 0.094291
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:256:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:258:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: clear empties the cache and in-flight loads do not store
+not ok 18 - clear empties the cache and in-flight loads do not store
+  ---
+  duration_ms: 0.072709
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:275:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:277:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: size counts fresh and stale values only
+not ok 19 - size counts fresh and stale values only
+  ---
+  duration_ms: 0.063375
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:291:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'd')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    loaded (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:53:18)
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-hvzi3usi/ws/acceptance_tests/async-cache.test.ts:293:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 2
+# fail 17
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 109.222417
+

@@ -1,0 +1,43 @@
+ src/object.js | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/src/object.js b/src/object.js
+index 263bd36..49763a0 100644
+--- a/src/object.js
++++ b/src/object.js
+@@ -19,3 +19,35 @@ export function mapValues(obj, fn) {
+   for (const key of Object.keys(obj)) out[key] = fn(obj[key], key);
+   return out;
+ }
++
++/**
++ * A new object with only the listed keys that are own enumerable properties of `obj`,
++ * in the order they appear in `keys`. Missing keys are skipped; `undefined` values are kept.
++ * @param {Record<string, unknown>} obj
++ * @param {string[]} keys
++ */
++export function pick(obj, keys) {
++  const out = {};
++  for (const key of keys) {
++    if (Object.prototype.hasOwnProperty.call(obj, key) &&
++        Object.prototype.propertyIsEnumerable.call(obj, key)) {
++      out[key] = obj[key];
++    }
++  }
++  return out;
++}
++
++/**
++ * A new object with every own enumerable string key of `obj` except the listed ones,
++ * in the original key order. Listed keys that don't exist are ignored.
++ * @param {Record<string, unknown>} obj
++ * @param {string[]} keys
++ */
++export function omit(obj, keys) {
++  const excluded = new Set(keys);
++  const out = {};
++  for (const key of Object.keys(obj)) {
++    if (!excluded.has(key)) out[key] = obj[key];
++  }
++  return out;
++}

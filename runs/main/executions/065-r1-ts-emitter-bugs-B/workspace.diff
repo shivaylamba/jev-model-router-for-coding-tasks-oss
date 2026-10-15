@@ -1,0 +1,108 @@
+ src/emitter.ts | 54 +++++++++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 45 insertions(+), 9 deletions(-)
+
+diff --git a/src/emitter.ts b/src/emitter.ts
+index d91175d..c1ea9a1 100644
+--- a/src/emitter.ts
++++ b/src/emitter.ts
+@@ -1,5 +1,14 @@
+ export type Listener = (...args: unknown[]) => void;
+ 
++interface Registration {
++  /** The listener as recorded in the registry. May be a wrapper for `once`. */
++  fn: Listener;
++  /** The function the caller passed to `on`/`once`, used by `off` to match. */
++  original: Listener;
++  /** Set to false when removed (by `off`, unsubscribe, or a once firing). */
++  active: boolean;
++}
++
+ /**
+  * A minimal event emitter.
+  *
+@@ -7,14 +16,15 @@ export type Listener = (...args: unknown[]) => void;
+  * registered twice is called twice per emit.
+  */
+ export class Emitter {
+-  private listeners = new Map<string, Listener[]>();
++  private listeners = new Map<string, Registration[]>();
+ 
+   /** Register `listener` for `event`. Returns a function that removes this registration. */
+   on(event: string, listener: Listener): () => void {
++    const reg: Registration = { fn: listener, original: listener, active: true };
+     const list = this.listeners.get(event) ?? [];
+-    list.push(listener);
++    list.push(reg);
+     this.listeners.set(event, list);
+-    return () => this.off(event, listener);
++    return () => this.removeRegistration(event, reg);
+   }
+ 
+   /**
+@@ -24,11 +34,18 @@ export class Emitter {
+    * with the returned function.
+    */
+   once(event: string, listener: Listener): () => void {
++    // `reg` is referenced by `wrapper` before it is assigned; `wrapper` is only
++    // called later, from `emit`, by which time `reg` is defined.
++    let reg!: Registration;
+     const wrapper: Listener = (...args) => {
+-      this.off(event, wrapper);
++      this.removeRegistration(event, reg);
+       listener(...args);
+     };
+-    return this.on(event, wrapper);
++    reg = { fn: wrapper, original: listener, active: true };
++    const list = this.listeners.get(event) ?? [];
++    list.push(reg);
++    this.listeners.set(event, list);
++    return () => this.removeRegistration(event, reg);
+   }
+ 
+   /**
+@@ -38,8 +55,11 @@ export class Emitter {
+   off(event: string, listener: Listener): void {
+     const list = this.listeners.get(event);
+     if (!list) return;
+-    const index = list.indexOf(listener);
+-    if (index !== -1) list.splice(index, 1);
++    const index = list.findIndex(
++      (reg) => reg.original === listener || reg.fn === listener,
++    );
++    if (index === -1) return;
++    this.removeRegistration(event, list[index]);
+   }
+ 
+   /**
+@@ -55,8 +75,14 @@ export class Emitter {
+   emit(event: string, ...args: unknown[]): boolean {
+     const list = this.listeners.get(event);
+     if (!list || list.length === 0) return false;
+-    for (let i = 0; i < list.length; i++) {
+-      list[i](...args);
++    // Snapshot so that listeners added during this emit are not called by it,
++    // and so that removals during it cannot shift the iteration order. Each
++    // registration is consulted for `active` at the moment its turn comes, so
++    // a listener removed mid-emit (by a prior listener, by unsubscribe, or by
++    // its own once-wrapper) is skipped without affecting anything after it.
++    const snapshot = list.slice();
++    for (const reg of snapshot) {
++      if (reg.active) reg.fn(...args);
+     }
+     return true;
+   }
+@@ -65,4 +91,14 @@ export class Emitter {
+   listenerCount(event: string): number {
+     return this.listeners.get(event)?.length ?? 0;
+   }
++
++  /** Deactivate `reg` and drop it from the live list for `event`. */
++  private removeRegistration(event: string, reg: Registration): void {
++    if (!reg.active) return;
++    reg.active = false;
++    const list = this.listeners.get(event);
++    if (!list) return;
++    const index = list.indexOf(reg);
++    if (index !== -1) list.splice(index, 1);
++  }
+ }

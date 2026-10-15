@@ -1,0 +1,78 @@
+ orders.py   |  4 ++--
+ shipping.py | 36 +++++++++++++++++++++++++++++-------
+ 2 files changed, 31 insertions(+), 9 deletions(-)
+
+diff --git a/orders.py b/orders.py
+index 02777a4..7fa5b2f 100644
+--- a/orders.py
++++ b/orders.py
+@@ -1,11 +1,11 @@
+ """Order-level helpers."""
+ 
+-from shipping import calc
++from shipping import shipping_cost
+ 
+ 
+ def parcel_costs(parcels, zone, express=False):
+     """Shipping cost of each parcel, given as a list of weights in kg."""
+-    return [calc(weight, zone, express) for weight in parcels]
++    return [shipping_cost(weight, zone, express) for weight in parcels]
+ 
+ 
+ def order_shipping(parcels, zone, express=False):
+diff --git a/shipping.py b/shipping.py
+index 0d14233..6118822 100644
+--- a/shipping.py
++++ b/shipping.py
+@@ -1,9 +1,17 @@
+ """Shipping prices for a single parcel."""
+ 
+ import math
++import warnings
+ 
++BASE_FEE = 4.99
++PER_KG_RATE = 1.25
++WEIGHT_STEP_KG = 0.5
++ZONE_MULTIPLIERS = {1: 1.0, 2: 1.4, 3: 1.9}
++EXPRESS_MULTIPLIER = 1.5
++MAX_COST = 75.0
+ 
+-def calc(weight_kg, zone, express=False):
++
++def shipping_cost(weight_kg, zone, express=False):
+     """Return the shipping cost in dollars for one parcel.
+ 
+     The weight is rounded up to the next half kilogram before pricing.
+@@ -14,12 +22,26 @@ def calc(weight_kg, zone, express=False):
+     """
+     if weight_kg <= 0:
+         raise ValueError("weight must be positive")
+-    if zone not in (1, 2, 3):
++    if zone not in ZONE_MULTIPLIERS:
+         raise ValueError(f"unknown zone {zone!r}")
+-    billable = math.ceil(weight_kg / 0.5) * 0.5
+-    cost = 4.99 + billable * 1.25 * {1: 1.0, 2: 1.4, 3: 1.9}[zone]
++    billable = math.ceil(weight_kg / WEIGHT_STEP_KG) * WEIGHT_STEP_KG
++    cost = BASE_FEE + billable * PER_KG_RATE * ZONE_MULTIPLIERS[zone]
+     if express:
+-        cost = cost * 1.5
+-    if cost > 75.0:
+-        cost = 75.0
++        cost = cost * EXPRESS_MULTIPLIER
++    if cost > MAX_COST:
++        cost = MAX_COST
+     return round(cost, 2)
++
++
++def calc(weight_kg, zone, express=False):
++    """Deprecated alias for shipping_cost.
++
++    .. deprecated::
++        Use :func:`shipping_cost` instead.
++    """
++    warnings.warn(
++        "calc is deprecated, use shipping_cost instead",
++        DeprecationWarning,
++        stacklevel=2,
++    )
++    return shipping_cost(weight_kg, zone, express)

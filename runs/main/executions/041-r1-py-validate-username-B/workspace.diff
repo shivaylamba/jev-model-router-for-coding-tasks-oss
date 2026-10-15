@@ -1,0 +1,96 @@
+ accounts/usernames.py   | 26 ++++++++++++++++++++++++++
+ tests/test_usernames.py | 32 +++++++++++++++++++++++++++++++-
+ 2 files changed, 57 insertions(+), 1 deletion(-)
+
+diff --git a/accounts/usernames.py b/accounts/usernames.py
+index 772d755..1dd3cf4 100644
+--- a/accounts/usernames.py
++++ b/accounts/usernames.py
+@@ -1,6 +1,7 @@
+ """Username helpers."""
+ 
+ RESERVED = frozenset({"admin", "root", "support", "moderator"})
++SEPARATORS = frozenset("._-")
+ 
+ 
+ def normalize_username(raw):
+@@ -8,6 +9,31 @@ def normalize_username(raw):
+     return raw.strip().lower()
+ 
+ 
++def is_valid_username(name):
++    """Whether a (normalized) username meets the signup format rules.
++
++    A valid username is 3-20 characters, starts with a lowercase letter,
++    and contains only lowercase letters, digits and the separators
++    ".", "_" and "-". Separators may not sit next to each other or at
++    the end. Anything that is not a str is invalid.
++    """
++    if not isinstance(name, str) or not 3 <= len(name) <= 20:
++        return False
++    if not ("a" <= name[0] <= "z"):
++        return False
++    if name[-1] in SEPARATORS:
++        return False
++    previous_was_separator = False
++    for char in name:
++        is_separator = char in SEPARATORS
++        if is_separator and previous_was_separator:
++            return False
++        if not is_separator and not ("a" <= char <= "z" or "0" <= char <= "9"):
++            return False
++        previous_was_separator = is_separator
++    return True
++
++
+ def is_reserved(name):
+     """Whether a (normalized) username is reserved for staff accounts."""
+     return name in RESERVED
+diff --git a/tests/test_usernames.py b/tests/test_usernames.py
+index e13bd2b..7fc9aa0 100644
+--- a/tests/test_usernames.py
++++ b/tests/test_usernames.py
+@@ -1,6 +1,6 @@
+ import unittest
+ 
+-from accounts.usernames import is_reserved, normalize_username
++from accounts.usernames import is_reserved, is_valid_username, normalize_username
+ 
+ 
+ class NormalizeTest(unittest.TestCase):
+@@ -12,5 +12,35 @@ class NormalizeTest(unittest.TestCase):
+         self.assertFalse(is_reserved("ada"))
+ 
+ 
++class IsValidUsernameTest(unittest.TestCase):
++    def test_valid_names(self):
++        for name in ["ada", "ada.l", "a-b_c", "user123", "a1.b2-c3", "a" * 20]:
++            self.assertTrue(is_valid_username(name), name)
++
++    def test_length_out_of_range(self):
++        for name in ["", "ab", "a" * 21]:
++            self.assertFalse(is_valid_username(name), name)
++
++    def test_bad_first_character(self):
++        for name in ["1ada", "_ada", ".ada", "-ada", "Ada", "éada"]:
++            self.assertFalse(is_valid_username(name), name)
++
++    def test_disallowed_characters(self):
++        for name in ["ad a", "ad+a", "aDa", "café", "ada~", "a\tb"]:
++            self.assertFalse(is_valid_username(name), name)
++
++    def test_adjacent_separators(self):
++        for name in ["a..b", "a._b", "a-.b", "a_-.b"]:
++            self.assertFalse(is_valid_username(name), name)
++
++    def test_trailing_separator(self):
++        for name in ["ada.", "ada_", "ada-", "a.b-"]:
++            self.assertFalse(is_valid_username(name), name)
++
++    def test_non_string_input(self):
++        for name in [None, 42, 3.14, b"ada", ["ada"], True]:
++            self.assertFalse(is_valid_username(name), repr(name))
++
++
+ if __name__ == "__main__":
+     unittest.main()

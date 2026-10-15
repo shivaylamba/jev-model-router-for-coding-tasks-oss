@@ -1,0 +1,65 @@
+TAP version 13
+# Subtest: splits on commas, semicolons and whitespace
+ok 1 - splits on commas, semicolons and whitespace
+  ---
+  duration_ms: 1.096916
+  type: 'test'
+  ...
+# Subtest: empty input
+ok 2 - empty input
+  ---
+  duration_ms: 0.097084
+  type: 'test'
+  ...
+# Subtest: valid local parts and domains
+ok 3 - valid local parts and domains
+  ---
+  duration_ms: 0.519
+  type: 'test'
+  ...
+# Subtest: invalid addresses keep their order and duplicates
+ok 4 - invalid addresses keep their order and duplicates
+  ---
+  duration_ms: 0.08775
+  type: 'test'
+  ...
+# Subtest: local part dot rules
+ok 5 - local part dot rules
+  ---
+  duration_ms: 0.10125
+  type: 'test'
+  ...
+# Subtest: local part length limit
+ok 6 - local part length limit
+  ---
+  duration_ms: 0.085375
+  type: 'test'
+  ...
+# Subtest: domain label rules
+ok 7 - domain label rules
+  ---
+  duration_ms: 0.090208
+  type: 'test'
+  ...
+# Subtest: case-insensitive de-duplication keeps the first spelling
+ok 8 - case-insensitive de-duplication keeps the first spelling
+  ---
+  duration_ms: 0.072834
+  type: 'test'
+  ...
+# Subtest: display names are not supported
+ok 9 - display names are not supported
+  ---
+  duration_ms: 0.08275
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 69.896334
+

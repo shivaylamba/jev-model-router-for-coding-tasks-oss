@@ -1,0 +1,17 @@
+
+test_dashboard (acceptance_tests.test_user_stats.CallersTest.test_dashboard) ... ok
+test_emailer (acceptance_tests.test_user_stats.CallersTest.test_emailer) ... ok
+test_as_dict (acceptance_tests.test_user_stats.UserStatsTest.test_as_dict) ... ok
+test_events_per_active_day (acceptance_tests.test_user_stats.UserStatsTest.test_events_per_active_day) ... ok
+test_field_order (acceptance_tests.test_user_stats.UserStatsTest.test_field_order) ... ok
+test_frozen (acceptance_tests.test_user_stats.UserStatsTest.test_frozen) ... ok
+test_get_all_user_stats (acceptance_tests.test_user_stats.UserStatsTest.test_get_all_user_stats) ... ok
+test_indexing_and_len (acceptance_tests.test_user_stats.UserStatsTest.test_indexing_and_len) ... ok
+test_no_events (acceptance_tests.test_user_stats.UserStatsTest.test_no_events) ... ok
+test_returns_dataclass_with_fields (acceptance_tests.test_user_stats.UserStatsTest.test_returns_dataclass_with_fields) ... ok
+test_unpacks_like_tuple (acceptance_tests.test_user_stats.UserStatsTest.test_unpacks_like_tuple) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.000s
+
+OK

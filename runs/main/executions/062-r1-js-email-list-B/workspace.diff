@@ -1,0 +1,161 @@
+ src/emails.js       | 65 +++++++++++++++++++++++++++++++++++++++++++
+ test/emails.test.js | 80 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 145 insertions(+)
+
+diff --git a/src/emails.js b/src/emails.js
+new file mode 100644
+index 0000000..7dfce5c
+--- /dev/null
++++ b/src/emails.js
+@@ -0,0 +1,65 @@
++/**
++ * Parse text pasted into the invite dialog into valid and invalid addresses.
++ * The text is split on any run of commas, semicolons and whitespace; each
++ * piece is checked as-is, with no trimming or unwrapping (so
++ * "<ada@example.com>" is simply invalid). `valid` holds each address once,
++ * spelled as first typed (addresses differing only in case are the same);
++ * `invalid` holds every invalid piece in input order, repeats included.
++ * @param {string} text
++ * @returns {{ valid: string[], invalid: string[] }}
++ */
++export function parseEmailList(text) {
++  const valid = [];
++  const invalid = [];
++  const seen = new Set();
++
++  for (const piece of text.split(/[\s,;]+/)) {
++    if (!piece) continue;
++    if (isValidAddress(piece)) {
++      const key = piece.toLowerCase();
++      if (!seen.has(key)) {
++        seen.add(key);
++        valid.push(piece);
++      }
++    } else {
++      invalid.push(piece);
++    }
++  }
++
++  return { valid, invalid };
++}
++
++const LOCAL_PART = /^[A-Za-z0-9._%+-]+$/;
++const LABEL = /^[A-Za-z0-9-]+$/;
++const LAST_LABEL = /^[A-Za-z]{2,}$/;
++
++function isValidAddress(piece) {
++  const at = piece.indexOf("@");
++  if (at === -1 || piece.indexOf("@", at + 1) !== -1) {
++    return false;
++  }
++  return isValidLocalPart(piece.slice(0, at)) && isValidDomain(piece.slice(at + 1));
++}
++
++function isValidLocalPart(local) {
++  return (
++    local.length <= 64 &&
++    LOCAL_PART.test(local) &&
++    !local.startsWith(".") &&
++    !local.endsWith(".") &&
++    !local.includes("..")
++  );
++}
++
++function isValidDomain(domain) {
++  const labels = domain.split(".");
++  if (labels.length < 2) {
++    return false;
++  }
++  return labels.every((label, i) => {
++    if (label.length > 63 || !LABEL.test(label)) return false;
++    if (label.startsWith("-") || label.endsWith("-")) return false;
++    if (i === labels.length - 1 && !LAST_LABEL.test(label)) return false;
++    return true;
++  });
++}
+diff --git a/test/emails.test.js b/test/emails.test.js
+new file mode 100644
+index 0000000..4dc0fa0
+--- /dev/null
++++ b/test/emails.test.js
+@@ -0,0 +1,80 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { parseEmailList } from "../src/emails.js";
++
++test("splits on any run of commas, semicolons and whitespace", () => {
++  const { valid, invalid } = parseEmailList("a@x.io,, ;;b@y.io \t c@z.io\n\n d@w.io");
++  assert.deepEqual(valid, ["a@x.io", "b@y.io", "c@z.io", "d@w.io"]);
++  assert.deepEqual(invalid, []);
++});
++
++test("ignores empty pieces", () => {
++  const { valid, invalid } = parseEmailList(", a@x.io , ;;\n\t");
++  assert.deepEqual(valid, ["a@x.io"]);
++  assert.deepEqual(invalid, []);
++});
++
++test("empty text parses to empty lists", () => {
++  assert.deepEqual(parseEmailList(""), { valid: [], invalid: [] });
++  assert.deepEqual(parseEmailList(" ,;\t\n"), { valid: [], invalid: [] });
++});
++
++test("checks each piece as-is, with no trimming or unwrapping", () => {
++  const { valid, invalid } = parseEmailList(" <ada@x.io> ada@x.io ");
++  assert.deepEqual(valid, ["ada@x.io"]);
++  assert.deepEqual(invalid, ["<ada@x.io>"]);
++});
++
++test("requires exactly one @", () => {
++  const { valid, invalid } = parseEmailList("a@b@x.io @@x.io a@@x.io");
++  assert.deepEqual(valid, []);
++  assert.deepEqual(invalid, ["a@b@x.io", "@@x.io", "a@@x.io"]);
++});
++
++test("local part: allowed characters and dot placement", () => {
++  const { valid, invalid } = parseEmailList(
++    "a.b@x.io a+b%c_d-e@x.io .a@x.io a.@x.io a..b@x.io a!b@x.io @x.io"
++  );
++  assert.deepEqual(valid, ["a.b@x.io", "a+b%c_d-e@x.io"]);
++  assert.deepEqual(invalid, [".a@x.io", "a.@x.io", "a..b@x.io", "a!b@x.io", "@x.io"]);
++});
++
++test("local part: 1-64 characters", () => {
++  const sixtyFour = "a".repeat(64);
++  const sixtyFive = "a".repeat(65);
++  const { valid, invalid } = parseEmailList(`${sixtyFour}@x.io ${sixtyFive}@x.io`);
++  assert.deepEqual(valid, [`${sixtyFour}@x.io`]);
++  assert.deepEqual(invalid, [`${sixtyFive}@x.io`]);
++});
++
++test("domain: two or more labels", () => {
++  const { valid, invalid } = parseEmailList("a@x a@x.io a@x.y.io");
++  assert.deepEqual(valid, ["a@x.io", "a@x.y.io"]);
++  assert.deepEqual(invalid, ["a@x"]);
++});
++
++test("domain: label characters, hyphens and final label", () => {
++  const { valid, invalid } = parseEmailList("a@x-y.io a@1.io a@-x.io a@x-.io a@x..io a@x.i1 a@x.i");
++  assert.deepEqual(valid, ["a@x-y.io", "a@1.io"]);
++  assert.deepEqual(invalid, ["a@-x.io", "a@x-.io", "a@x..io", "a@x.i1", "a@x.i"]);
++});
++
++test("domain: labels are 1-63 characters", () => {
++  const sixtyThree = "a".repeat(63);
++  const sixtyFour = "a".repeat(64);
++  const { valid, invalid } = parseEmailList(`a@${sixtyThree}.io a@${sixtyFour}.io`);
++  assert.deepEqual(valid, [`a@${sixtyThree}.io`]);
++  assert.deepEqual(invalid, [`a@${sixtyFour}.io`]);
++});
++
++test("valid: first spelling wins, case-insensitive, no duplicates", () => {
++  const { valid, invalid } = parseEmailList("Ada@X.IO ada@x.io ADA@x.io bob@x.io");
++  assert.deepEqual(valid, ["Ada@X.IO", "bob@x.io"]);
++  assert.deepEqual(invalid, []);
++});
++
++test("invalid: keeps input order and repeats", () => {
++  const { valid, invalid } = parseEmailList("nope a@x.io bad nope a@x.io b@y.io");
++  assert.deepEqual(valid, ["a@x.io", "b@y.io"]);
++  assert.deepEqual(invalid, ["nope", "bad", "nope"]);
++});

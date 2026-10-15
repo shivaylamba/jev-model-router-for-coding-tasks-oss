@@ -1,0 +1,125 @@
+TAP version 13
+# Subtest: invalid options throw RangeError
+ok 1 - invalid options throw RangeError
+  ---
+  duration_ms: 0.817167
+  type: 'test'
+  ...
+# Subtest: a fresh value is served without loading again
+ok 2 - a fresh value is served without loading again
+  ---
+  duration_ms: 0.291542
+  type: 'test'
+  ...
+# Subtest: concurrent gets for one key share a single load
+ok 3 - concurrent gets for one key share a single load
+  ---
+  duration_ms: 0.488208
+  type: 'test'
+  ...
+# Subtest: age is measured from when the load settled
+ok 4 - age is measured from when the load settled
+  ---
+  duration_ms: 0.093375
+  type: 'test'
+  ...
+# Subtest: a stale value is served at once while one background refresh runs
+ok 5 - a stale value is served at once while one background refresh runs
+  ---
+  duration_ms: 3.165667
+  type: 'test'
+  ...
+# Subtest: a failed refresh keeps the stale value and reports the error
+ok 6 - a failed refresh keeps the stale value and reports the error
+  ---
+  duration_ms: 0.429667
+  type: 'test'
+  ...
+# Subtest: a failed refresh without onRefreshError is swallowed
+ok 7 - a failed refresh without onRefreshError is swallowed
+  ---
+  duration_ms: 0.38975
+  type: 'test'
+  ...
+# Subtest: an expired value is not served; get waits for a new load
+ok 8 - an expired value is not served; get waits for a new load
+  ---
+  duration_ms: 0.42775
+  type: 'test'
+  ...
+# Subtest: staleMs of 0 means no stale window
+ok 9 - staleMs of 0 means no stale window
+  ---
+  duration_ms: 0.291042
+  type: 'test'
+  ...
+# Subtest: a failed load rejects every waiter and caches nothing
+ok 10 - a failed load rejects every waiter and caches nothing
+  ---
+  duration_ms: 0.316167
+  type: 'test'
+  ...
+# Subtest: a load that throws synchronously rejects the get
+ok 11 - a load that throws synchronously rejects the get
+  ---
+  duration_ms: 0.184916
+  type: 'test'
+  ...
+# Subtest: a get after expiry joins the refresh already in flight
+ok 12 - a get after expiry joins the refresh already in flight
+  ---
+  duration_ms: 0.106625
+  type: 'test'
+  ...
+# Subtest: least recently used values are evicted past maxEntries
+ok 13 - least recently used values are evicted past maxEntries
+  ---
+  duration_ms: 0.082
+  type: 'test'
+  ...
+# Subtest: peek does not refresh recency
+ok 14 - peek does not refresh recency
+  ---
+  duration_ms: 0.071292
+  type: 'test'
+  ...
+# Subtest: expired values are dropped before recency eviction
+ok 15 - expired values are dropped before recency eviction
+  ---
+  duration_ms: 0.072875
+  type: 'test'
+  ...
+# Subtest: an evicted key's in-flight refresh still stores its result
+ok 16 - an evicted key's in-flight refresh still stores its result
+  ---
+  duration_ms: 0.896708
+  type: 'test'
+  ...
+# Subtest: invalidate drops the value and detaches the in-flight load
+ok 17 - invalidate drops the value and detaches the in-flight load
+  ---
+  duration_ms: 0.213375
+  type: 'test'
+  ...
+# Subtest: clear empties the cache and in-flight loads do not store
+ok 18 - clear empties the cache and in-flight loads do not store
+  ---
+  duration_ms: 0.099042
+  type: 'test'
+  ...
+# Subtest: size counts fresh and stale values only
+ok 19 - size counts fresh and stale values only
+  ---
+  duration_ms: 0.068833
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 108.217167
+

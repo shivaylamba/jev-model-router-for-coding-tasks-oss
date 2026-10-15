@@ -1,0 +1,26 @@
+
+test_every_minute_drops_seconds (acceptance_tests.test_next_run.BasicsTest.test_every_minute_drops_seconds) ... ok
+test_lists_and_ranges (acceptance_tests.test_next_run.BasicsTest.test_lists_and_ranges) ... ok
+test_month_and_year_rollover (acceptance_tests.test_next_run.BasicsTest.test_month_and_year_rollover) ... ok
+test_steps (acceptance_tests.test_next_run.BasicsTest.test_steps) ... ok
+test_strictly_after (acceptance_tests.test_next_run.BasicsTest.test_strictly_after) ... ok
+test_tzinfo_is_kept (acceptance_tests.test_next_run.BasicsTest.test_tzinfo_is_kept) ... ok
+test_whitespace (acceptance_tests.test_next_run.BasicsTest.test_whitespace) ... ok
+test_both_restricted_is_or (acceptance_tests.test_next_run.DayRuleTest.test_both_restricted_is_or) ... ok
+test_month_always_applies (acceptance_tests.test_next_run.DayRuleTest.test_month_always_applies) ... ok
+test_only_day_of_week_restricted (acceptance_tests.test_next_run.DayRuleTest.test_only_day_of_week_restricted) ... ok
+test_star_step_day_of_month_is_and (acceptance_tests.test_next_run.DayRuleTest.test_star_step_day_of_month_is_and) ... ok
+test_invalid_expressions (acceptance_tests.test_next_run.ErrorTest.test_invalid_expressions) ... ok
+test_never_matching (acceptance_tests.test_next_run.ErrorTest.test_never_matching) ... ok
+test_2100_is_not_a_leap_year (acceptance_tests.test_next_run.LeapYearTest.test_2100_is_not_a_leap_year) ... ok
+test_feb_29 (acceptance_tests.test_next_run.LeapYearTest.test_feb_29) ... ok
+test_macros (acceptance_tests.test_next_run.MacroTest.test_macros) ... ok
+test_names_are_case_insensitive (acceptance_tests.test_next_run.NamesTest.test_names_are_case_insensitive) ... ok
+test_sunday_as_0_and_7 (acceptance_tests.test_next_run.NamesTest.test_sunday_as_0_and_7) ... ok
+test_weekday_range_by_name (acceptance_tests.test_next_run.NamesTest.test_weekday_range_by_name) ... ok
+test_plan_orders_jobs (acceptance_tests.test_next_run.PlanTest.test_plan_orders_jobs) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 7.119s
+
+OK

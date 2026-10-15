@@ -1,0 +1,174 @@
+ src/http.ts  |  23 +++++++++++-
+ src/todos.ts | 117 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 138 insertions(+), 2 deletions(-)
+
+diff --git a/src/http.ts b/src/http.ts
+index 2344733..cc9395d 100644
+--- a/src/http.ts
++++ b/src/http.ts
+@@ -1,4 +1,4 @@
+-import type { TodoService } from "./todos.ts";
++import type { TodoQuery, TodoService } from "./todos.ts";
+ 
+ export interface Response {
+   status: number;
+@@ -11,6 +11,25 @@ export function handleTodos(service: TodoService, url: string): Response {
+   if (parsed.pathname !== "/todos") {
+     return { status: 404, body: { error: "not found" } };
+   }
+-  const items = service.list();
++
++  const params = parsed.searchParams;
++  const query: TodoQuery = {};
++  if (params.has("status")) query.status = params.get("status") as TodoQuery["status"];
++  const tags = params.getAll("tag").filter((tag) => tag !== "");
++  if (tags.length > 0) query.tags = tags;
++  if (params.has("q")) query.text = params.get("q") as string;
++  if (params.has("dueBefore")) query.dueBefore = params.get("dueBefore") as string;
++  if (params.has("sort")) query.sort = params.get("sort") as TodoQuery["sort"];
++  if (params.has("order")) query.order = params.get("order") as TodoQuery["order"];
++
++  let items;
++  try {
++    items = service.query(query);
++  } catch (err) {
++    if (err instanceof RangeError) {
++      return { status: 400, body: { error: err.message } };
++    }
++    throw err;
++  }
+   return { status: 200, body: { items, count: items.length } };
+ }
+diff --git a/src/todos.ts b/src/todos.ts
+index 786f66d..23ce30f 100644
+--- a/src/todos.ts
++++ b/src/todos.ts
+@@ -17,6 +17,65 @@ export interface NewTodo {
+   due?: string | null;
+ }
+ 
++/** Query parameters for {@link TodoService.query}. See docs/query.md. */
++export interface TodoQuery {
++  /** Filter by status; default "all". */
++  status?: "open" | "done" | "all";
++  /** Todo must carry every listed tag (case-insensitive); empty/absent = no filter. */
++  tags?: string[];
++  /** Case-insensitive substring on title; trimmed, empty = no filter. */
++  text?: string;
++  /** Keep todos due on or before this "YYYY-MM-DD" date; undated todos never match. */
++  dueBefore?: string;
++  /** Sort key; default "id". */
++  sort?: "id" | "created" | "due" | "title";
++  /** Sort order; default "asc". */
++  order?: "asc" | "desc";
++}
++
++/** Whether `value` is a real calendar date written strictly as "YYYY-MM-DD". */
++function isValidDueBefore(value: string): boolean {
++  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
++  const [y, m, d] = value.split("-").map((p) => parseInt(p, 10));
++  const date = new Date(Date.UTC(y, m - 1, d));
++  return (
++    date.getUTCFullYear() === y &&
++    date.getUTCMonth() === m - 1 &&
++    date.getUTCDate() === d
++  );
++}
++
++const STATUS_VALUES = ["open", "done", "all"] as const;
++const SORT_VALUES = ["id", "created", "due", "title"] as const;
++const ORDER_VALUES = ["asc", "desc"] as const;
++
++/**
++ * Validate a TodoQuery, throwing RangeError for any out-of-spec value.
++ * Returns the normalized (non-undefined) status / sort / order.
++ */
++export function validateTodoQuery(query: TodoQuery): {
++  status: "open" | "done" | "all";
++  sort: "id" | "created" | "due" | "title";
++  order: "asc" | "desc";
++} {
++  const status = query.status ?? "all";
++  const sort = query.sort ?? "id";
++  const order = query.order ?? "asc";
++  if (!STATUS_VALUES.includes(status as (typeof STATUS_VALUES)[number])) {
++    throw new RangeError(`status 必须是 open、done 或 all，收到：${String(query.status)}`);
++  }
++  if (!SORT_VALUES.includes(sort as (typeof SORT_VALUES)[number])) {
++    throw new RangeError(`sort 必须是 id、created、due 或 title，收到：${String(query.sort)}`);
++  }
++  if (!ORDER_VALUES.includes(order as (typeof ORDER_VALUES)[number])) {
++    throw new RangeError(`order 必须是 asc 或 desc，收到：${String(query.order)}`);
++  }
++  if (query.dueBefore !== undefined && !isValidDueBefore(query.dueBefore)) {
++    throw new RangeError(`dueBefore 必须是合法的 YYYY-MM-DD 日历日期，收到：${query.dueBefore}`);
++  }
++  return { status: status as "open" | "done" | "all", sort: sort as "id" | "created" | "due" | "title", order: order as "asc" | "desc" };
++}
++
+ export class TodoService {
+   private todos: Todo[] = [];
+   private nextId = 1;
+@@ -52,4 +111,62 @@ export class TodoService {
+   list(): Todo[] {
+     return [...this.todos];
+   }
++
++  /**
++   * Filter and sort todos per docs/query.md. Returns a new array; the
++   * service's internal list is never mutated. Invalid status/sort/order
++   * values and malformed dueBefore dates throw RangeError.
++   */
++  query(query: TodoQuery = {}): Todo[] {
++    const { status, sort, order } = validateTodoQuery(query);
++
++    // ---- filters: every given filter must match ----
++    const needTags = (query.tags ?? []).map((t) => t.toLowerCase());
++    const text = (query.text ?? "").trim().toLowerCase();
++    const dueBefore = query.dueBefore;
++
++    const filtered = this.todos.filter((todo) => {
++      if (status !== "all" && todo.status !== status) return false;
++      if (needTags.length > 0) {
++        const have = new Set(todo.tags.map((t) => t.toLowerCase()));
++        if (!needTags.every((t) => have.has(t))) return false;
++      }
++      if (text !== "" && !todo.title.toLowerCase().includes(text)) return false;
++      if (dueBefore !== undefined) {
++        if (todo.due === null || todo.due > dueBefore) return false;
++      }
++      return true;
++    });
++
++    // ---- sort on a snapshot copy; ties always broken by id ascending ----
++    const direction = order === "desc" ? -1 : 1;
++    const items = [...filtered].sort((a, b) => {
++      let cmp = 0;
++      switch (sort) {
++        case "created":
++          cmp = a.createdAt - b.createdAt;
++          break;
++        case "due":
++          // Undated todos sort last in both orders: handle them before
++          // applying direction, so the "last" placement survives the flip.
++          if (a.due === null && b.due === null) return a.id - b.id;
++          if (a.due === null) return 1;
++          if (b.due === null) return -1;
++          cmp = a.due < b.due ? -1 : a.due > b.due ? 1 : 0;
++          break;
++        case "title": {
++          const ta = a.title.toLowerCase();
++          const tb = b.title.toLowerCase();
++          cmp = ta < tb ? -1 : ta > tb ? 1 : 0;
++          break;
++        }
++        default:
++          cmp = a.id - b.id;
++      }
++      if (cmp === 0) return a.id - b.id;
++      return cmp * direction;
++    });
++
++    return items;
++  }
+ }

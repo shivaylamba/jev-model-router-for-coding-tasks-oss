@@ -1,0 +1,87 @@
+ kv.py            | 27 +++++++++++++++++++++++++++
+ tests/test_kv.py | 32 +++++++++++++++++++++++++++++++-
+ 2 files changed, 58 insertions(+), 1 deletion(-)
+
+diff --git a/kv.py b/kv.py
+index f407191..acee53e 100644
+--- a/kv.py
++++ b/kv.py
+@@ -8,3 +8,30 @@ def format_kv(pairs):
+     'region=eu-west; replicas=3'
+     """
+     return "; ".join(f"{key}={value}" for key, value in pairs.items())
++
++
++def parse_kv(text):
++    """Parse a `key=value; key=value` string into a dict, the inverse of `format_kv`.
++
++    Values stay strings, segments are split on their first `=`, and a
++    repeated key keeps its last value.
++
++    >>> parse_kv("a=1; b = two")
++    {'a': '1', 'b': 'two'}
++    >>> parse_kv("query=x=1")
++    {'query': 'x=1'}
++    >>> parse_kv("")
++    {}
++    """
++    pairs = {}
++    for segment in text.split(";"):
++        key, sep, value = segment.partition("=")
++        if not sep:
++            if not key.strip():
++                continue  # Empty or whitespace-only segment: skip it.
++            raise ValueError(f"segment has no '=': {segment.strip()!r}")
++        key = key.strip()
++        if not key:
++            raise ValueError(f"empty key in segment: {segment.strip()!r}")
++        pairs[key] = value.strip()
++    return pairs
+diff --git a/tests/test_kv.py b/tests/test_kv.py
+index 2c74e7a..266f669 100644
+--- a/tests/test_kv.py
++++ b/tests/test_kv.py
+@@ -1,6 +1,6 @@
+ import unittest
+ 
+-from kv import format_kv
++from kv import format_kv, parse_kv
+ 
+ 
+ class FormatKvTest(unittest.TestCase):
+@@ -11,5 +11,35 @@ class FormatKvTest(unittest.TestCase):
+         self.assertEqual(format_kv({}), "")
+ 
+ 
++class ParseKvTest(unittest.TestCase):
++    def test_basic(self):
++        self.assertEqual(parse_kv("a=1; b = two"), {"a": "1", "b": "two"})
++
++    def test_empty_string_and_blank_segments(self):
++        self.assertEqual(parse_kv(""), {})
++        self.assertEqual(parse_kv("  ; ; "), {})
++
++    def test_splits_on_first_equals_only(self):
++        self.assertEqual(parse_kv("query=x=1"), {"query": "x=1"})
++
++    def test_empty_value(self):
++        self.assertEqual(parse_kv("a="), {"a": ""})
++
++    def test_last_value_wins(self):
++        self.assertEqual(parse_kv("a=1; a=2"), {"a": "2"})
++
++    def test_missing_equals_raises(self):
++        with self.assertRaises(ValueError):
++            parse_kv("a=1; bogus; b=2")
++
++    def test_empty_key_raises(self):
++        with self.assertRaises(ValueError):
++            parse_kv(" = 2")
++
++    def test_round_trips_through_format_kv(self):
++        pairs = {"region": "eu-west", "replicas": "3"}
++        self.assertEqual(parse_kv(format_kv(pairs)), pairs)
++
++
+ if __name__ == "__main__":
+     unittest.main()

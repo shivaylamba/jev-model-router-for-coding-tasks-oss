@@ -1,0 +1,27 @@
+
+test_amex (acceptance_tests.test_card_iban.CardBrandTest.test_amex) ... ok
+test_discover (acceptance_tests.test_card_iban.CardBrandTest.test_discover) ... ok
+test_luhn_failure (acceptance_tests.test_card_iban.CardBrandTest.test_luhn_failure) ... ok
+test_mastercard (acceptance_tests.test_card_iban.CardBrandTest.test_mastercard) ... ok
+test_mastercard_other_prefixes (acceptance_tests.test_card_iban.CardBrandTest.test_mastercard_other_prefixes) ... ok
+test_mastercard_two_series_boundaries (acceptance_tests.test_card_iban.CardBrandTest.test_mastercard_two_series_boundaries) ... ok
+test_other_characters (acceptance_tests.test_card_iban.CardBrandTest.test_other_characters) ... ok
+test_separators (acceptance_tests.test_card_iban.CardBrandTest.test_separators) ... ok
+test_type_error (acceptance_tests.test_card_iban.CardBrandTest.test_type_error) ... ok
+test_unknown_prefix (acceptance_tests.test_card_iban.CardBrandTest.test_unknown_prefix) ... ok
+test_visa_lengths (acceptance_tests.test_card_iban.CardBrandTest.test_visa_lengths) ... ok
+test_visa_wrong_length (acceptance_tests.test_card_iban.CardBrandTest.test_visa_wrong_length) ... ok
+test_mask_card_still_works (acceptance_tests.test_card_iban.ExistingHelpersTest.test_mask_card_still_works) ... ok
+test_bad_checksum (acceptance_tests.test_card_iban.IbanTest.test_bad_checksum) ... ok
+test_lowercase_and_spaces (acceptance_tests.test_card_iban.IbanTest.test_lowercase_and_spaces) ... ok
+test_other_separators (acceptance_tests.test_card_iban.IbanTest.test_other_separators) ... ok
+test_structure (acceptance_tests.test_card_iban.IbanTest.test_structure) ... ok
+test_type_error (acceptance_tests.test_card_iban.IbanTest.test_type_error) ... ok
+test_unknown_country (acceptance_tests.test_card_iban.IbanTest.test_unknown_country) ... ok
+test_valid (acceptance_tests.test_card_iban.IbanTest.test_valid) ... ok
+test_wrong_length (acceptance_tests.test_card_iban.IbanTest.test_wrong_length) ... ok
+
+----------------------------------------------------------------------
+Ran 21 tests in 0.001s
+
+OK

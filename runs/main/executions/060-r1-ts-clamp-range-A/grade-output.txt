@@ -1,0 +1,59 @@
+TAP version 13
+# Subtest: clamp inside, below and above
+ok 1 - clamp inside, below and above
+  ---
+  duration_ms: 0.519667
+  type: 'test'
+  ...
+# Subtest: clamp with min equal to max
+ok 2 - clamp with min equal to max
+  ---
+  duration_ms: 0.077667
+  type: 'test'
+  ...
+# Subtest: clamp rejects min greater than max
+ok 3 - clamp rejects min greater than max
+  ---
+  duration_ms: 0.21825
+  type: 'test'
+  ...
+# Subtest: range with only stop
+ok 4 - range with only stop
+  ---
+  duration_ms: 0.440958
+  type: 'test'
+  ...
+# Subtest: range with start and stop
+ok 5 - range with start and stop
+  ---
+  duration_ms: 0.147458
+  type: 'test'
+  ...
+# Subtest: range with a positive step
+ok 6 - range with a positive step
+  ---
+  duration_ms: 0.1695
+  type: 'test'
+  ...
+# Subtest: range with a negative step
+ok 7 - range with a negative step
+  ---
+  duration_ms: 0.101667
+  type: 'test'
+  ...
+# Subtest: range rejects a zero step
+ok 8 - range rejects a zero step
+  ---
+  duration_ms: 0.090417
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 98.070333
+

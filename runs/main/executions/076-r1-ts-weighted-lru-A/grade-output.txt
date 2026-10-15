@@ -1,0 +1,89 @@
+TAP version 13
+# Subtest: default weight is 1 per entry
+ok 1 - default weight is 1 per entry
+  ---
+  duration_ms: 1.2985
+  type: 'test'
+  ...
+# Subtest: evicts least recently used until the weight fits, calling onEvict in order
+ok 2 - evicts least recently used until the weight fits, calling onEvict in order
+  ---
+  duration_ms: 0.172667
+  type: 'test'
+  ...
+# Subtest: weigh receives the value and the key
+ok 3 - weigh receives the value and the key
+  ---
+  duration_ms: 0.103709
+  type: 'test'
+  ...
+# Subtest: an oversize entry is rejected and leaves the cache untouched
+ok 4 - an oversize entry is rejected and leaves the cache untouched
+  ---
+  duration_ms: 0.117875
+  type: 'test'
+  ...
+# Subtest: replacing a key frees its old weight first and does not call onEvict
+ok 5 - replacing a key frees its old weight first and does not call onEvict
+  ---
+  duration_ms: 0.09275
+  type: 'test'
+  ...
+# Subtest: the entry just set is never the one evicted
+ok 6 - the entry just set is never the one evicted
+  ---
+  duration_ms: 0.078584
+  type: 'test'
+  ...
+# Subtest: onEvict runs after the entry is removed
+ok 7 - onEvict runs after the entry is removed
+  ---
+  duration_ms: 0.084959
+  type: 'test'
+  ...
+# Subtest: peek and has do not change recency or stats
+ok 8 - peek and has do not change recency or stats
+  ---
+  duration_ms: 0.1055
+  type: 'test'
+  ...
+# Subtest: get counts hits and misses and refreshes recency
+ok 9 - get counts hits and misses and refreshes recency
+  ---
+  duration_ms: 0.084916
+  type: 'test'
+  ...
+# Subtest: delete and clear do not call onEvict; clear keeps stats
+ok 10 - delete and clear do not call onEvict; clear keeps stats
+  ---
+  duration_ms: 0.186833
+  type: 'test'
+  ...
+# Subtest: zero-weight entries are allowed
+ok 11 - zero-weight entries are allowed
+  ---
+  duration_ms: 0.0855
+  type: 'test'
+  ...
+# Subtest: invalid options and weights throw RangeError
+ok 12 - invalid options and weights throw RangeError
+  ---
+  duration_ms: 0.312042
+  type: 'test'
+  ...
+# Subtest: fractional weights
+ok 13 - fractional weights
+  ---
+  duration_ms: 0.113833
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 104.319083
+

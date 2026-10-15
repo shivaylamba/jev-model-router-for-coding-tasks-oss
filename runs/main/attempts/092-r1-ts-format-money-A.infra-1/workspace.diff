@@ -1,0 +1,43 @@
+ src/money.ts | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/src/money.ts b/src/money.ts
+index 0d9ecc8..2337f34 100644
+--- a/src/money.ts
++++ b/src/money.ts
+@@ -10,3 +10,35 @@ export interface LineItem {
+ export function totalCents(items: readonly LineItem[]): number {
+   return items.reduce((acc, item) => acc + item.quantity * item.unitCents, 0);
+ }
++
++const CURRENCY_SYMBOLS: Record<Currency, string> = {
++  USD: "$",
++  EUR: "€",
++  GBP: "£",
++};
++
++/** Format an integer number of cents for display: symbol first, comma
++ *  thousands separators, exactly two decimals. Locale-independent. */
++export function formatCents(cents: number, currency: Currency): string {
++  if (typeof cents !== "number" || !Number.isInteger(cents)) {
++    throw new TypeError(
++      `formatCents: cents must be an integer, got ${typeof cents === "number" ? cents : typeof cents}`
++    );
++  }
++  const symbol = CURRENCY_SYMBOLS[currency];
++  if (symbol === undefined) {
++    throw new RangeError(
++      `formatCents: unsupported currency ${JSON.stringify(currency)}`
++    );
++  }
++
++  const negative = cents < 0;
++  const abs = Math.abs(cents);
++  const whole = Math.floor(abs / 100);
++  const frac = abs % 100;
++
++  const wholeStr = String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
++  const fracStr = String(frac).padStart(2, "0");
++
++  return `${negative ? "-" : ""}${symbol}${wholeStr}.${fracStr}`;
++}

@@ -1,0 +1,17 @@
+
+test_callers (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_callers) ... ok
+test_default_unchanged (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_default_unchanged) ... ok
+test_input_not_modified (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_input_not_modified) ... ok
+test_key_still_positional (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_key_still_positional) ... ok
+test_n_larger_than_items (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_n_larger_than_items) ... ok
+test_negative_n (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_negative_n) ... ok
+test_reverse_is_keyword_only (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_reverse_is_keyword_only) ... ok
+test_reverse_smallest_first (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_reverse_smallest_first) ... ok
+test_reverse_with_key (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_reverse_with_key) ... ok
+test_ties_keep_original_order (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_ties_keep_original_order) ... ok
+test_zero (acceptance_tests.test_top_n_reverse.TopNReverseTest.test_zero) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.000s
+
+OK

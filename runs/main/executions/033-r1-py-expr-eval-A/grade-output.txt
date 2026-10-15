@@ -1,0 +1,29 @@
+
+test_floored_modulo (acceptance_tests.test_evaluate.ArithmeticTest.test_floored_modulo) ... ok
+test_numbers (acceptance_tests.test_evaluate.ArithmeticTest.test_numbers) ... ok
+test_power_right_associative (acceptance_tests.test_evaluate.ArithmeticTest.test_power_right_associative) ... ok
+test_precedence_and_associativity (acceptance_tests.test_evaluate.ArithmeticTest.test_precedence_and_associativity) ... ok
+test_unary_minus_below_power (acceptance_tests.test_evaluate.ArithmeticTest.test_unary_minus_below_power) ... ok
+test_whitespace (acceptance_tests.test_evaluate.ArithmeticTest.test_whitespace) ... ok
+test_arity_checked_before_arguments (acceptance_tests.test_evaluate.EvaluationErrorPositionTest.test_arity_checked_before_arguments) ... ok
+test_division_by_zero (acceptance_tests.test_evaluate.EvaluationErrorPositionTest.test_division_by_zero) ... ok
+test_function_failure (acceptance_tests.test_evaluate.EvaluationErrorPositionTest.test_function_failure) ... ok
+test_left_to_right_order (acceptance_tests.test_evaluate.EvaluationErrorPositionTest.test_left_to_right_order) ... ok
+test_position_attribute_on_exception (acceptance_tests.test_evaluate.EvaluationErrorPositionTest.test_position_attribute_on_exception) ... ok
+test_power_errors (acceptance_tests.test_evaluate.EvaluationErrorPositionTest.test_power_errors) ... ok
+test_unknown_function_and_arity (acceptance_tests.test_evaluate.EvaluationErrorPositionTest.test_unknown_function_and_arity) ... ok
+test_unknown_names (acceptance_tests.test_evaluate.EvaluationErrorPositionTest.test_unknown_names) ... ok
+test_constants_and_override (acceptance_tests.test_evaluate.NamesAndFunctionsTest.test_constants_and_override) ... ok
+test_functions (acceptance_tests.test_evaluate.NamesAndFunctionsTest.test_functions) ... ok
+test_variables (acceptance_tests.test_evaluate.NamesAndFunctionsTest.test_variables) ... ok
+test_end_of_input (acceptance_tests.test_evaluate.SyntaxErrorPositionTest.test_end_of_input) ... ok
+test_is_value_error (acceptance_tests.test_evaluate.SyntaxErrorPositionTest.test_is_value_error) ... ok
+test_no_implicit_multiplication (acceptance_tests.test_evaluate.SyntaxErrorPositionTest.test_no_implicit_multiplication) ... ok
+test_syntax_error_wins_over_evaluation_error (acceptance_tests.test_evaluate.SyntaxErrorPositionTest.test_syntax_error_wins_over_evaluation_error) ... ok
+test_unexpected_characters (acceptance_tests.test_evaluate.SyntaxErrorPositionTest.test_unexpected_characters) ... ok
+test_unexpected_tokens (acceptance_tests.test_evaluate.SyntaxErrorPositionTest.test_unexpected_tokens) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.001s
+
+OK

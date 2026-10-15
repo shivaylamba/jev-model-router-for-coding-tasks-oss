@@ -662,12 +662,45 @@ def quarantine(run_dir: Path, record: dict, reason: str) -> None:
     log_event(run_dir, "infrastructure failure: excluded and queued for re-run", execution=exec_dir.name, reason=reason)
 
 
+def host_sleep_intervals() -> list[tuple[datetime, datetime]]:
+    """Sleep periods from the macOS power log: a Sleep entry until the next DarkWake, or a Wake more than 10 s later."""
+    out = subprocess.run(["/usr/bin/pmset", "-g", "log"], capture_output=True, text=True).stdout
+    sleeps, start = [], None
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) < 4 or parts[3] not in ("Sleep", "Wake", "DarkWake"):
+            continue
+        try:
+            at = datetime.strptime(" ".join(parts[:3]), "%Y-%m-%d %H:%M:%S %z")
+        except ValueError:
+            continue
+        if parts[3] == "Sleep":
+            start = at
+        elif start and (parts[3] == "DarkWake" or (at - start).total_seconds() > 10):
+            sleeps.append((start, at))
+            start = None
+    return sleeps
+
+
+def slept_during(run_dir: Path, record: dict, sleeps) -> float:
+    start = datetime.fromisoformat(record["started_at"].replace("Z", "+00:00"))
+    end = datetime.fromisoformat(record["ended_at"].replace("Z", "+00:00"))
+    return sum(max(0.0, (min(b, end) - max(a, start)).total_seconds()) for a, b in sleeps if a < end and b > start)
+
+
 def requeue_infra(args) -> None:
     run_dir = RUNS / args.run_id
     for record in load_results(run_dir):
         reason = infra_failure(run_dir, record)
         if reason:
             quarantine(run_dir, record, reason)
+    # Amendment 2: the host machine slept during the execution.
+    sleeps = host_sleep_intervals()
+    (run_dir / "host-sleep-intervals.json").write_text(json.dumps([(a.isoformat(), b.isoformat()) for a, b in sleeps], indent=1))
+    for record in load_results(run_dir):
+        asleep = slept_during(run_dir, record, sleeps)
+        if asleep > 0:
+            quarantine(run_dir, record, f"the host machine was asleep for {asleep:.0f} s of its {record['duration_s']:.0f} s")
 
 
 # ---------------------------------------------------------------- run loop
@@ -705,6 +738,9 @@ def run(args, run_dir: Path | None = None) -> None:
     budget = args.budget_usd if args.budget_usd is not None else CONFIG["default_caps"]["budget_usd"]
     max_hours = args.max_hours if args.max_hours is not None else CONFIG["default_caps"]["max_hours"]
     log_event(run_dir, "run started", budget_usd=budget, max_hours=max_hours)
+    # Amendment 2: keep the host awake for as long as this process lives.
+    subprocess.Popen(["/usr/bin/caffeinate", "-i", "-s", "-w", str(os.getpid())], stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL)
     started = time.time()
     done = {(r["repetition"], r["task_id"], r["condition"]) for r in load_results(run_dir)}
     for item in plan:

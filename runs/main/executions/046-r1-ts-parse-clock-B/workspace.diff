@@ -1,0 +1,91 @@
+ src/clock.ts       | 34 ++++++++++++++++++++++++++++++++++
+ test/clock.test.ts | 31 ++++++++++++++++++++++++++++++-
+ 2 files changed, 64 insertions(+), 1 deletion(-)
+
+diff --git a/src/clock.ts b/src/clock.ts
+index e742cdb..d99026b 100644
+--- a/src/clock.ts
++++ b/src/clock.ts
+@@ -9,3 +9,37 @@ export function formatClock(minutes: number): string {
+   const mins = minutes % 60;
+   return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+ }
++
++// 24-hour "H:MM" or "HH:MM".
++const CLOCK_24 = /^(\d{1,2}):(\d{2})$/;
++// 12-hour "H[:MM]" followed by am/pm, any letter case, optional space before it.
++const CLOCK_12 = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i;
++
++/** Parse a 24-hour or 12-hour clock string into minutes after midnight. */
++export function parseClock(input: string): number {
++  const text = input.trim();
++
++  const match24 = CLOCK_24.exec(text);
++  if (match24) {
++    const hours = Number(match24[1]);
++    const minutes = Number(match24[2]);
++    if (hours > 23 || minutes > 59) {
++      throw new RangeError(`time out of range: ${text}`);
++    }
++    return hours * 60 + minutes;
++  }
++
++  const match12 = CLOCK_12.exec(text);
++  if (match12) {
++    const hours = Number(match12[1]);
++    const minutes = match12[2] === undefined ? 0 : Number(match12[2]);
++    if (hours < 1 || hours > 12 || minutes > 59) {
++      throw new RangeError(`time out of range: ${text}`);
++    }
++    const pm = match12[3].toLowerCase() === "pm";
++    const clockHours = (hours % 12) + (pm ? 12 : 0);
++    return clockHours * 60 + minutes;
++  }
++
++  throw new SyntaxError(`not a clock time: ${text}`);
++}
+diff --git a/test/clock.test.ts b/test/clock.test.ts
+index beca11e..9065870 100644
+--- a/test/clock.test.ts
++++ b/test/clock.test.ts
+@@ -1,6 +1,6 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+-import { formatClock } from "../src/clock.ts";
++import { formatClock, parseClock } from "../src/clock.ts";
+ 
+ test("formatClock pads hours and minutes", () => {
+   assert.equal(formatClock(0), "00:00");
+@@ -10,3 +10,32 @@ test("formatClock pads hours and minutes", () => {
+ test("formatClock rejects out-of-range minutes", () => {
+   assert.throws(() => formatClock(1440), RangeError);
+ });
++
++test("parseClock accepts 24-hour times", () => {
++  assert.equal(parseClock("19:30"), 19 * 60 + 30);
++  assert.equal(parseClock("7:05"), 7 * 60 + 5);
++  assert.equal(parseClock("0:00"), 0);
++  assert.equal(parseClock("  23:59  "), 23 * 60 + 59);
++});
++
++test("parseClock accepts 12-hour times", () => {
++  assert.equal(parseClock("7:30 pm"), 19 * 60 + 30);
++  assert.equal(parseClock("7pm"), 19 * 60);
++  assert.equal(parseClock("9 Am"), 9 * 60);
++  assert.equal(parseClock("12:15 am"), 15);
++  assert.equal(parseClock("12pm"), 12 * 60);
++  assert.equal(parseClock("7:30PM"), 19 * 60 + 30);
++});
++
++test("parseClock throws RangeError for out-of-range numbers", () => {
++  assert.throws(() => parseClock("24:00"), RangeError);
++  assert.throws(() => parseClock("7:60"), RangeError);
++  assert.throws(() => parseClock("13pm"), RangeError);
++  assert.throws(() => parseClock("0am"), RangeError);
++});
++
++test("parseClock throws SyntaxError for other junk", () => {
++  for (const bad of ["", "7", "7:5", "noon", "7:30 p.m."]) {
++    assert.throws(() => parseClock(bad), SyntaxError);
++  }
++});

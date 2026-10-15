@@ -1,0 +1,220 @@
+ accounts/profile.py    | 49 ++++---------------------------------
+ accounts/signup.py     | 52 ++++------------------------------------
+ accounts/validators.py | 65 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 74 insertions(+), 92 deletions(-)
+
+diff --git a/accounts/profile.py b/accounts/profile.py
+index f46ce0c..a0ab280 100644
+--- a/accounts/profile.py
++++ b/accounts/profile.py
+@@ -1,9 +1,9 @@
+ """Profile editing."""
+ 
+ from .errors import ValidationError
++from . import validators
+ 
+ EDITABLE = ("display_name", "email", "phone", "username")
+-RESERVED_USERNAMES = {"admin", "root", "support", "system"}
+ 
+ 
+ def update_profile(profile, changes):
+@@ -17,53 +17,14 @@ def update_profile(profile, changes):
+             raise ValidationError(key, "cannot be changed")
+ 
+         if key == "display_name":
+-            name = " ".join(value.split())
+-            if not name:
+-                raise ValidationError("display_name", "is required")
+-            if len(name) > 50:
+-                raise ValidationError("display_name", "must be at most 50 characters")
+-            if any(not ch.isprintable() for ch in name):
+-                raise ValidationError("display_name", "contains control characters")
+-            updated["display_name"] = name
+-
++            updated["display_name"] = validators.validate_display_name(value)
+         elif key == "email":
+-            email = value.strip().lower()
+-            if email.count("@") != 1:
+-                raise ValidationError("email", "must contain exactly one @")
+-            local, _, domain = email.partition("@")
+-            if local == "" or domain == "":
+-                raise ValidationError("email", "missing local part or domain")
+-            if any(ch.isspace() for ch in email):
+-                raise ValidationError("email", "must not contain spaces")
+-            parts = domain.split(".")
+-            if len(parts) < 2 or any(part == "" for part in parts):
+-                raise ValidationError("email", "invalid domain")
+-            updated["email"] = email
+-
++            updated["email"] = validators.validate_email(value)
+         elif key == "phone":
+             if not value.strip():
+                 updated["phone"] = None
+                 continue
+-            digits = value.strip()
+-            prefix = ""
+-            if digits[0] == "+":
+-                prefix, digits = "+", digits[1:]
+-            digits = "".join(ch for ch in digits if ch not in " -.()")
+-            if not (digits.isascii() and digits.isdigit()):
+-                raise ValidationError("phone", "digits only")
+-            if len(digits) < 7 or len(digits) > 15:
+-                raise ValidationError("phone", "must have 7 to 15 digits")
+-            updated["phone"] = prefix + digits
+-
++            updated["phone"] = validators.validate_phone(value)
+         elif key == "username":
+-            username = value.strip()
+-            if len(username) < 3 or len(username) > 20:
+-                raise ValidationError("username", "must be 3 to 20 characters")
+-            if not (username[0].isascii() and username[0].isalpha()) or not all(
+-                ch.isascii() and (ch.isalnum() or ch == "_") for ch in username
+-            ):
+-                raise ValidationError("username", "letters, digits and _ only, starting with a letter")
+-            if username.lower() in RESERVED_USERNAMES:
+-                raise ValidationError("username", "is reserved")
+-            updated["username"] = username.lower()
++            updated["username"] = validators.validate_username(value)
+     return updated
+diff --git a/accounts/signup.py b/accounts/signup.py
+index 7341b21..5fc7319 100644
+--- a/accounts/signup.py
++++ b/accounts/signup.py
+@@ -1,51 +1,7 @@
+ """New account registration."""
+ 
+-import re
+-
+ from .errors import ValidationError
+-
+-_USERNAME_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+-RESERVED_USERNAMES = {"admin", "root", "support", "system"}
+-
+-
+-def _clean_email(value):
+-    email = value.strip().lower()
+-    if email.count("@") != 1:
+-        raise ValidationError("email", "must contain exactly one @")
+-    local, domain = email.split("@")
+-    if not local or not domain:
+-        raise ValidationError("email", "missing local part or domain")
+-    if any(ch.isspace() for ch in email):
+-        raise ValidationError("email", "must not contain spaces")
+-    if "." not in domain or domain.startswith(".") or domain.endswith(".") or ".." in domain:
+-        raise ValidationError("email", "invalid domain")
+-    return email
+-
+-
+-def _clean_username(value):
+-    username = value.strip()
+-    if not 3 <= len(username) <= 20:
+-        raise ValidationError("username", "must be 3 to 20 characters")
+-    if not _USERNAME_RE.fullmatch(username):
+-        raise ValidationError("username", "letters, digits and _ only, starting with a letter")
+-    username = username.lower()
+-    if username in RESERVED_USERNAMES:
+-        raise ValidationError("username", "is reserved")
+-    return username
+-
+-
+-def _clean_phone(value):
+-    raw = value.strip()
+-    plus = raw.startswith("+")
+-    if plus:
+-        raw = raw[1:]
+-    for sep in " -.()":
+-        raw = raw.replace(sep, "")
+-    if not raw.isdigit() or not raw.isascii():
+-        raise ValidationError("phone", "digits only")
+-    if not 7 <= len(raw) <= 15:
+-        raise ValidationError("phone", "must have 7 to 15 digits")
+-    return ("+" if plus else "") + raw
++from .validators import validate_email, validate_username, validate_phone
+ 
+ 
+ def register(form):
+@@ -59,10 +15,10 @@ def register(form):
+     if len(form["password"]) < 10:
+         raise ValidationError("password", "must be at least 10 characters")
+     account = {
+-        "username": _clean_username(form["username"]),
+-        "email": _clean_email(form["email"]),
++        "username": validate_username(form["username"]),
++        "email": validate_email(form["email"]),
+         "phone": None,
+     }
+     if form.get("phone", "").strip():
+-        account["phone"] = _clean_phone(form["phone"])
++        account["phone"] = validate_phone(form["phone"])
+     return account
+diff --git a/accounts/validators.py b/accounts/validators.py
+new file mode 100644
+index 0000000..06e78d4
+--- /dev/null
++++ b/accounts/validators.py
+@@ -0,0 +1,65 @@
++"""Shared field validators for sign-up and profile editing.
++
++Each function takes a raw string, returns the normalised value, and raises
++ValidationError (with .field set) for rejected input. A blank phone raises
++like any other invalid phone; callers that treat blank as "clear" handle
++that before calling validate_phone.
++"""
++
++import re
++
++from .errors import ValidationError
++
++_USERNAME_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
++RESERVED_USERNAMES = {"admin", "root", "support", "system"}
++
++
++def validate_email(value):
++    email = value.strip().lower()
++    if email.count("@") != 1:
++        raise ValidationError("email", "must contain exactly one @")
++    local, domain = email.split("@")
++    if not local or not domain:
++        raise ValidationError("email", "missing local part or domain")
++    if any(ch.isspace() for ch in email):
++        raise ValidationError("email", "must not contain spaces")
++    if "." not in domain or domain.startswith(".") or domain.endswith(".") or ".." in domain:
++        raise ValidationError("email", "invalid domain")
++    return email
++
++
++def validate_username(value):
++    username = value.strip()
++    if not 3 <= len(username) <= 20:
++        raise ValidationError("username", "must be 3 to 20 characters")
++    if not _USERNAME_RE.fullmatch(username):
++        raise ValidationError("username", "letters, digits and _ only, starting with a letter")
++    username = username.lower()
++    if username in RESERVED_USERNAMES:
++        raise ValidationError("username", "is reserved")
++    return username
++
++
++def validate_phone(value):
++    raw = value.strip()
++    plus = raw.startswith("+")
++    if plus:
++        raw = raw[1:]
++    for sep in " -.()":
++        raw = raw.replace(sep, "")
++    if not raw.isdigit() or not raw.isascii():
++        raise ValidationError("phone", "digits only")
++    if not 7 <= len(raw) <= 15:
++        raise ValidationError("phone", "must have 7 to 15 digits")
++    return ("+" if plus else "") + raw
++
++
++def validate_display_name(value):
++    name = " ".join(value.split())
++    if not name:
++        raise ValidationError("display_name", "is required")
++    if len(name) > 50:
++        raise ValidationError("display_name", "must be at most 50 characters")
++    if any(not ch.isprintable() for ch in name):
++        raise ValidationError("display_name", "contains control characters")
++    return name

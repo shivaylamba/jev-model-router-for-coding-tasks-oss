@@ -1,0 +1,125 @@
+TAP version 13
+# Subtest: basic layout pads every line to the table width
+ok 1 - basic layout pads every line to the table width
+  ---
+  duration_ms: 1.561958
+  type: 'test'
+  ...
+# Subtest: empty input
+ok 2 - empty input
+  ---
+  duration_ms: 0.082459
+  type: 'test'
+  ...
+# Subtest: ragged rows are padded with empty cells
+ok 3 - ragged rows are padded with empty cells
+  ---
+  duration_ms: 0.57025
+  type: 'test'
+  ...
+# Subtest: header separator
+ok 4 - header separator
+  ---
+  duration_ms: 0.129
+  type: 'test'
+  ...
+# Subtest: alignment
+ok 5 - alignment
+  ---
+  duration_ms: 0.132792
+  type: 'test'
+  ...
+# Subtest: missing and extra align entries
+ok 6 - missing and extra align entries
+  ---
+  duration_ms: 0.107583
+  type: 'test'
+  ...
+# Subtest: spaces collapse and natural width uses single spaces
+ok 7 - spaces collapse and natural width uses single spaces
+  ---
+  duration_ms: 0.071084
+  type: 'test'
+  ...
+# Subtest: wraps on words to fit maxWidth
+ok 8 - wraps on words to fit maxWidth
+  ---
+  duration_ms: 0.249584
+  type: 'test'
+  ...
+# Subtest: the widest column shrinks first, rightmost on ties
+ok 9 - the widest column shrinks first, rightmost on ties
+  ---
+  duration_ms: 0.193167
+  type: 'test'
+  ...
+# Subtest: long words are broken and the last piece continues the line
+ok 10 - long words are broken and the last piece continues the line
+  ---
+  duration_ms: 0.402458
+  type: 'test'
+  ...
+# Subtest: a long word after other words starts a new line
+ok 11 - a long word after other words starts a new line
+  ---
+  duration_ms: 0.116834
+  type: 'test'
+  ...
+# Subtest: explicit newlines start paragraphs
+ok 12 - explicit newlines start paragraphs
+  ---
+  duration_ms: 0.095333
+  type: 'test'
+  ...
+# Subtest: wide characters count as two columns
+ok 13 - wide characters count as two columns
+  ---
+  duration_ms: 0.134042
+  type: 'test'
+  ...
+# Subtest: astral wide characters are measured per code point
+ok 14 - astral wide characters are measured per code point
+  ---
+  duration_ms: 0.102625
+  type: 'test'
+  ...
+# Subtest: breaking wide words never splits a character
+ok 15 - breaking wide words never splits a character
+  ---
+  duration_ms: 0.179333
+  type: 'test'
+  ...
+# Subtest: columns with wide characters have a minimum width of 2
+ok 16 - columns with wide characters have a minimum width of 2
+  ---
+  duration_ms: 0.120833
+  type: 'test'
+  ...
+# Subtest: RangeError when the table cannot fit
+ok 17 - RangeError when the table cannot fit
+  ---
+  duration_ms: 0.295792
+  type: 'test'
+  ...
+# Subtest: invalid options
+ok 18 - invalid options
+  ---
+  duration_ms: 0.092
+  type: 'test'
+  ...
+# Subtest: packageReport uses the table
+ok 19 - packageReport uses the table
+  ---
+  duration_ms: 0.514791
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 100.18
+

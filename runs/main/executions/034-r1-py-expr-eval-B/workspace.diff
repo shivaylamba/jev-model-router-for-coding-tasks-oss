@@ -1,0 +1,535 @@
+ calc/__init__.py  |   7 ++-
+ calc/evaluator.py | 100 ++++++++++++++++++++++++++++++++++
+ calc/lexer.py     | 104 +++++++++++++++++++++++++++++++++++
+ calc/parser.py    | 160 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ checks_spec.py    | 118 ++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 488 insertions(+), 1 deletion(-)
+
+diff --git a/calc/__init__.py b/calc/__init__.py
+index 82b286e..c3e93ce 100644
+--- a/calc/__init__.py
++++ b/calc/__init__.py
+@@ -1,6 +1,8 @@
+ """Formula engine for computed columns. See SPEC.md."""
+ 
+ from calc.errors import ExprError
++from calc.evaluator import evaluate_node
++from calc.parser import parse
+ 
+ __all__ = ["ExprError", "evaluate"]
+ 
+@@ -11,4 +13,7 @@ def evaluate(expr, variables=None):
+     `variables` maps names to int or float values. Raises ExprError, with a
+     `position`, for any syntax or evaluation error.
+     """
+-    raise NotImplementedError
++    # The whole formula is parsed before anything is evaluated, so a syntax
++    # error anywhere beats an evaluation error earlier in the string.
++    tree = parse(expr)
++    return float(evaluate_node(tree, variables))
+diff --git a/calc/evaluator.py b/calc/evaluator.py
+new file mode 100644
+index 0000000..f135e0c
+--- /dev/null
++++ b/calc/evaluator.py
+@@ -0,0 +1,100 @@
++"""Evaluator for parsed formulas (see SPEC.md, "Evaluation").
++
++Nodes are evaluated left to right, so the first error met in that order is
++the one raised.
++"""
++
++import math
++
++from calc.errors import ExprError
++from calc.functions import CONSTANTS, FUNCTIONS
++from calc.parser import Binary, Call, Name, Num, Unary
++
++
++def evaluate_node(node, variables):
++    if isinstance(node, Num):
++        return node.value
++    if isinstance(node, Name):
++        return _eval_name(node, variables)
++    if isinstance(node, Unary):
++        return -evaluate_node(node.operand, variables)
++    if isinstance(node, Binary):
++        return _eval_binary(node, variables)
++    if isinstance(node, Call):
++        return _eval_call(node, variables)
++    raise AssertionError(f"unknown node {node!r}")
++
++
++def _eval_name(node, variables):
++    if variables is not None and node.text in variables:
++        return float(variables[node.text])
++    if node.text in CONSTANTS:
++        return float(CONSTANTS[node.text])
++    raise ExprError(f"unknown name {node.text!r}", node.position)
++
++
++def _eval_binary(node, variables):
++    left = evaluate_node(node.left, variables)
++    right = evaluate_node(node.right, variables)
++    op = node.op
++    if op == "+":
++        return left + right
++    if op == "-":
++        return left - right
++    if op == "*":
++        return left * right
++    if op == "/":
++        if right == 0:
++            raise ExprError("division by zero", node.op_position)
++        return left / right
++    if op == "%":
++        if right == 0:
++            raise ExprError("modulo by zero", node.op_position)
++        return left % right  # floored modulo, like Python's %
++    if op == "^":
++        return _power(left, right, node.op_position)
++    raise AssertionError(f"unknown operator {op!r}")
++
++
++def _power(base, exponent, position):
++    try:
++        result = math.pow(base, exponent)
++    except (ValueError, OverflowError):
++        # e.g. 0 ^ -1, (-8) ^ (1/3), or a result too large for a float.
++        raise ExprError("power is not a finite real number", position)
++    if not math.isfinite(result):
++        raise ExprError("power is not a finite real number", position)
++    return result
++
++
++def _eval_call(node, variables):
++    spec = FUNCTIONS.get(node.name)
++    if spec is None:
++        raise ExprError(f"unknown function {node.name!r}", node.name_position)
++    low, high, impl = spec
++    count = len(node.args)
++    if count < low or (high is not None and count > high):
++        if high is None:
++            range_label = f"{low}+"
++        elif high == low:
++            range_label = str(low)
++        else:
++            range_label = f"{low} to {high}"
++        raise ExprError(
++            f"{node.name!r} expects {range_label} argument(s), got {count}",
++            node.name_position,
++        )
++    args = [evaluate_node(arg, variables) for arg in node.args]
++    try:
++        # min/max take variadic arguments; with a single argument Python's
++        # built-ins would try to iterate it, so pass the list for those.
++        if impl is min or impl is max:
++            result = impl(args)
++        else:
++            result = impl(*args)
++        return float(result)
++    except (ValueError, OverflowError, ZeroDivisionError, TypeError):
++        # e.g. sqrt(-1); the error points at the function name, not the argument.
++        raise ExprError(
++            f"{node.name!r} failed for these arguments", node.name_position
++        )
+diff --git a/calc/lexer.py b/calc/lexer.py
+new file mode 100644
+index 0000000..8b09895
+--- /dev/null
++++ b/calc/lexer.py
+@@ -0,0 +1,104 @@
++"""Tokenizer for the formula language (see SPEC.md, "Tokens")."""
++
++from calc.errors import ExprError
++
++# Token kinds
++NUMBER = "number"
++NAME = "name"
++OP = "op"
++LPAREN = "lparen"
++RPAREN = "rparen"
++COMMA = "comma"
++END = "end"
++
++_OPERATORS = "+-*/%^"
++
++
++class Token:
++    __slots__ = ("kind", "value", "position")
++
++    def __init__(self, kind, value, position):
++        self.kind = kind
++        self.value = value
++        self.position = position
++
++    def __repr__(self):
++        return f"Token({self.kind}, {self.value!r}, {self.position})"
++
++
++def tokenize(expr):
++    """Split `expr` into a list of tokens ending with an END token.
++
++    The END token's position is len(expr). Raises ExprError at the position
++    of any character that cannot start a token.
++    """
++    tokens = []
++    i = 0
++    n = len(expr)
++    while i < n:
++        ch = expr[i]
++        if ch in " \t":
++            i += 1
++        elif ch.isdigit() or ch == ".":
++            token, i = _read_number(expr, i)
++            tokens.append(token)
++        elif ch.isalpha() or ch == "_":
++            start = i
++            i += 1
++            while i < n and (expr[i].isalnum() or expr[i] == "_"):
++                i += 1
++            tokens.append(Token(NAME, expr[start:i], start))
++        elif ch in _OPERATORS:
++            tokens.append(Token(OP, ch, i))
++            i += 1
++        elif ch == "(":
++            tokens.append(Token(LPAREN, ch, i))
++            i += 1
++        elif ch == ")":
++            tokens.append(Token(RPAREN, ch, i))
++            i += 1
++        elif ch == ",":
++            tokens.append(Token(COMMA, ch, i))
++            i += 1
++        else:
++            raise ExprError(f"unexpected character {ch!r}", i)
++    tokens.append(Token(END, None, n))
++    return tokens
++
++
++def _read_number(expr, start):
++    """Read a number token starting at index `start`.
++
++    A number is `digits`, `digits.digits` or `.digits`, optionally followed
++    by an exponent `e`/`E`, an optional sign, and digits. A trailing `.`
++    without digits and an `e` not followed by digits are not part of the
++    number.
++    """
++    n = len(expr)
++    i = start
++    while i < n and expr[i].isdigit():
++        i += 1
++    if i < n and expr[i] == ".":
++        if i + 1 < n and expr[i + 1].isdigit():
++            i += 2
++            while i < n and expr[i].isdigit():
++                i += 1
++        elif i == start:
++            # `.digits`: the leading dot case; must have a digit after.
++            raise ExprError("unexpected character '.'", start)
++        # Otherwise a trailing `.` is left for the next token, where it is
++        # an unexpected character.
++    if i < n and expr[i] in "eE":
++        j = i + 1
++        if j < n and expr[j] in "+-":
++            j += 1
++        if j < n and expr[j].isdigit():
++            j += 1
++            while j < n and expr[j].isdigit():
++                j += 1
++            i = j
++        # Otherwise the `e` starts a name token, not an exponent.
++    if i == start:
++        # Only possible for a bare `.` at the end of the input.
++        raise ExprError("unexpected character '.'", start)
++    return Token(NUMBER, float(expr[start:i]), start), i
+diff --git a/calc/parser.py b/calc/parser.py
+new file mode 100644
+index 0000000..3a35ee8
+--- /dev/null
++++ b/calc/parser.py
+@@ -0,0 +1,160 @@
++"""Recursive-descent parser for the formula language (see SPEC.md).
++
++Grammar, lowest to highest precedence:
++
++    expr    := term  (('+' | '-') term)*     # left-associative
++    term    := unary (('*' | '/' | '%') unary)*   # left-associative
++    unary   := ('-' | '+') unary | power
++    power   := primary ('^' unary)?          # right-exponent is a unary
++    primary := NUMBER
++             | NAME                          # variable or constant
++             | NAME '(' expr (',' expr)* ')' # function call
++             | '(' expr ')'
++
++Unary minus binds less tightly than `^`: `-2^2` is `-(2^2)`, and the
++right operand of `^` may itself carry unary signs: `2^-1` is 0.5.
++"""
++
++from calc.errors import ExprError
++from calc import lexer
++from calc.lexer import NAME, NUMBER, END, tokenize
++
++# ----------------------------- AST nodes -----------------------------------
++# Each node stores the position that an evaluation error should point at.
++
++
++class Num:
++    def __init__(self, value):
++        self.value = value
++
++
++class Name:
++    def __init__(self, text, position):
++        self.text = text
++        self.position = position
++
++
++class Unary:
++    def __init__(self, op, operand):
++        self.op = op
++        self.operand = operand
++
++
++class Binary:
++    def __init__(self, op, left, right, op_position):
++        self.op = op
++        self.left = left
++        self.right = right
++        self.op_position = op_position
++
++
++class Call:
++    def __init__(self, name, name_position, args):
++        self.name = name
++        self.name_position = name_position
++        self.args = args
++
++
++# ----------------------------- parser --------------------------------------
++
++
++class Parser:
++    def __init__(self, tokens):
++        self.tokens = tokens
++        self.i = 0
++
++    @property
++    def tok(self):
++        return self.tokens[self.i]
++
++    def _advance(self):
++        token = self.tok
++        self.i += 1
++        return token
++
++    def _expect_operand(self):
++        """Raise the standard 'expected an operand' error at the current token."""
++        found = "end of input" if self.tok.kind == END else repr(self.tok.value)
++        raise ExprError(f"expected an operand, found {found}", self.tok.position)
++
++    def parse(self):
++        """Parse a whole formula: an expression followed by end of input."""
++        node = self.parse_expr()
++        if self.tok.kind != END:
++            found = "end of input" if self.tok.kind == END else repr(self.tok.value)
++            raise ExprError(f"expected an operator, found {found}", self.tok.position)
++        return node
++
++    def parse_expr(self):
++        node = self.parse_term()
++        while self.tok.kind == lexer.OP and self.tok.value in "+-":
++            op = self._advance()
++            node = Binary(op.value, node, self.parse_term(), op.position)
++        return node
++
++    def parse_term(self):
++        node = self.parse_unary()
++        while self.tok.kind == lexer.OP and self.tok.value in "*/%":
++            op = self._advance()
++            node = Binary(op.value, node, self.parse_unary(), op.position)
++        return node
++
++    def parse_unary(self):
++        if self.tok.kind == lexer.OP and self.tok.value in "+-":
++            sign = self._advance()
++            operand = self.parse_unary()  # signs may repeat: --2
++            if sign.value == "+":
++                return operand  # unary plus is a no-op
++            return Unary("-", operand)
++        return self.parse_power()
++
++    def parse_power(self):
++        base = self.parse_primary()
++        if self.tok.kind == lexer.OP and self.tok.value == "^":
++            op = self._advance()
++            # Exponent is a unary expression, making ^ right-associative
++            # (2^3^2 = 2^(3^2)) while still allowing 2^-1.
++            exponent = self.parse_unary()
++            return Binary("^", base, exponent, op.position)
++        return base
++
++    def parse_primary(self):
++        token = self.tok
++        if token.kind == NUMBER:
++            self._advance()
++            return Num(token.value)
++        if token.kind == NAME:
++            self._advance()
++            if self.tok.kind == lexer.LPAREN:
++                return self._parse_call(token)
++            return Name(token.value, token.position)
++        if token.kind == lexer.LPAREN:
++            self._advance()
++            node = self.parse_expr()
++            if self.tok.kind != lexer.RPAREN:
++                found = "end of input" if self.tok.kind == END else repr(self.tok.value)
++                raise ExprError(f"expected ')', found {found}", self.tok.position)
++            self._advance()  # consume ')'
++            return node
++        self._expect_operand()
++
++    def _parse_call(self, name_token):
++        self._advance()  # consume '('
++        args = []
++        if self.tok.kind != lexer.RPAREN:
++            while True:
++                args.append(self.parse_expr())
++                if self.tok.kind == lexer.COMMA:
++                    self._advance()
++                    continue
++                break
++        if self.tok.kind != lexer.RPAREN:
++            found = "end of input" if self.tok.kind == END else repr(self.tok.value)
++            raise ExprError(f"expected ')', found {found}", self.tok.position)
++        self._advance()  # consume ')'
++        return Call(name_token.value, name_token.position, args)
++
++
++def parse(expr):
++    """Parse the whole formula into an AST. Raises ExprError on syntax errors."""
++    return Parser(tokenize(expr)).parse()
+diff --git a/checks_spec.py b/checks_spec.py
+new file mode 100644
+index 0000000..2059403
+--- /dev/null
++++ b/checks_spec.py
+@@ -0,0 +1,118 @@
++"""Spec conformance checks for calc.evaluate. Run with: python3 -I checks_spec.py"""
++import math
++
++import calc
++from calc import ExprError
++
++failures = []
++
++
++def ok(expr, expected, variables=None):
++    try:
++        got = calc.evaluate(expr, variables)
++    except ExprError as e:
++        failures.append(f"{expr!r}: expected {expected}, got error {e}")
++        return
++    if not isinstance(got, float):
++        failures.append(f"{expr!r}: result {got!r} is not a float")
++    if not math.isclose(got, expected, rel_tol=1e-12):
++        failures.append(f"{expr!r}: expected {expected}, got {got}")
++
++
++def err(expr, position, variables=None):
++    try:
++        got = calc.evaluate(expr, variables)
++    except ExprError as e:
++        if e.position != position:
++            failures.append(f"{expr!r}: expected position {position}, got {e.position} ({e})")
++        return
++    failures.append(f"{expr!r}: expected ExprError at {position}, got {got!r}")
++
++
++# --- precedence and semantics ---
++ok("2+3*4", 14)
++ok("(2+3)*4", 20)
++ok("2^3^2", 512)          # ^ right-associative
++ok("-2^2", -4)            # unary minus looser than ^
++ok("2^-1", 0.5)           # exponent is a unary expression
++ok("-2^-2", -0.25)
++ok("--2", 2)
++ok("-+2", -2)
++ok("10-4-3", 3)           # left-associative
++ok("100/10/5", 2)
++ok("10 % 3", 1)
++ok("-7 % 3", 2)           # floored modulo
++ok("7 % -3", -2)
++ok("1e3 + 2.5E-2", 1000.025)
++ok(".5", 0.5)
++ok("pi", math.pi)
++ok("e", math.e)
++ok(" 1 +\t2 ", 3)
++
++# variables, constants, functions
++ok("x*2", 10, {"x": 5})
++ok("x", 3.0, {"x": 3})            # int variable returned as float
++ok("pi", 99.0, {"pi": 99})        # variables win over constants
++ok("min(3,1,2)", 1)
++ok("max(1+2, 2*3)", 6)
++ok("hypot(3,4)", 5)
++ok("round(2.5)", 2)
++ok("abs(-3)", 3)
++ok("sqrt(9)", 3)
++ok("min(2)", 2)
++ok("price * (1 + rate) ^ years", 100 * 1.05 ** 3, {"price": 100, "rate": 0.05, "years": 3})
++
++# --- syntax error positions (table from SPEC.md) ---
++err("", 0)
++err("   ", 3)
++err("1 +", 3)
++err("(1 + 2", 6)
++err("1 + 2)", 5)
++err("2 3", 2)
++err("2x", 1)
++err("1 * * 2", 4)
++err("min(1,)", 6)
++err("1, 2", 1)
++err("3 $ 4", 2)
++err("-", 1)          # unary sign, then end of input
++err("min(1", 5)
++err("min(", 4)
++err("5.", 1)         # number is 5, '.' unexpected
++err("(1)(2)", 3)     # no implicit multiplication
++err("2(3)", 1)
++err("2e", 1)         # number 2, then name e: two operands in a row
++ok("2e1", 20)
++
++# --- evaluation errors and positions ---
++err("x", 0)                       # unknown name
++err("  y + 1", 2)
++err("foo(1)", 0)                  # unknown function (variables can't be called)
++err("foo(1)", 0, {"foo": 3})
++err("sqrt(1, 2)", 0)              # arity
++err("hypot(1)", 0)
++err("sqrt()", 0)
++err("min()", 0)
++err("sqrt(-1)", 0)                # domain error at function name
++err("1 / 0", 2)                   # at operator
++err("1 % 0", 2)
++err("0 ^ -1", 2)                  # at the ^
++err("(-8) ^ (1/3)", 5)
++err("10 ^ 400", 3)
++ok("(-2)^2", 4)
++
++# evaluation order: name error before arity error later
++err("x + sqrt(1, 2)", 0)
++# arity checked before arguments are evaluated
++err("sqrt(1/0, 2)", 0)
++err("sqrt(1/0)", 6)               # single arg: args evaluated, error inside
++err("min(1/0, nope)", 5)          # left-to-right arg evaluation
++# parse-first: syntax error at end beats eval error at start
++err("nope + 1 )", 9)
++err("1/0 +", 5)
++
++if failures:
++    print("FAILURES:")
++    for f in failures:
++        print(" ", f)
++    raise SystemExit(1)
++print("all checks passed")

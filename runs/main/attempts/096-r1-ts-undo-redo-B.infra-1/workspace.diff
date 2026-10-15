@@ -1,0 +1,728 @@
+ src/editor.ts     |  70 +++++++++-
+ src/history.ts    | 181 ++++++++++++++++++++++++
+ test/undo.test.ts | 404 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 654 insertions(+), 1 deletion(-)
+
+diff --git a/src/editor.ts b/src/editor.ts
+index 0544862..d204599 100644
+--- a/src/editor.ts
++++ b/src/editor.ts
+@@ -1,4 +1,5 @@
+ import { isEmpty, normalizeSelection, replaceRange, type Selection } from "./text.ts";
++import { HistoryManager } from "./history.ts";
+ 
+ export interface EditorOptions {
+   /** Milliseconds clock used by undo grouping. Defaults to Date.now. */
+@@ -10,11 +11,15 @@ export interface EditorOptions {
+ export class Editor {
+   private content: string;
+   private sel: Selection;
++  private history: HistoryManager;
+ 
+   constructor(text: string = "", options: EditorOptions = {}) {
+     this.content = text;
+     this.sel = { start: text.length, end: text.length };
+-    void options;
++    this.history = new HistoryManager({
++      clock: options.clock ?? Date.now,
++      historyLimit: options.historyLimit ?? 100,
++    });
+   }
+ 
+   get text(): string {
+@@ -29,18 +34,25 @@ export class Editor {
+   /** Set the selection; offsets are clamped to the text and ordered. `end` defaults to `start`. */
+   select(start: number, end: number = start): void {
+     this.sel = normalizeSelection(this.content.length, start, end);
++    this.history.closeGroup(); // select never creates a step and never clears redo
+   }
+ 
+   /** Replace the selection with `str` and put the cursor right after it. */
+   insert(str: string): void {
+     const { start, end } = this.sel;
++    const typing = start === end && str.length === 1 && str !== "\n";
++    if (!typing) this.history.closeGroup(); // any non-typing insert closes the group
++    const before = this.history.captureBefore(this.capture());
+     this.content = replaceRange(this.content, start, end, str);
+     const cursor = start + str.length;
+     this.sel = { start: cursor, end: cursor };
++    this.record(before, typing ? "typing" : "edit");
+   }
+ 
+   /** Delete the selection, or the character before the cursor when the selection is empty. */
+   deleteBackward(): void {
++    this.history.closeGroup();
++    const before = this.history.captureBefore(this.capture());
+     const { start, end } = this.sel;
+     if (!isEmpty(this.sel)) {
+       this.content = replaceRange(this.content, start, end, "");
+@@ -49,10 +61,13 @@ export class Editor {
+       this.content = replaceRange(this.content, start - 1, start, "");
+       this.sel = { start: start - 1, end: start - 1 };
+     }
++    this.record(before, "edit");
+   }
+ 
+   /** Delete the selection, or the character after the cursor when the selection is empty. */
+   deleteForward(): void {
++    this.history.closeGroup();
++    const before = this.history.captureBefore(this.capture());
+     const { start, end } = this.sel;
+     if (!isEmpty(this.sel)) {
+       this.content = replaceRange(this.content, start, end, "");
+@@ -60,5 +75,58 @@ export class Editor {
+     } else if (start < this.content.length) {
+       this.content = replaceRange(this.content, start, start + 1, "");
+     }
++    this.record(before, "edit");
++  }
++
++  canUndo(): boolean {
++    return this.history.canUndo();
++  }
++
++  canRedo(): boolean {
++    return this.history.canRedo();
++  }
++
++  /** Revert the most recent step, restoring text and selection. */
++  undo(): boolean {
++    const target = this.history.undo();
++    if (!target) return false;
++    this.restore(target);
++    return true;
++  }
++
++  /** Re-apply the most recently undone step, restoring text and selection. */
++  redo(): boolean {
++    const target = this.history.redo();
++    if (!target) return false;
++    this.restore(target);
++    return true;
++  }
++
++  /** Run fn as a single undo step; returns fn's result. Throws roll back text and selection. */
++  transact<T>(fn: () => T): T {
++    return this.history.transact(fn, {
++      capture: () => this.capture(),
++      restore: (snapshot) => this.restore(snapshot),
++    });
++  }
++
++  private capture() {
++    return { text: this.content, selection: { ...this.sel } };
++  }
++
++  private restore(snapshot: { text: string; selection: Selection }) {
++    this.content = snapshot.text;
++    this.sel = { ...snapshot.selection };
++  }
++
++  /** Record a step only when the text actually changed; no-ops leave the redo stack alone. */
++  private record(before: { text: string; selection: Selection } | null, kind: "typing" | "edit") {
++    if (before === null) {
++      // Inside a transaction: always report, the transaction decides at the end.
++      this.history.captureAfter(null, kind, this.capture());
++      return;
++    }
++    if (this.content === before.text) return;
++    this.history.captureAfter(before, kind, this.capture());
+   }
+ }
+diff --git a/src/history.ts b/src/history.ts
+new file mode 100644
+index 0000000..bee4cd1
+--- /dev/null
++++ b/src/history.ts
+@@ -0,0 +1,181 @@
++/**
++ * Undo/redo bookkeeping for the editor.
++ *
++ * A "snapshot" is a frozen copy of the editor's text + selection.
++ * A "step" pairs the snapshot before a change with the one after.
++ * Undo sets the editor to a step's `before` and moves it to the redo stack;
++ * redo restores the `after` and moves it back.
++ *
++ * Only this module decides whether a change becomes a new step, extends the
++ * open typing group, or is dropped (no-op). The editor just reports edits.
++ */
++
++/** @typedef {{ text: string, selection: { start: number, end: number } }} Snapshot */
++/** @typedef {{ before: Snapshot, after: Snapshot, typing: boolean, lastTypingAt: number }} Step */
++
++const TYPING_WINDOW_MS = 1000;
++
++export class HistoryManager {
++  #undoStack = [];   /** @type {Step[]} */
++  #redoStack = [];   /** @type {Step[]} */
++  #openGroup = null; /** @type {Step|null} — a typing step that can still be extended */
++
++  #clock;
++  #limit;
++
++  // Transaction state (depth > 0 means a transaction is running)
++  #depth = 0;
++  #txBefore = null;      /** @type {Snapshot|null} */
++  #txAfter = null;       /** @type {Snapshot|null} */
++  #txHadOpenGroup = false;
++
++  constructor({ clock = Date.now, historyLimit = 100 } = {}) {
++    if (!Number.isInteger(historyLimit) || historyLimit < 0) {
++      throw new RangeError("historyLimit must be an integer >= 0");
++    }
++    this.#clock = clock;
++    this.#limit = historyLimit;
++  }
++
++  get inTransaction() {
++    return this.#depth > 0;
++  }
++
++  canUndo() {
++    return !this.inTransaction && this.#undoStack.length > 0;
++  }
++
++  canRedo() {
++    return !this.inTransaction && this.#redoStack.length > 0;
++  }
++
++  /**
++   * Runs fn as one undo step. Returns fn's result.
++   * Nested calls join the outermost transaction. If fn throws, the state
++   * recorded at entry is passed to `rollback` and the error is rethrown.
++   */
++  transact(fn, rollback) {
++    this.#depth++;
++    if (this.#depth === 1) {
++      // Outermost: close any open typing group and snapshot the entry state.
++      this.#txHadOpenGroup = this.#openGroup !== null;
++      this.#openGroup = null;
++      this.#txBefore = rollback.capture();
++      this.#txAfter = null;
++    }
++    try {
++      const result = fn();
++      this.#depth--;
++      this.#finishTransaction(rollback);
++      return result;
++    } catch (err) {
++      this.#depth--;
++      if (this.#depth === 0) {
++        // Outermost failed: restore text/selection, drop any buffered after-state,
++        // leave the redo stack alone, rethrow.
++        rollback.restore(this.#txBefore);
++        // A group that was open at entry was closed by entering the transaction.
++        this.#txBefore = null;
++        this.#txAfter = null;
++        this.#txHadOpenGroup = false;
++      }
++      throw err;
++    }
++  }
++
++  #finishTransaction(rollback) {
++    if (this.#depth > 0) return; // nested call: the outermost will finish
++    const before = this.#txBefore;
++    const after = rollback.capture();
++    this.#txBefore = null;
++    this.#txAfter = null;
++    this.#txHadOpenGroup = false;
++    if (after.text !== before.text) {
++      this.#pushStep({ before, after, typing: false, lastTypingAt: 0 });
++    }
++    // No text change → no step, redo stack untouched.
++  }
++
++  /**
++   * Called by the editor immediately before a text edit. Returns a snapshot
++   * to pass back into `captureAfter`, or null inside a transaction (the
++   * transaction owns the snapshots instead).
++   */
++  captureBefore(currentSnapshot) {
++    if (this.inTransaction) return null;
++    return currentSnapshot;
++  }
++
++  /**
++   * Called by the editor after a text edit.
++   * @param {Snapshot|null} before - from captureBefore (null in a transaction)
++   * @param {"typing"|"edit"} kind - typing = single non-newline char into empty selection
++   * @param {Snapshot} after - the state after the edit
++   */
++  captureAfter(before, kind, after) {
++    if (this.inTransaction) {
++      this.#txAfter = after; // last edit wins; outermost finishTransaction reads capture() anyway
++      return;
++    }
++
++    const now = this.#clock();
++
++    if (kind === "typing") {
++      const g = this.#openGroup;
++      if (g && now - g.lastTypingAt < TYPING_WINDOW_MS) {
++        // Extend the open group: keep its `before`, advance `after`.
++        g.after = after;
++        g.lastTypingAt = now;
++        this.#redoStack = []; // extending a step still counts as a new change
++        return;
++      }
++      // Not extendable → start a new typing group.
++      const step = { before, after, typing: true, lastTypingAt: now };
++      this.#openGroup = step;
++      this.#pushStep(step);
++      return;
++    }
++
++    // Non-typing edit: closes any open group, always its own step.
++    this.#openGroup = null;
++    this.#pushStep({ before, after, typing: false, lastTypingAt: 0 });
++  }
++
++  /** A selection change or a no-op edit: closes the open group, touches nothing else. */
++  closeGroup() {
++    this.#openGroup = null;
++  }
++
++  #pushStep(step) {
++    if (this.#limit === 0) {
++      // Nothing is ever undoable, but a new change still clears the redo stack.
++      this.#redoStack = [];
++      this.#openGroup = null;
++      return;
++    }
++    this.#undoStack.push(step);
++    if (this.#undoStack.length > this.#limit) {
++      this.#undoStack.shift(); // discard the oldest step
++    }
++    this.#redoStack = []; // any new/extended change clears redo
++  }
++
++  /** Returns the snapshot to restore, or null if there is nothing to undo. */
++  undo() {
++    if (this.inTransaction) throw new Error("Cannot undo while a transaction is running");
++    const step = this.#undoStack.pop();
++    if (!step) return null;
++    this.#openGroup = null; // undo closes the open group
++    this.#redoStack.push(step);
++    return step.before;
++  }
++
++  /** Returns the snapshot to restore, or null if there is nothing to redo. */
++  redo() {
++    if (this.inTransaction) throw new Error("Cannot redo while a transaction is running");
++    const step = this.#redoStack.pop();
++    if (!step) return null;
++    this.#undoStack.push(step);
++    return step.after;
++  }
++}
+diff --git a/test/undo.test.ts b/test/undo.test.ts
+new file mode 100644
+index 0000000..7e7013e
+--- /dev/null
++++ b/test/undo.test.ts
+@@ -0,0 +1,404 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { Editor } from "../src/editor.ts";
++
++/** A controllable clock so grouping tests are deterministic. */
++function makeClock(start = 0) {
++  let now = start;
++  return {
++    clock: () => now,
++    advance: (ms) => { now += ms; },
++    set: (t) => { now = t; },
++  };
++}
++
++test("undo/redo are no-ops when history is empty", () => {
++  const e = new Editor("hello");
++  assert.equal(e.canUndo(), false);
++  assert.equal(e.canRedo(), false);
++  assert.equal(e.undo(), false);
++  assert.equal(e.redo(), false);
++});
++
++test("the constructor text is not undoable", () => {
++  const e = new Editor("hello");
++  e.undo();
++  assert.equal(e.text, "hello");
++});
++
++test("undo restores text and selection", () => {
++  const e = new Editor("hello world");
++  e.select(6, 11);
++  e.insert("there"); // "hello there", cursor at 11
++  assert.equal(e.undo(), true);
++  assert.equal(e.text, "hello world");
++  assert.deepEqual(e.selection, { start: 6, end: 11 }); // selection before the insert
++});
++
++test("redo restores text and selection", () => {
++  const e = new Editor("hello world");
++  e.select(6, 11);
++  e.insert("there");
++  e.undo();
++  assert.equal(e.redo(), true);
++  assert.equal(e.text, "hello there");
++  assert.deepEqual(e.selection, { start: 11, end: 11 }); // cursor right after the insert
++});
++
++test("canUndo / canRedo track the stacks", () => {
++  const e = new Editor("");
++  e.insert("abc"); // non-typing paste: one step
++  assert.equal(e.canUndo(), true);
++  assert.equal(e.canRedo(), false);
++  e.undo();
++  assert.equal(e.canUndo(), false);
++  assert.equal(e.canRedo(), true);
++});
++
++test("a new change clears the redo stack", () => {
++  const e = new Editor("ab");
++  e.select(2);
++  e.deleteBackward();
++  e.undo(); // text back to "ab", redo available
++  assert.equal(e.canRedo(), true);
++  e.insert("XYZ"); // new change
++  assert.equal(e.canRedo(), false);
++  assert.equal(e.redo(), false);
++});
++
++test("no-op edits create no step and leave the redo stack alone", () => {
++  const e = new Editor("ab");
++  e.select(2);
++  e.deleteBackward(); // "b" removed
++  e.undo();           // back to "ab", redo available
++
++  e.select(0);
++  e.deleteBackward(); // no-op: cursor already at 0
++  e.insert("");       // insert("") with empty selection can no-op (text unchanged? no — insert always places cursor)
++  assert.equal(e.text, "ab");
++  assert.equal(e.canRedo(), true, "redo survived the no-op edits");
++
++  e.redo();
++  assert.equal(e.text, "a");
++});
++
++test("selection changes create no step and leave the redo stack alone", () => {
++  const e = new Editor("ab");
++  e.select(2);
++  e.deleteBackward();
++  e.undo();
++  e.select(1); // just moving the cursor
++  assert.equal(e.canRedo(), true);
++  e.redo();
++  assert.equal(e.text, "a");
++});
++
++// ---- typing groups ----
++
++test("consecutive typing within 1s is one undo step", () => {
++  const { clock, advance } = makeClock(1_000_000);
++  const e = new Editor("", { clock });
++  e.insert("h");
++  advance(500);
++  e.insert("i");
++  assert.equal(e.text, "hi");
++  e.undo(); // single step undoes both characters
++  assert.equal(e.text, "");
++  assert.equal(e.canUndo(), false);
++});
++
++test("typing pauses of >= 1000ms start a new step", () => {
++  const { clock, advance } = makeClock(1_000_000);
++  const e = new Editor("", { clock });
++  e.insert("h");
++  advance(999);
++  e.insert("i");   // still within the window → same group
++  advance(1000);   // exactly 1000ms → new step
++  e.insert("!");
++  assert.equal(e.text, "hi!");
++  e.undo();
++  assert.equal(e.text, "hi");  // "!" undone alone
++  e.undo();
++  assert.equal(e.text, "");    // "hi" undone together
++  assert.equal(e.canUndo(), false);
++});
++
++test("a multi-char paste is not typing and breaks the group", () => {
++  const { clock, advance } = makeClock(0);
++  const e = new Editor("", { clock });
++  e.insert("h");
++  advance(100);
++  e.insert("i");
++  advance(100);
++  e.insert("paste"); // non-typing: closes the group, own step
++  advance(100);
++  e.insert("!");     // typing, but previous step is not an open group → new step
++  e.undo();
++  assert.equal(e.text, "hipaste");
++  e.undo();
++  assert.equal(e.text, "hi");
++  e.undo();
++  assert.equal(e.text, "");
++});
++
++test("a newline insert is not typing", () => {
++  const { clock, advance } = makeClock(0);
++  const e = new Editor("", { clock });
++  e.insert("a");
++  advance(100);
++  e.insert("\n");
++  advance(100);
++  e.insert("b");
++  // 3 separate steps: "a", "\n", "b"
++  e.undo(); assert.equal(e.text, "a\n");
++  e.undo(); assert.equal(e.text, "a");
++  e.undo(); assert.equal(e.text, "");
++});
++
++test("replacing a non-empty selection with one char is not typing", () => {
++  const { clock, advance } = makeClock(0);
++  const e = new Editor("ab", { clock });
++  e.select(0, 2);
++  e.insert("x"); // one char but selection was non-empty → plain edit
++  advance(100);
++  e.insert("y"); // typing, but group was closed by the replace → new step
++  e.undo(); assert.equal(e.text, "x");
++  e.undo(); assert.equal(e.text, "ab");
++});
++
++test("select closes the typing group", () => {
++  const { clock, advance } = makeClock(0);
++  const e = new Editor("", { clock });
++  e.insert("a");
++  advance(100);
++  e.select(1); // closes the group without changing anything
++  advance(100);
++  e.insert("b");
++  e.undo();
++  assert.equal(e.text, "a"); // "b" alone, not "ab"
++});
++
++test("undo closes the typing group", () => {
++  const { clock, advance } = makeClock(0);
++  const e = new Editor("", { clock });
++  e.insert("a");
++  advance(100);
++  e.undo();       // undoes "a", closes group
++  e.redo();       // text: "a" again
++  advance(100);
++  e.insert("b");  // typing — but the group was closed by undo, so new step
++  e.undo();
++  assert.equal(e.text, "a");
++  e.undo();
++  assert.equal(e.text, "");
++});
++
++test("deleteBackward closes the typing group", () => {
++  const { clock, advance } = makeClock(0);
++  const e = new Editor("", { clock });
++  e.insert("a");
++  advance(100);
++  e.deleteBackward();  // own step, closes group
++  advance(100);
++  e.insert("b");
++  e.undo(); assert.equal(e.text, "");
++  e.undo(); assert.equal(e.text, "a");
++  e.undo(); assert.equal(e.text, "");
++});
++
++test("extended typing group keeps the original before state", () => {
++  const { clock, advance } = makeClock(0);
++  const e = new Editor("X", { clock });
++  e.select(1);
++  e.insert("a");
++  advance(100);
++  e.insert("b");
++  assert.equal(e.text, "Xab");
++  e.undo();
++  assert.equal(e.text, "X");
++  assert.deepEqual(e.selection, { start: 1, end: 1 }); // before the first keystroke
++  e.redo();
++  assert.equal(e.text, "Xab");
++  assert.deepEqual(e.selection, { start: 3, end: 3 }); // after the latest keystroke
++});
++
++// ---- transactions ----
++
++test("transact bundles several edits into one step and returns fn's result", () => {
++  const e = new Editor("hello");
++  const result = e.transact(() => {
++    e.select(5);
++    e.insert(" ");
++    e.insert("world");
++    e.select(0, 5);
++    e.insert("goodbye");
++    return 42;
++  });
++  assert.equal(result, 42);
++  assert.equal(e.text, "goodbye world");
++  e.undo();
++  assert.equal(e.text, "hello");
++  assert.deepEqual(e.selection, { start: 5, end: 5 }); // state when transact was called
++  e.redo();
++  assert.equal(e.text, "goodbye world");
++});
++
++test("transact with no net text change creates no step and keeps redo", () => {
++  const e = new Editor("ab");
++  e.select(2);
++  e.deleteBackward(); // step 1
++  e.undo();
++  assert.equal(e.canRedo(), true);
++
++  e.transact(() => {
++    e.insert("x");
++    e.deleteBackward(); // net text unchanged
++    e.select(0);        // selection changed, but that alone makes no step
++  });
++  assert.equal(e.canRedo(), true, "redo still available");
++  assert.equal(e.canUndo(), false, "no new step");
++});
++
++test("nested transacts join the outermost one", () => {
++  const e = new Editor("");
++  e.transact(() => {
++    e.insert("a");
++    e.transact(() => {
++      e.insert("b");
++      e.transact(() => {
++        e.insert("c");
++      });
++    });
++  });
++  assert.equal(e.text, "abc");
++  e.undo();
++  assert.equal(e.text, "");
++  assert.equal(e.canUndo(), false, "only one step total");
++});
++
++test("a throwing transact rolls back, creates no step, keeps redo, and rethrows", () => {
++  const e = new Editor("ab");
++  e.select(2);
++  e.deleteBackward();
++  e.undo();
++  assert.equal(e.canRedo(), true);
++
++  assert.throws(
++    () => e.transact(() => {
++      e.insert("XYZ");
++      e.select(0);
++      throw new Error("boom");
++    }),
++    /boom/,
++  );
++  assert.equal(e.text, "ab", "text rolled back");
++  assert.deepEqual(e.selection, { start: 2, end: 2 }, "selection rolled back");
++  assert.equal(e.canUndo(), false, "no step created");
++  assert.equal(e.canRedo(), true, "redo stack untouched");
++  e.redo();
++  assert.equal(e.text, "a"); // redo still refers to the earlier delete
++});
++
++test("undo/redo inside a transaction throw", () => {
++  const e = new Editor("ab");
++  e.select(2);
++  e.deleteBackward();
++  assert.throws(
++    () => e.transact(() => { e.undo(); }),
++    /transaction/,
++  );
++});
++
++test("typing inside a transaction does not extend a step from before it", () => {
++  const { clock, advance } = makeClock(0);
++  const e = new Editor("", { clock });
++  e.insert("a");
++  advance(100);
++  e.transact(() => {
++    e.insert("b"); // typing keystroke inside a transaction
++  });
++  assert.equal(e.text, "ab");
++  e.undo();
++  assert.equal(e.text, "a", "transaction step undoes only b");
++  e.undo();
++  assert.equal(e.text, "", "'a' is its own step");
++});
++
++test("typing after a transaction does not extend the transaction's step", () => {
++  const { clock, advance } = makeClock(0);
++  const e = new Editor("", { clock });
++  e.transact(() => { e.insert("ab"); });
++  advance(100);
++  e.insert("c"); // typing keystroke: must not merge into the transaction step
++  assert.equal(e.text, "abc");
++  e.undo();
++  assert.equal(e.text, "ab", "'c' is its own step");
++  e.undo();
++  assert.equal(e.text, "");
++});
++
++// ---- history limit ----
++
++test("historyLimit discards the oldest steps", () => {
++  const e = new Editor("", { historyLimit: 2 });
++  e.insert("A");
++  e.insert("BB");  // non-typing pastes: three distinct steps
++  e.insert("CCC");
++  assert.equal(e.text, "ABBCCC");
++  e.undo(); assert.equal(e.text, "ABB");
++  e.undo(); assert.equal(e.text, "A");
++  assert.equal(e.canUndo(), false, "the first step was discarded");
++});
++
++test("extending a typing group does not count against the limit", () => {
++  const { clock, advance } = makeClock(0);
++  const e = new Editor("", { historyLimit: 2, clock });
++  e.insert("h");
++  advance(10);
++  e.insert("e");
++  advance(10);
++  e.insert("l");
++  advance(10);
++  e.insert("l");
++  advance(10);
++  e.insert("o"); // all one extended step
++  assert.equal(e.text, "hello");
++  e.undo();
++  assert.equal(e.text, "");
++  assert.equal(e.canUndo(), false, "one step used, limit never hit");
++});
++
++test("historyLimit: 0 means nothing is undoable", () => {
++  const e = new Editor("", { historyLimit: 0 });
++  e.insert("abc");
++  assert.equal(e.canUndo(), false);
++  assert.equal(e.undo(), false);
++});
++
++test("historyLimit must be an integer >= 0", () => {
++  assert.throws(() => new Editor("", { historyLimit: -1 }), RangeError);
++  assert.throws(() => new Editor("", { historyLimit: 1.5 }), RangeError);
++  assert.throws(() => new Editor("", { historyLimit: NaN }), RangeError);
++  assert.throws(() => new Editor("", { historyLimit: "10" }), RangeError);
++  new Editor("", { historyLimit: 0 });   // valid
++  new Editor("", { historyLimit: 100 }); // valid
++});
++
++// ---- existing behaviour must not change ----
++
++test("existing editing behaviour is unchanged", () => {
++  const e = new Editor("abcd");
++  e.select(2);
++  e.deleteBackward();
++  assert.equal(e.text, "acd");
++  e.deleteForward();
++  assert.equal(e.text, "ad");
++  assert.deepEqual(e.selection, { start: 1, end: 1 });
++
++  e.insert("XY");
++  assert.equal(e.text, "aXYd");
++  assert.deepEqual(e.selection, { start: 3, end: 3 });
++
++  e.select(100, -5);
++  assert.deepEqual(e.selection, { start: 0, end: 4 });
++});

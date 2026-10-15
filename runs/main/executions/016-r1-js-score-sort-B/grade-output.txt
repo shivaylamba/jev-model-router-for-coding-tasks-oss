@@ -1,0 +1,53 @@
+TAP version 13
+# Subtest: numeric order, highest first
+ok 1 - numeric order, highest first
+  ---
+  duration_ms: 1.01225
+  type: 'test'
+  ...
+# Subtest: negative and fractional scores
+ok 2 - negative and fractional scores
+  ---
+  duration_ms: 0.114708
+  type: 'test'
+  ...
+# Subtest: ties are ordered by name and share a rank
+ok 3 - ties are ordered by name and share a rank
+  ---
+  duration_ms: 9.16275
+  type: 'test'
+  ...
+# Subtest: input is not modified
+ok 4 - input is not modified
+  ---
+  duration_ms: 0.687917
+  type: 'test'
+  ...
+# Subtest: topPlayers takes the real top n
+ok 5 - topPlayers takes the real top n
+  ---
+  duration_ms: 0.116333
+  type: 'test'
+  ...
+# Subtest: ranks skip after a tie, as 1, 2, 2, 4
+ok 6 - ranks skip after a tie, as 1, 2, 2, 4
+  ---
+  duration_ms: 0.097792
+  type: 'test'
+  ...
+# Subtest: empty board
+ok 7 - empty board
+  ---
+  duration_ms: 0.119042
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 83.633417
+

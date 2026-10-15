@@ -1,0 +1,225 @@
+ src/semver.ts | 214 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 214 insertions(+)
+
+diff --git a/src/semver.ts b/src/semver.ts
+index 4af9c3e..1f7ed6c 100644
+--- a/src/semver.ts
++++ b/src/semver.ts
+@@ -21,3 +21,217 @@ export function compareVersions(a: Version | string, b: Version | string): numbe
+   const right = typeof b === "string" ? parseVersion(b) : b;
+   return left.major - right.major || left.minor - right.minor || left.patch - right.patch;
+ }
++
++type PartialVersion = {
++  /** null means wildcard (or omitted, which also counts as wildcard). */
++  major: number | null;
++  minor: number | null;
++  patch: number | null;
++};
++
++// A version part: a non-negative integer without leading zeros, or a wildcard.
++const PART = "(?:x|X|\\*|0|[1-9]\\d*)";
++
++// Partial version: 1..3 parts; once one is a wildcard the rest must be too.
++const PARTIAL_PATTERN = new RegExp(`^v?(${PART})(?:\\.(${PART}))?(?:\\.(${PART}))?$`);
++
++const OPERATOR = "(?:>=|<=|>|<|=|~|\\^)";
++const COMPARATOR_PATTERN = new RegExp(`(${OPERATOR})?\\s*(v?${PART}(?:\\.${PART})?(?:\\.${PART})?)(\\s+|$)`, "g");
++
++function isWildcard(part: string): boolean {
++  return part === "x" || part === "X" || part === "*";
++}
++
++/** Parse a partial version per docs/RANGES.md; throws TypeError when invalid. */
++function parsePartial(text: string): PartialVersion {
++  const match = PARTIAL_PATTERN.exec(text);
++  if (!match) {
++    throw new TypeError(`invalid version in range: ${JSON.stringify(text)}`);
++  }
++  const parts = [match[1], match[2], match[3]];
++  const values: (number | null)[] = [];
++  let seenWildcard = false;
++  for (const part of parts) {
++    if (part === undefined || isWildcard(part)) {
++      seenWildcard = true;
++      values.push(null);
++    } else {
++      if (seenWildcard) {
++        throw new TypeError(`invalid version in range: ${JSON.stringify(text)}`);
++      }
++      values.push(Number(part));
++    }
++  }
++  return { major: values[0], minor: values[1], patch: values[2] };
++}
++
++/** A half-open interval [min, max); null bounds are open. */
++type Interval = { min: Version | null; max: Version | null };
++
++const ANY: Interval = { min: null, max: null };
++const NONE: Interval = {
++  min: { major: Infinity, minor: 0, patch: 0 },
++  max: { major: -1, minor: 0, patch: 0 },
++};
++
++function fill(version: PartialVersion): Version {
++  return { major: version.major ?? 0, minor: version.minor ?? 0, patch: version.patch ?? 0 };
++}
++
++/** The smallest version strictly greater than everything the partial covers. */
++function upperBound(version: PartialVersion): Version | null {
++  if (version.major === null) return null;
++  if (version.minor === null) return { major: version.major + 1, minor: 0, patch: 0 };
++  if (version.patch === null) return { major: version.major, minor: version.minor + 1, patch: 0 };
++  return { major: version.major, minor: version.minor, patch: version.patch + 1 };
++}
++
++function maxVersion(a: Version | null, b: Version | null): Version | null {
++  if (!a) return b;
++  if (!b) return a;
++  return compareVersions(a, b) >= 0 ? a : b;
++}
++
++function minVersion(a: Version | null, b: Version | null): Version | null {
++  if (!a) return b;
++  if (!b) return a;
++  return compareVersions(a, b) <= 0 ? a : b;
++}
++
++function intersect(a: Interval, b: Interval): Interval {
++  const min = maxVersion(a.min, b.min);
++  const max = minVersion(a.max, b.max);
++  if (min && max && compareVersions(min, max) >= 0) return NONE;
++  return { min, max };
++}
++
++/** `1.2.3` / `=1.2.3` exactly; partial forms widen to a full interval. */
++function exactInterval(version: PartialVersion): Interval {
++  if (version.major === null) return ANY;
++  if (version.minor === null || version.patch === null) {
++    return { min: fill(version), max: upperBound(version) };
++  }
++  const exact = fill(version);
++  return { min: exact, max: { major: exact.major, minor: exact.minor, patch: exact.patch + 1 } };
++}
++
++function greaterThanInterval(version: PartialVersion): Interval {
++  if (version.major === null) return NONE;
++  if (version.minor === null) return { min: { major: version.major + 1, minor: 0, patch: 0 }, max: null };
++  if (version.patch === null) return { min: { major: version.major, minor: version.minor + 1, patch: 0 }, max: null };
++  const exact = fill(version);
++  return { min: { major: exact.major, minor: exact.minor, patch: exact.patch + 1 }, max: null };
++}
++
++function greaterThanOrEqualInterval(version: PartialVersion): Interval {
++  if (version.major === null) return ANY;
++  return { min: fill(version), max: null };
++}
++
++function lessThanInterval(version: PartialVersion): Interval {
++  if (version.major === null) return NONE;
++  return { min: null, max: fill(version) };
++}
++
++function lessThanOrEqualInterval(version: PartialVersion): Interval {
++  if (version.major === null) return ANY;
++  return { min: null, max: upperBound(version) };
++}
++
++/** `~1.2.3` -> `>=1.2.3 <1.3.0`; `~1.2` -> `>=1.2.0 <1.3.0`; `~1`/`~*` -> any. */
++function tildeInterval(version: PartialVersion): Interval {
++  if (version.major === null) return ANY;
++  const min = fill(version);
++  if (version.minor === null) return { min, max: { major: version.major + 1, minor: 0, patch: 0 } };
++  return { min, max: { major: version.major, minor: version.minor + 1, patch: 0 } };
++}
++
++/** `^1.2.3` -> `>=1.2.3 <2.0.0`; the left-most non-zero given part is fixed. */
++function caretInterval(version: PartialVersion): Interval {
++  if (version.major === null) return ANY;
++  const min = fill(version);
++  if (version.major > 0) return { min, max: { major: version.major + 1, minor: 0, patch: 0 } };
++  if (version.minor === null) return { min, max: { major: version.major + 1, minor: 0, patch: 0 } };
++  if (version.minor > 0) return { min, max: { major: version.major, minor: version.minor + 1, patch: 0 } };
++  if (version.patch === null) return { min, max: { major: version.major, minor: version.minor + 1, patch: 0 } };
++  return { min, max: { major: version.major, minor: version.minor, patch: version.patch + 1 } };
++}
++
++/** Parse one comparator (operator + partial version) into an interval. */
++function parseComparator(operator: string | undefined, versionText: string): Interval {
++  const version = parsePartial(versionText);
++  switch (operator) {
++    case undefined:
++    case "=":
++      return exactInterval(version);
++    case ">":
++      return greaterThanInterval(version);
++    case ">=":
++      return greaterThanOrEqualInterval(version);
++    case "<":
++      return lessThanInterval(version);
++    case "<=":
++      return lessThanOrEqualInterval(version);
++    case "~":
++      return tildeInterval(version);
++    case "^":
++      return caretInterval(version);
++    default:
++      throw new TypeError(`invalid comparator in range: ${JSON.stringify(text)}`);
++  }
++}
++
++/** Parse one alternative (hyphen range or comparator set) into an interval. */
++function parseAlternative(text: string): Interval {
++  const hyphen = text.split(/\s+-\s+/);
++  if (hyphen.length > 1) {
++    if (hyphen.length !== 2) {
++      throw new TypeError(`invalid hyphen range: ${JSON.stringify(text)}`);
++    }
++    const [lowerText, upperText] = hyphen;
++    if (/[<>=~^]/.test(lowerText) || /[<>=~^]/.test(upperText)) {
++      throw new TypeError(`operators are not allowed in a hyphen range: ${JSON.stringify(text)}`);
++    }
++    const lower = parsePartial(lowerText);
++    const upper = parsePartial(upperText);
++    return { min: lower.major === null ? null : fill(lower), max: upperBound(upper) };
++  }
++  let interval: Interval = ANY;
++  let consumed = 0;
++  for (const match of text.matchAll(COMPARATOR_PATTERN)) {
++    // matchAll scans the whole string; require the tokens to be contiguous.
++    if (match.index !== consumed) {
++      throw new TypeError(`invalid comparator set: ${JSON.stringify(text)}`);
++    }
++    interval = intersect(interval, parseComparator(match[1], match[2]));
++    consumed = match.index + match[0].length;
++  }
++  if (consumed !== text.length) {
++    throw new TypeError(`invalid comparator set: ${JSON.stringify(text)}`);
++  }
++  return interval;
++}
++
++/**
++ * Check a release version against a range per docs/RANGES.md. Throws a
++ * TypeError when the version is invalid or the range does not fit the grammar.
++ */
++export function satisfies(version: string, range: string): boolean {
++  const parsed = parseVersion(version);
++  if (typeof range !== "string") {
++    throw new TypeError(`invalid range: ${JSON.stringify(range)}`);
++  }
++  // Parse every alternative first so an invalid range throws even when an
++  // earlier alternative already matches.
++  const intervals = range.split("||").map((alternative) => {
++    const trimmed = alternative.trim();
++    return trimmed === "" ? ANY : parseAlternative(trimmed);
++  });
++  return intervals.some((interval) => intervalContains(interval, parsed));
++}
++
++function intervalContains(interval: Interval, version: Version): boolean {
++  if (interval.min && compareVersions(version, interval.min) < 0) return false;
++  if (interval.max && compareVersions(version, interval.max) >= 0) return false;
++  return true;
++}

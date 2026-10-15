@@ -150,3 +150,18 @@ That measures the outage, not the routing policy.
 3. The report lists every infrastructure failure. A sensitivity analysis counts each excluded execution as a failed task at the cost it incurred.
 
 Nothing about the tasks, prompts, scoring, tier mappings or the conditions themselves changed. At the time, results stood at A 2 of 4 passed and B 3 of 3 passed.
+
+### Amendment 2: host sleep (2026-10-15, after 95 of 100 executions)
+
+**What happened.** Between 20:08 and 21:48 UTC the Mac running the benchmark entered macOS maintenance sleep repeatedly, including one 61-minute sleep. Seven executions overlapped a sleep:
+
+- Their durations include time the machine was asleep.
+- Execution 95 hit the wall limit only because its clock jumped.
+
+**The rule added**, applied identically to both conditions:
+
+1. An execution that overlaps a sleep interval in the macOS power log (`pmset -g log`) is a host failure.
+2. It is handled exactly like an Amendment 1 infrastructure failure: kept in `attempts/`, moved to `excluded.jsonl`, and re-run.
+3. The intervals used are saved in `runs/main/host-sleep-intervals.json`.
+
+From this point the runner is kept awake with `caffeinate -i -s` for its lifetime.

@@ -1,0 +1,20 @@
+
+test_fetch_json_does_not_retry_permanent_errors (acceptance_tests.test_retry.FetchJsonTest.test_fetch_json_does_not_retry_permanent_errors) ... ok
+test_fetch_json_gives_up_after_four_calls (acceptance_tests.test_retry.FetchJsonTest.test_fetch_json_gives_up_after_four_calls) ... ok
+test_fetch_json_uses_backoff (acceptance_tests.test_retry.FetchJsonTest.test_fetch_json_uses_backoff) ... ok
+test_delay_is_capped (acceptance_tests.test_retry.RetryTest.test_delay_is_capped) ... ok
+test_exponential_delays (acceptance_tests.test_retry.RetryTest.test_exponential_delays) ... ok
+test_invalid_arguments (acceptance_tests.test_retry.RetryTest.test_invalid_arguments) ... ok
+test_non_matching_exception_is_not_retried (acceptance_tests.test_retry.RetryTest.test_non_matching_exception_is_not_retried) ... ok
+test_on_retry_callback (acceptance_tests.test_retry.RetryTest.test_on_retry_callback) ... ok
+test_on_retry_not_called_after_final_failure (acceptance_tests.test_retry.RetryTest.test_on_retry_not_called_after_final_failure) ... ok
+test_reraises_last_error_without_final_sleep (acceptance_tests.test_retry.RetryTest.test_reraises_last_error_without_final_sleep) ... ok
+test_retry_on_accepts_a_tuple (acceptance_tests.test_retry.RetryTest.test_retry_on_accepts_a_tuple) ... ok
+test_single_attempt (acceptance_tests.test_retry.RetryTest.test_single_attempt) ... ok
+test_success_first_try_does_not_sleep (acceptance_tests.test_retry.RetryTest.test_success_first_try_does_not_sleep) ... ok
+test_passes_arguments_and_retries (acceptance_tests.test_retry.RetryingDecoratorTest.test_passes_arguments_and_retries) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.000s
+
+OK

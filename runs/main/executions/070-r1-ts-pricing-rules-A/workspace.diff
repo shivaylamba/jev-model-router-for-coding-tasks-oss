@@ -1,0 +1,442 @@
+ src/bundles.ts              |   7 ++
+ src/pricing.ts              |  67 +-------------
+ src/rules.ts                | 211 ++++++++++++++++++++++++++++++++++++++++++++
+ src/types.ts                |  11 ++-
+ test/bundles.verify.test.ts |  91 +++++++++++++++++++
+ 5 files changed, 323 insertions(+), 64 deletions(-)
+
+diff --git a/src/bundles.ts b/src/bundles.ts
+new file mode 100644
+index 0000000..33c3cd8
+--- /dev/null
++++ b/src/bundles.ts
+@@ -0,0 +1,7 @@
++import type { Bundle } from "./types.ts";
++
++/** The store's bundles, in the order they are processed (see docs/PRICING.md). */
++export const BUNDLES: Bundle[] = [
++  { id: "desk-setup", skus: ["DESK", "CHAIR", "LAMP"], percent: 15 },
++  { id: "lighting", skus: ["LAMP", "BULB"], percent: 10 },
++];
+diff --git a/src/pricing.ts b/src/pricing.ts
+index 2bab2d9..4e5882c 100644
+--- a/src/pricing.ts
++++ b/src/pricing.ts
+@@ -1,68 +1,9 @@
+-import { percentOf } from "./money.ts";
+-import type { Coupon, CouponStatus, Discount, Order, Totals } from "./types.ts";
++import { createPricer, defaultRules } from "./rules.ts";
++import type { Coupon, Order, Totals } from "./types.ts";
+ 
+-export const VOLUME_MIN_QUANTITY = 10;
+-export const VOLUME_PERCENT = 10;
+-export const FREE_SHIPPING_THRESHOLD = 5000;
+-export const SHIPPING_FEE = 499;
+-export const TAX_PERCENT = 8;
++const priceWithDefaults = createPricer(defaultRules);
+ 
+ /** Price an order. See docs/PRICING.md for the rules. */
+ export function orderTotal(order: Order, coupon?: Coupon): Totals {
+-  for (const line of order.lines) {
+-    if (!Number.isInteger(line.quantity) || line.quantity < 1) {
+-      throw new RangeError(`bad quantity for ${line.sku}: ${line.quantity}`);
+-    }
+-    if (!Number.isInteger(line.unitPrice) || line.unitPrice < 0) {
+-      throw new RangeError(`bad unit price for ${line.sku}: ${line.unitPrice}`);
+-    }
+-  }
+-
+-  let subtotal = 0;
+-  let volume = 0;
+-  for (const line of order.lines) {
+-    const gross = line.unitPrice * line.quantity;
+-    subtotal += gross;
+-    if (line.quantity >= VOLUME_MIN_QUANTITY) {
+-      volume += percentOf(gross, VOLUME_PERCENT);
+-    }
+-  }
+-
+-  const discounts: Discount[] = [];
+-  if (volume > 0) {
+-    discounts.push({ rule: "volume", amount: volume });
+-  }
+-  let merchandise = subtotal - volume;
+-
+-  let couponStatus: CouponStatus = "none";
+-  if (coupon) {
+-    if (merchandise < (coupon.minSubtotal ?? 0)) {
+-      couponStatus = "below-minimum";
+-    } else {
+-      const off = coupon.kind === "percent"
+-        ? percentOf(merchandise, coupon.value)
+-        : Math.min(coupon.value, merchandise);
+-      couponStatus = "applied";
+-      if (off > 0) {
+-        discounts.push({ rule: `coupon:${coupon.code}`, amount: off });
+-        merchandise -= off;
+-      }
+-    }
+-  }
+-
+-  let shipping = 0;
+-  if (order.lines.length > 0 && merchandise < FREE_SHIPPING_THRESHOLD) {
+-    shipping = SHIPPING_FEE;
+-  }
+-  const tax = percentOf(merchandise, TAX_PERCENT);
+-
+-  return {
+-    subtotal,
+-    discounts,
+-    merchandise,
+-    shipping,
+-    tax,
+-    total: merchandise + shipping + tax,
+-    coupon: couponStatus,
+-  };
++  return priceWithDefaults(order, coupon);
+ }
+diff --git a/src/rules.ts b/src/rules.ts
+new file mode 100644
+index 0000000..a3192aa
+--- /dev/null
++++ b/src/rules.ts
+@@ -0,0 +1,211 @@
++import { percentOf } from "./money.ts";
++import { BUNDLES } from "./bundles.ts";
++import type { Bundle, Coupon, CouponStatus, Discount, Order, Totals } from "./types.ts";
++
++export type PricedLine = {
++  sku: string;
++  unitPrice: number;
++  quantity: number;
++  gross: number;   // unitPrice * quantity
++  bundled: number; // units of this line used in bundles; starts at 0
++};
++
++export type PricingContext = {
++  order: Order;
++  coupon: Coupon | undefined;
++  lines: PricedLine[];        // one per order line, in order
++  subtotal: number;           // sum of gross
++  discounts: Discount[];      // starts empty; rules push onto it
++  couponStatus: CouponStatus; // starts "none"; only the coupon rule changes it
++  shipping: number;           // starts 0
++  tax: number;                // starts 0
++};
++
++export type PricingRule = {
++  name: string;
++  apply(ctx: PricingContext): void;
++};
++
++/* Rule constants — the same numbers orderTotal used. */
++const VOLUME_MIN_QUANTITY = 10;
++const VOLUME_PERCENT = 10;
++const FREE_SHIPPING_THRESHOLD = 5000;
++const SHIPPING_FEE = 499;
++const TAX_PERCENT = 8;
++
++/** Subtotal minus the discount amounts, as they stand right now. */
++export function merchandiseTotal(ctx: PricingContext): number {
++  let off = 0;
++  for (const discount of ctx.discounts) {
++    off += discount.amount;
++  }
++  return ctx.subtotal - off;
++}
++
++/**
++ * Returns (order, coupon?) => Totals. Validates the order before any rule
++ * runs, then calls each rule's apply exactly once in array order.
++ */
++export function createPricer(rules: PricingRule[]): (order: Order, coupon?: Coupon) => Totals {
++  return (order: Order, coupon?: Coupon): Totals => {
++    for (const line of order.lines) {
++      if (!Number.isInteger(line.quantity) || line.quantity < 1) {
++        throw new RangeError(`bad quantity for ${line.sku}: ${line.quantity}`);
++      }
++      if (!Number.isInteger(line.unitPrice) || line.unitPrice < 0) {
++        throw new RangeError(`bad unit price for ${line.sku}: ${line.unitPrice}`);
++      }
++    }
++
++    const ctx: PricingContext = {
++      order,
++      coupon,
++      lines: order.lines.map((line) => ({
++        sku: line.sku,
++        unitPrice: line.unitPrice,
++        quantity: line.quantity,
++        gross: line.unitPrice * line.quantity,
++        bundled: 0,
++      })),
++      subtotal: 0,
++      discounts: [],
++      couponStatus: "none",
++      shipping: 0,
++      tax: 0,
++    };
++    for (const priced of ctx.lines) {
++      ctx.subtotal += priced.gross;
++    }
++
++    for (const rule of rules) {
++      rule.apply(ctx);
++    }
++
++    const merchandise = merchandiseTotal(ctx);
++    return {
++      subtotal: ctx.subtotal,
++      discounts: ctx.discounts,
++      merchandise,
++      shipping: ctx.shipping,
++      tax: ctx.tax,
++      total: merchandise + ctx.shipping + ctx.tax,
++      coupon: ctx.couponStatus,
++    };
++  };
++}
++
++/**
++ * "bundle": forms bundles in array order, each as many times as free units
++ * allow. Units come from the earliest line of a SKU first; the discount is
++ * rounded per line and summed into one record per bundle id.
++ */
++export function bundleRule(bundles: Bundle[]): PricingRule {
++  return {
++    name: "bundle",
++    apply(ctx: PricingContext): void {
++      for (const bundle of bundles) {
++        let amount = 0;
++        for (;;) {
++          let forms = true;
++          for (const sku of bundle.skus) {
++            let free = 0;
++            for (const line of ctx.lines) {
++              if (line.sku === sku) {
++                free += line.quantity - line.bundled;
++              }
++            }
++            if (free < 1) {
++              forms = false;
++              break;
++            }
++          }
++          if (!forms) {
++            break;
++          }
++          for (const sku of bundle.skus) {
++            for (const line of ctx.lines) {
++              if (line.sku === sku && line.quantity - line.bundled > 0) {
++                line.bundled += 1;
++                amount += percentOf(line.unitPrice, bundle.percent);
++                break;
++              }
++            }
++          }
++        }
++        if (amount > 0) {
++          ctx.discounts.push({ rule: `bundle:${bundle.id}`, amount });
++        }
++      }
++    },
++  };
++}
++
++/**
++ * "volume": a line with quantity >= 10 gets 10% off — per line, rounded,
++ * and only on its unbundled units.
++ */
++export const volumeRule: PricingRule = {
++  name: "volume",
++  apply(ctx: PricingContext): void {
++    let amount = 0;
++    for (const line of ctx.lines) {
++      if (line.quantity >= VOLUME_MIN_QUANTITY) {
++        amount += percentOf(line.unitPrice * (line.quantity - line.bundled), VOLUME_PERCENT);
++      }
++    }
++    if (amount > 0) {
++      ctx.discounts.push({ rule: "volume", amount });
++    }
++  },
++};
++
++/**
++ * "coupon": at most one coupon. Exclusive coupons are blocked by any bundle
++ * discount ("excluded"); then the minimum check; then percent or fixed, from
++ * the merchandise total at the moment the rule runs.
++ */
++export const couponRule: PricingRule = {
++  name: "coupon",
++  apply(ctx: PricingContext): void {
++    const coupon = ctx.coupon;
++    if (!coupon) {
++      return;
++    }
++    if (coupon.exclusive && ctx.discounts.some((d) => d.rule.startsWith("bundle:"))) {
++      ctx.couponStatus = "excluded";
++      return;
++    }
++    const merchandise = merchandiseTotal(ctx);
++    if (merchandise < (coupon.minSubtotal ?? 0)) {
++      ctx.couponStatus = "below-minimum";
++      return;
++    }
++    const off = coupon.kind === "percent"
++      ? percentOf(merchandise, coupon.value)
++      : Math.min(coupon.value, merchandise);
++    ctx.couponStatus = "applied";
++    if (off > 0) {
++      ctx.discounts.push({ rule: `coupon:${coupon.code}`, amount: off });
++    }
++  },
++};
++
++/** "shipping": 499, free from 5000 of merchandise; no lines — no shipping. */
++export const shippingRule: PricingRule = {
++  name: "shipping",
++  apply(ctx: PricingContext): void {
++    if (ctx.order.lines.length > 0 && merchandiseTotal(ctx) < FREE_SHIPPING_THRESHOLD) {
++      ctx.shipping = SHIPPING_FEE;
++    }
++  },
++};
++
++/** "tax": 8% of merchandise after everything. Shipping is not taxed. */
++export const taxRule: PricingRule = {
++  name: "tax",
++  apply(ctx: PricingContext): void {
++    ctx.tax = percentOf(merchandiseTotal(ctx), TAX_PERCENT);
++  },
++};
++
++export const defaultRules: PricingRule[] = [bundleRule(BUNDLES), volumeRule, couponRule, shippingRule, taxRule];
+diff --git a/src/types.ts b/src/types.ts
+index 2e5cbce..8af9b22 100644
+--- a/src/types.ts
++++ b/src/types.ts
+@@ -10,6 +10,13 @@ export type Order = {
+   lines: OrderLine[];
+ };
+ 
++/** One bundle is one unit of every SKU in `skus`, discounted by `percent`. */
++export type Bundle = {
++  id: string;
++  skus: string[];
++  percent: number;
++};
++
+ export type Coupon = {
+   code: string;
+   /** "percent": value is a whole-number percentage. "fixed": value is cents off. */
+@@ -17,9 +24,11 @@ export type Coupon = {
+   value: number;
+   /** The coupon only applies when the merchandise total is at least this many cents. */
+   minSubtotal?: number;
++  /** Exclusive coupons cannot be combined with bundle discounts. */
++  exclusive?: boolean;
+ };
+ 
+-export type CouponStatus = "none" | "applied" | "below-minimum";
++export type CouponStatus = "none" | "applied" | "below-minimum" | "excluded";
+ 
+ export type Discount = {
+   /** Which rule produced it, e.g. "volume" or "coupon:SPRING10". */
+diff --git a/test/bundles.verify.test.ts b/test/bundles.verify.test.ts
+new file mode 100644
+index 0000000..bed8a92
+--- /dev/null
++++ b/test/bundles.verify.test.ts
+@@ -0,0 +1,91 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { orderTotal } from "../src/pricing.ts";
++import { createPricer, defaultRules } from "../src/rules.ts";
++
++test("spec example: one desk-setup and one lighting form", () => {
++  const t = orderTotal({ lines: [
++    { sku: "DESK", unitPrice: 2000, quantity: 1 },
++    { sku: "CHAIR", unitPrice: 3000, quantity: 1 },
++    { sku: "LAMP", unitPrice: 500, quantity: 2 },
++    { sku: "BULB", unitPrice: 200, quantity: 1 },
++  ]});
++  assert.deepEqual(t.discounts, [
++    { rule: "bundle:desk-setup", amount: 825 },
++    { rule: "bundle:lighting", amount: 70 },
++  ]);
++});
++
++test("LAMP x1: only the desk-setup forms", () => {
++  const t = orderTotal({ lines: [
++    { sku: "DESK", unitPrice: 2000, quantity: 1 },
++    { sku: "CHAIR", unitPrice: 3000, quantity: 1 },
++    { sku: "LAMP", unitPrice: 500, quantity: 1 },
++  ]});
++  assert.deepEqual(t.discounts, [{ rule: "bundle:desk-setup", amount: 825 }]);
++});
++
++test("volume eligible on full quantity but only discounts unbundled units", () => {
++  const t = orderTotal({ lines: [
++    { sku: "LAMP", unitPrice: 500, quantity: 10 },
++    { sku: "BULB", unitPrice: 200, quantity: 1 },
++  ]});
++  assert.deepEqual(t.discounts, [
++    { rule: "bundle:lighting", amount: 70 },
++    { rule: "volume", amount: 450 },
++  ]);
++});
++
++test("exclusive coupon with bundles -> excluded, nothing off", () => {
++  const t = orderTotal({ lines: [
++    { sku: "DESK", unitPrice: 2000, quantity: 1 },
++    { sku: "CHAIR", unitPrice: 3000, quantity: 1 },
++    { sku: "LAMP", unitPrice: 500, quantity: 1 },
++  ]}, { code: "SOLO", kind: "percent", value: 10, exclusive: true });
++  assert.equal(t.coupon, "excluded");
++  assert.deepEqual(t.discounts, [{ rule: "bundle:desk-setup", amount: 825 }]);
++});
++
++test("exclusive coupon without bundles applies normally", () => {
++  const t = orderTotal({ lines: [{ sku: "PEN", unitPrice: 250, quantity: 4 }] },
++    { code: "SOLO", kind: "percent", value: 10, exclusive: true });
++  assert.equal(t.coupon, "applied");
++  assert.deepEqual(t.discounts, [{ rule: "coupon:SOLO", amount: 100 }]);
++});
++
++test("non-exclusive coupon computes percent from merchandise after bundles", () => {
++  const t = orderTotal({ lines: [
++    { sku: "DESK", unitPrice: 2000, quantity: 2 },
++    { sku: "CHAIR", unitPrice: 3000, quantity: 2 },
++    { sku: "LAMP", unitPrice: 500, quantity: 2 },
++  ]}, { code: "SPRING10", kind: "percent", value: 10 });
++  assert.deepEqual(t.discounts, [
++    { rule: "bundle:desk-setup", amount: 1650 },
++    { rule: "coupon:SPRING10", amount: 935 },
++  ]);
++  assert.equal(t.merchandise, 8415);
++});
++
++test("third-party rule plugs into createPricer and runs in its slot", () => {
++  const spy = {
++    name: "spy",
++    apply(ctx) { ctx.discounts.push({ rule: "spy", amount: 100 }); },
++  };
++  const price = createPricer([defaultRules[0], defaultRules[1], spy, defaultRules[2], defaultRules[3], defaultRules[4]]);
++  const t = price({ lines: [{ sku: "PEN", unitPrice: 250, quantity: 4 }] });
++  assert.deepEqual(t.discounts[0], { rule: "spy", amount: 100 });
++  assert.equal(t.merchandise, 900);
++});
++
++test("empty order: no shipping, no tax, zeroes", () => {
++  const t = orderTotal({ lines: [] });
++  assert.deepEqual(t, {
++    subtotal: 0, discounts: [], merchandise: 0, shipping: 0, tax: 0, total: 0, coupon: "none",
++  });
++});
++
++test("baseline numbers from the old function still hold", () => {
++  const t = orderTotal({ lines: [{ sku: "INK", unitPrice: 2600, quantity: 2 }] }, { code: "FIVE", kind: "fixed", value: 500 });
++  assert.equal(t.tax, 376);
++  assert.equal(t.total, 5575);
++});

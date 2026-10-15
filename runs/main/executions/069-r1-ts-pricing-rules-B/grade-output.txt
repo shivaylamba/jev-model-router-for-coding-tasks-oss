@@ -1,0 +1,107 @@
+TAP version 13
+# Subtest: default rules are the five named rules in order
+ok 1 - default rules are the five named rules in order
+  ---
+  duration_ms: 1.108625
+  type: 'test'
+  ...
+# Subtest: existing behaviour without bundles is unchanged
+ok 2 - existing behaviour without bundles is unchanged
+  ---
+  duration_ms: 0.609417
+  type: 'test'
+  ...
+# Subtest: createPricer with no rules only sums the lines
+ok 3 - createPricer with no rules only sums the lines
+  ---
+  duration_ms: 0.106459
+  type: 'test'
+  ...
+# Subtest: createPricer validates before running any rule
+ok 4 - createPricer validates before running any rule
+  ---
+  duration_ms: 0.680667
+  type: 'test'
+  ...
+# Subtest: rules run once each, in order, with a fresh context per call
+ok 5 - rules run once each, in order, with a fresh context per call
+  ---
+  duration_ms: 0.197292
+  type: 'test'
+  ...
+# Subtest: the context handed to rules
+ok 6 - the context handed to rules
+  ---
+  duration_ms: 0.166958
+  type: 'test'
+  ...
+# Subtest: a rule inserted before shipping and tax affects them
+ok 7 - a rule inserted before shipping and tax affects them
+  ---
+  duration_ms: 0.135958
+  type: 'test'
+  ...
+# Subtest: default bundle via orderTotal
+ok 8 - default bundle via orderTotal
+  ---
+  duration_ms: 0.106667
+  type: 'test'
+  ...
+# Subtest: bundle discount is rounded per line
+ok 9 - bundle discount is rounded per line
+  ---
+  duration_ms: 0.1
+  type: 'test'
+  ...
+# Subtest: a unit belongs to one bundle; bundles form in list order
+ok 10 - a unit belongs to one bundle; bundles form in list order
+  ---
+  duration_ms: 0.162542
+  type: 'test'
+  ...
+# Subtest: a bundle can form several times and marks the bundled units
+ok 11 - a bundle can form several times and marks the bundled units
+  ---
+  duration_ms: 0.129291
+  type: 'test'
+  ...
+# Subtest: volume discount skips bundled units but eligibility uses the full quantity
+ok 12 - volume discount skips bundled units but eligibility uses the full quantity
+  ---
+  duration_ms: 0.093166
+  type: 'test'
+  ...
+# Subtest: exclusive coupons are not combined with bundles
+ok 13 - exclusive coupons are not combined with bundles
+  ---
+  duration_ms: 0.107583
+  type: 'test'
+  ...
+# Subtest: non-exclusive coupons use the merchandise total after bundles
+ok 14 - non-exclusive coupons use the merchandise total after bundles
+  ---
+  duration_ms: 0.096584
+  type: 'test'
+  ...
+# Subtest: duplicate SKU lines: bundled units come from the earliest line
+ok 15 - duplicate SKU lines: bundled units come from the earliest line
+  ---
+  duration_ms: 0.127083
+  type: 'test'
+  ...
+# Subtest: a bundle discount can drop the order below free shipping
+ok 16 - a bundle discount can drop the order below free shipping
+  ---
+  duration_ms: 0.060834
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 99.821833
+

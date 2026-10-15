@@ -1,0 +1,106 @@
+ accounts/usernames.py   | 32 ++++++++++++++++++++++++++++++++
+ tests/test_usernames.py | 46 +++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 77 insertions(+), 1 deletion(-)
+
+diff --git a/accounts/usernames.py b/accounts/usernames.py
+index 772d755..6a5884f 100644
+--- a/accounts/usernames.py
++++ b/accounts/usernames.py
+@@ -11,3 +11,35 @@ def normalize_username(raw):
+ def is_reserved(name):
+     """Whether a (normalized) username is reserved for staff accounts."""
+     return name in RESERVED
++
++
++SEPARATORS = "._-"
++
++
++def is_valid_username(name):
++    """Whether a normalized username is well-formed enough to sign up with.
++
++    Expects output of normalize_username: 3-20 chars starting with a
++    lowercase ASCII letter, made of lowercase ASCII letters, digits, and
++    single separators, never two separators in a row, never ending on one.
++    Reserved names are a separate concern; see is_reserved.
++    """
++    if not isinstance(name, str):
++        return False
++    if not 3 <= len(name) <= 20:
++        return False
++    if not "a" <= name[0] <= "z":
++        return False
++    if name[-1] in SEPARATORS:
++        return False
++    prev_was_separator = False
++    for ch in name:
++        if ch in SEPARATORS:
++            if prev_was_separator:
++                return False
++            prev_was_separator = True
++        elif "a" <= ch <= "z" or "0" <= ch <= "9":
++            prev_was_separator = False
++        else:
++            return False
++    return True
+diff --git a/tests/test_usernames.py b/tests/test_usernames.py
+index e13bd2b..b378183 100644
+--- a/tests/test_usernames.py
++++ b/tests/test_usernames.py
+@@ -1,6 +1,6 @@
+ import unittest
+ 
+-from accounts.usernames import is_reserved, normalize_username
++from accounts.usernames import is_reserved, is_valid_username, normalize_username
+ 
+ 
+ class NormalizeTest(unittest.TestCase):
+@@ -12,5 +12,49 @@ class NormalizeTest(unittest.TestCase):
+         self.assertFalse(is_reserved("ada"))
+ 
+ 
++class IsValidUsernameTest(unittest.TestCase):
++    def test_valid_names(self):
++        for name in ("ada", "ada.l", "ada_lovelace", "a-b-c", "a1b2c3", "x" * 20):
++            with self.subTest(name=name):
++                self.assertTrue(is_valid_username(name))
++
++    def test_non_str(self):
++        for value in (None, 123, b"ada", ["a", "d", "a"]):
++            with self.subTest(value=value):
++                self.assertFalse(is_valid_username(value))
++
++    def test_length_bounds(self):
++        self.assertFalse(is_valid_username("ab"))
++        self.assertTrue(is_valid_username("abc"))
++        self.assertTrue(is_valid_username("a" * 20))
++        self.assertFalse(is_valid_username("a" * 21))
++
++    def test_must_start_with_lowercase_letter(self):
++        self.assertFalse(is_valid_username("1abc"))
++        self.assertFalse(is_valid_username(".abc"))
++        self.assertFalse(is_valid_username("_abc"))
++        self.assertFalse(is_valid_username("Zbc"))
++
++    def test_allowed_characters(self):
++        self.assertFalse(is_valid_username("adA"))
++        self.assertFalse(is_valid_username("ad "))
++        self.assertFalse(is_valid_username("ad!"))
++        self.assertFalse(is_valid_username("adé"))
++
++    def test_no_adjacent_separators(self):
++        self.assertFalse(is_valid_username("a..b"))
++        self.assertFalse(is_valid_username("a._b"))
++        self.assertFalse(is_valid_username("a-.b"))
++        self.assertTrue(is_valid_username("a.b_c-d"))
++
++    def test_no_trailing_separator(self):
++        self.assertFalse(is_valid_username("ada."))
++        self.assertFalse(is_valid_username("ada_"))
++        self.assertFalse(is_valid_username("ada-"))
++
++    def test_reserved_is_separate(self):
++        self.assertTrue(is_valid_username("admin"))
++
++
+ if __name__ == "__main__":
+     unittest.main()

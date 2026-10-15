@@ -1,0 +1,428 @@
+ accounts/profile.py    |  51 +++----------
+ accounts/signup.py     |  52 +------------
+ accounts/validators.py |  60 +++++++++++++++
+ compare_equiv.py       | 201 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 275 insertions(+), 89 deletions(-)
+
+diff --git a/accounts/profile.py b/accounts/profile.py
+index f46ce0c..932abc4 100644
+--- a/accounts/profile.py
++++ b/accounts/profile.py
+@@ -1,9 +1,14 @@
+ """Profile editing."""
+ 
+ from .errors import ValidationError
++from .validators import (
++    validate_display_name,
++    validate_email,
++    validate_phone,
++    validate_username,
++)
+ 
+ EDITABLE = ("display_name", "email", "phone", "username")
+-RESERVED_USERNAMES = {"admin", "root", "support", "system"}
+ 
+ 
+ def update_profile(profile, changes):
+@@ -17,53 +22,17 @@ def update_profile(profile, changes):
+             raise ValidationError(key, "cannot be changed")
+ 
+         if key == "display_name":
+-            name = " ".join(value.split())
+-            if not name:
+-                raise ValidationError("display_name", "is required")
+-            if len(name) > 50:
+-                raise ValidationError("display_name", "must be at most 50 characters")
+-            if any(not ch.isprintable() for ch in name):
+-                raise ValidationError("display_name", "contains control characters")
+-            updated["display_name"] = name
++            updated["display_name"] = validate_display_name(value)
+ 
+         elif key == "email":
+-            email = value.strip().lower()
+-            if email.count("@") != 1:
+-                raise ValidationError("email", "must contain exactly one @")
+-            local, _, domain = email.partition("@")
+-            if local == "" or domain == "":
+-                raise ValidationError("email", "missing local part or domain")
+-            if any(ch.isspace() for ch in email):
+-                raise ValidationError("email", "must not contain spaces")
+-            parts = domain.split(".")
+-            if len(parts) < 2 or any(part == "" for part in parts):
+-                raise ValidationError("email", "invalid domain")
+-            updated["email"] = email
++            updated["email"] = validate_email(value)
+ 
+         elif key == "phone":
+             if not value.strip():
+                 updated["phone"] = None
+                 continue
+-            digits = value.strip()
+-            prefix = ""
+-            if digits[0] == "+":
+-                prefix, digits = "+", digits[1:]
+-            digits = "".join(ch for ch in digits if ch not in " -.()")
+-            if not (digits.isascii() and digits.isdigit()):
+-                raise ValidationError("phone", "digits only")
+-            if len(digits) < 7 or len(digits) > 15:
+-                raise ValidationError("phone", "must have 7 to 15 digits")
+-            updated["phone"] = prefix + digits
++            updated["phone"] = validate_phone(value)
+ 
+         elif key == "username":
+-            username = value.strip()
+-            if len(username) < 3 or len(username) > 20:
+-                raise ValidationError("username", "must be 3 to 20 characters")
+-            if not (username[0].isascii() and username[0].isalpha()) or not all(
+-                ch.isascii() and (ch.isalnum() or ch == "_") for ch in username
+-            ):
+-                raise ValidationError("username", "letters, digits and _ only, starting with a letter")
+-            if username.lower() in RESERVED_USERNAMES:
+-                raise ValidationError("username", "is reserved")
+-            updated["username"] = username.lower()
++            updated["username"] = validate_username(value)
+     return updated
+diff --git a/accounts/signup.py b/accounts/signup.py
+index 7341b21..23e54c5 100644
+--- a/accounts/signup.py
++++ b/accounts/signup.py
+@@ -1,51 +1,7 @@
+ """New account registration."""
+ 
+-import re
+-
+ from .errors import ValidationError
+-
+-_USERNAME_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+-RESERVED_USERNAMES = {"admin", "root", "support", "system"}
+-
+-
+-def _clean_email(value):
+-    email = value.strip().lower()
+-    if email.count("@") != 1:
+-        raise ValidationError("email", "must contain exactly one @")
+-    local, domain = email.split("@")
+-    if not local or not domain:
+-        raise ValidationError("email", "missing local part or domain")
+-    if any(ch.isspace() for ch in email):
+-        raise ValidationError("email", "must not contain spaces")
+-    if "." not in domain or domain.startswith(".") or domain.endswith(".") or ".." in domain:
+-        raise ValidationError("email", "invalid domain")
+-    return email
+-
+-
+-def _clean_username(value):
+-    username = value.strip()
+-    if not 3 <= len(username) <= 20:
+-        raise ValidationError("username", "must be 3 to 20 characters")
+-    if not _USERNAME_RE.fullmatch(username):
+-        raise ValidationError("username", "letters, digits and _ only, starting with a letter")
+-    username = username.lower()
+-    if username in RESERVED_USERNAMES:
+-        raise ValidationError("username", "is reserved")
+-    return username
+-
+-
+-def _clean_phone(value):
+-    raw = value.strip()
+-    plus = raw.startswith("+")
+-    if plus:
+-        raw = raw[1:]
+-    for sep in " -.()":
+-        raw = raw.replace(sep, "")
+-    if not raw.isdigit() or not raw.isascii():
+-        raise ValidationError("phone", "digits only")
+-    if not 7 <= len(raw) <= 15:
+-        raise ValidationError("phone", "must have 7 to 15 digits")
+-    return ("+" if plus else "") + raw
++from .validators import validate_email, validate_phone, validate_username
+ 
+ 
+ def register(form):
+@@ -59,10 +15,10 @@ def register(form):
+     if len(form["password"]) < 10:
+         raise ValidationError("password", "must be at least 10 characters")
+     account = {
+-        "username": _clean_username(form["username"]),
+-        "email": _clean_email(form["email"]),
++        "username": validate_username(form["username"]),
++        "email": validate_email(form["email"]),
+         "phone": None,
+     }
+     if form.get("phone", "").strip():
+-        account["phone"] = _clean_phone(form["phone"])
++        account["phone"] = validate_phone(form["phone"])
+     return account
+diff --git a/accounts/validators.py b/accounts/validators.py
+new file mode 100644
+index 0000000..7e0e572
+--- /dev/null
++++ b/accounts/validators.py
+@@ -0,0 +1,60 @@
++"""Shared field validators used by signup and profile editing."""
++
++import re
++
++from .errors import ValidationError
++
++RESERVED_USERNAMES = {"admin", "root", "support", "system"}
++
++_USERNAME_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
++
++
++def validate_email(value):
++    email = value.strip().lower()
++    if email.count("@") != 1:
++        raise ValidationError("email", "must contain exactly one @")
++    local, domain = email.split("@")
++    if not local or not domain:
++        raise ValidationError("email", "missing local part or domain")
++    if any(ch.isspace() for ch in email):
++        raise ValidationError("email", "must not contain spaces")
++    if "." not in domain or domain.startswith(".") or domain.endswith(".") or ".." in domain:
++        raise ValidationError("email", "invalid domain")
++    return email
++
++
++def validate_username(value):
++    username = value.strip()
++    if not 3 <= len(username) <= 20:
++        raise ValidationError("username", "must be 3 to 20 characters")
++    if not _USERNAME_RE.fullmatch(username):
++        raise ValidationError("username", "letters, digits and _ only, starting with a letter")
++    username = username.lower()
++    if username in RESERVED_USERNAMES:
++        raise ValidationError("username", "is reserved")
++    return username
++
++
++def validate_phone(value):
++    raw = value.strip()
++    plus = raw.startswith("+")
++    if plus:
++        raw = raw[1:]
++    for sep in " -.()":
++        raw = raw.replace(sep, "")
++    if not raw.isdigit() or not raw.isascii():
++        raise ValidationError("phone", "digits only")
++    if not 7 <= len(raw) <= 15:
++        raise ValidationError("phone", "must have 7 to 15 digits")
++    return ("+" if plus else "") + raw
++
++
++def validate_display_name(value):
++    name = " ".join(value.split())
++    if not name:
++        raise ValidationError("display_name", "is required")
++    if len(name) > 50:
++        raise ValidationError("display_name", "must be at most 50 characters")
++    if any(not ch.isprintable() for ch in name):
++        raise ValidationError("display_name", "contains control characters")
++    return name
+diff --git a/compare_equiv.py b/compare_equiv.py
+new file mode 100644
+index 0000000..67d78d8
+--- /dev/null
++++ b/compare_equiv.py
+@@ -0,0 +1,201 @@
++"""Old-vs-new behaviour equivalence check for the validators refactor.
++
++Run with the ORIGINAL accounts/ checked out:
++    python compare_equiv.py --record
++then with the NEW accounts/ checked out:
++    python compare_equiv.py --check
++"""
++
++import json
++import sys
++import traceback
++
++sys.path.insert(0, ".")
++
++
++def outcome(fn, *args):
++    try:
++        return {"ok": fn(*args)}
++    except Exception as e:
++        remote_tb = getattr(e, "_remote_traceback", None)
++        if remote_tb:
++            return {"tb": traceback.format_exc()}
++        return {"exc": type(e).__name__, "field": getattr(e, "field", None),
++                "message": getattr(e, "message", None)}
++
++
++def scenarios():
++    usernames = [
++        "Ada_L", "ada", "ab", "a", "", "  ", "a" * 21, "a" * 20,
++        "Admin", "admin", "ADMIN", "root", "Support", "system", "admins",
++        "9lives", "_abc", "a-b", "a b", "a.b", "a/b", "éabc", "aébc",
++        "  AdaL  ", "abc_", "A_B_C", "0abc", "ab@cd", "xyz", "Abc",
++        "\tada\t", "aña", "anon", "user1", "USER_9", "a__b",
++    ]
++    emails = [
++        " Ada@Example.org ", "ada@example.org", "ADA@EXAMPLE.ORG",
++        "ada@example", "@example.org", "ada@", "@", "a@.com", "a@com.",
++        "a@co..m", "a @b.com", "a@ b.com", "a@b .com", "", "  ",
++        "a@@b.com", "a@.com.", "a@..com", "a@c.d", "a b@c.com",
++        "ada@ex ample.org", "x@y.zw", "a@com", ".@b.com", "a.@b.com",
++        "tab@b.c\tom", "a\n@b.com", "a@b.c\nom", "verylong" * 10 + "@x.io",
++    ]
++    phones = [
++        "", "  ", "+", "+44 (20) 7946-0018", "555-0100 123", "5550100",
++        "123456", "1234567", "1" * 15, "1" * 16, "+1234567", "+ " ,
++        "12 34 56 7", "(555)0100", "5.5.5.0.1.0.0", "abc1234567",
++        "123-45a", "٤٥٦٧٨٩٠", "５５５０１００", "5550100+", "++12345678",
++        "-1234567", "+123456789012345", "+1234567890123456", "0" * 7,
++        " +1 (555) 010-0100 ",
++    ]
++    display_names = [
++        "Ada", "  Ada   Lovelace ", "", "   ", "a" * 50, "a" * 51,
++        "a\tb", "a\nb", "a\vb", "a\fb", "a\rb", "​", "café",
++        "​", "xaz", "multi   space   name", " Bob ",
++        "\t padded \t", "name", "end\x7f", "x\x80y",
++    ]
++    other_keys = ["password", "unknown", "Password", "", "phone ", " username"]
++    base_profile = {"username": "ada", "email": "ada@example.org", "phone": None,
++                    "display_name": "Ada"}
++
++    from accounts import profile as new_profile
++    from accounts import signup as new_signup
++    from accounts import validators
++
++    for v in usernames:
++        yield ("old_signup._clean_username", "old_signup._clean_username", (v,))
++        yield ("new validators.validate_username", "new_signup._clean_username", (v,))
++    for v in emails:
++        yield ("old_signup._clean_email", "old_signup._clean_email", (v,))
++        yield ("new validators.validate_email", "new_signup._clean_email", (v,))
++    for v in phones:
++        yield ("old_signup._clean_phone", "old_signup._clean_phone", (v,))
++        yield ("new validators.validate_phone", "new_signup._clean_phone", (v,))
++    for v in display_names:
++        yield ("new validators.validate_display_name", "new_profile._clean_display_name", (v,))
++
++    forms = [
++        {"username": "Ada_L", "email": " Ada@Example.org ", "password": "correct horse",
++         "phone": "+44 (20) 7946-0018"},
++        {"username": "Ada_L", "email": " Ada@Example.org ", "password": "correct horse"},
++        {"username": "Ada_L", "email": " Ada@Example.org ", "password": "correct horse",
++         "phone": "   "},
++        {"username": "Ada_L", "email": " Ada@Example.org ", "password": "correct horse",
++         "phone": ""},
++        {"username": "Ada_L", "email": " Ada@Example.org ", "password": "correct horse",
++         "phone": "abc"},
++        {"username": "Ada_L", "email": " Ada@Example.org ", "password": "correct horse",
++         "phone": "123"},
++        {"username": "Ada_L", "email": "ada@example", "password": "correct horse"},
++        {"username": "Admin", "email": "ada@example.org", "password": "correct horse"},
++        {"username": "ab", "email": "ada@example.org", "password": "correct horse"},
++        {"username": "  ", "email": "ada@example.org", "password": "correct horse"},
++        {"username": "ada", "email": "", "password": "correct horse"},
++        {"username": "ada", "email": "ada@example.org", "password": "  "},
++        {"username": "ada", "email": "ada@example.org", "password": "short"},
++        {"username": "ada", "email": "ada@example.org", "password": "1234567890"},
++        {"email": "ada@example.org", "password": "correct horse"},
++        {"username": "ada", "password": "correct horse"},
++        {"username": "ada", "email": "ada@example.org"},
++        {},
++    ]
++    for f in forms:
++        yield ("register", "old_signup.register", (dict(f),))
++        yield ("register", "new_signup.register", (dict(f),))
++
++    changes_list = (
++        [(k, v) for k, v in [("username", u)]] for u in usernames
++    )
++    cases = []
++    for u in usernames:
++        cases.append({"username": u})
++    for e in emails:
++        cases.append({"email": e})
++    for p in phones:
++        cases.append({"phone": p})
++    for d in display_names:
++        cases.append({"display_name": d})
++    for k in other_keys:
++        cases.append({k: "x"})
++    cases.append({"display_name": "Mx", "email": "ada@example.org",
++                  "phone": "5550100", "username": "bob"})
++    cases.append({"bad": "x", "username": "ab"})
++    cases.append({"username": "ab", "bad": "x"})
++    cases.append({"username": "good1", "email": "bad"},
++                 )
++    cases.append({})
++    for c in cases:
++        yield ("update_profile", "old_profile.update_profile", (dict(base_profile), dict(c)))
++        yield ("update_profile", "new_profile.update_profile", (dict(base_profile), dict(c)))
++
++
++def collect():
++    results = {}
++    from accounts import profile, signup, validators
++    import accounts.errors
++
++    funcs = {
++        "old_signup._clean_username": getattr(signup, "_clean_username", None),
++        "old_signup._clean_email": getattr(signup, "_clean_email", None),
++        "old_signup._clean_phone": getattr(signup, "_clean_phone", None),
++        "old_signup.register": signup.register,
++        "old_profile.update_profile": profile.update_profile,
++        "new_signup._clean_username": validators.validate_username,
++        "new_signup._clean_email": validators.validate_email,
++        "new_signup._clean_phone": validators.validate_phone,
++        "new_signup.register": signup.register,
++        "new_profile.update_profile": profile.update_profile,
++        "new_profile._clean_display_name": validators.validate_display_name,
++    }
++    for label, key, args in scenarios():
++        fn = funcs[key]
++        if fn is None:
++            results[f"{label} :: {args!r}"] = {"missing": True}
++            continue
++        results[f"{label} :: {args!r}"] = outcome(fn, *args)
++    return results
++
++
++def main():
++    mode = sys.argv[1]
++    path = sys.argv[2] if len(sys.argv) > 2 else "expected_results.json"
++    if mode == "--record":
++        data = collect()
++        with open(path, "w") as fh:
++            json.dump(data, fh, indent=1, default=str, ensure_ascii=False)
++        print(f"recorded {len(data)} results to {path}")
++    elif mode == "--check":
++        with open(path) as fh:
++            expected = json.load(fh)
++        actual = collect()
++        mismatches = 0
++        mapped = {}
++        for key, exp in expected.items():
++            act = actual.get(key, "<missing>")
++            norm_act = actual.get(key)
++            if key.startswith("old_signup._clean_username"):
++                new_key = key.replace("old_signup._clean_username", "new_signup._clean_username")
++            elif key.startswith("old_signup._clean_email"):
++                new_key = key.replace("old_signup._clean_email", "new_signup._clean_email")
++            elif key.startswith("old_signup._clean_phone"):
++                new_key = key.replace("old_signup._clean_phone", "new_signup._clean_phone")
++            elif key.startswith("old_signup.register"):
++                new_key = key.replace("old_signup.register", "new_signup.register")
++            elif key.startswith("old_profile.update_profile"):
++                new_key = key.replace("old_profile.update_profile", "new_profile.update_profile")
++            else:
++                new_key = None
++            if new_key is None:
++                continue
++            act = actual.get(new_key, "<missing>")
++            if act != exp:
++                mismatches += 1
++                print(f"MISMATCH:\n  old {key}\n    -> {exp}\n  new {new_key}\n    -> {act}")
++        print(f"\nold-vs-new mismatches: {mismatches}")
++    else:
++        print("usage: compare_equiv.py --record|--check [path]", file=sys.stderr)
++        sys.exit(2)
++
++
++if __name__ == "__main__":
++    main()

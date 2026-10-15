@@ -1,0 +1,77 @@
+TAP version 13
+# Subtest: exact versions
+ok 1 - exact versions
+  ---
+  duration_ms: 1.172625
+  type: 'test'
+  ...
+# Subtest: comparison operators with full versions
+ok 2 - comparison operators with full versions
+  ---
+  duration_ms: 0.21125
+  type: 'test'
+  ...
+# Subtest: comparator sets are ANDed
+ok 3 - comparator sets are ANDed
+  ---
+  duration_ms: 0.109584
+  type: 'test'
+  ...
+# Subtest: comparison operators with partial versions
+ok 4 - comparison operators with partial versions
+  ---
+  duration_ms: 0.134583
+  type: 'test'
+  ...
+# Subtest: x-ranges and missing parts
+ok 5 - x-ranges and missing parts
+  ---
+  duration_ms: 0.142667
+  type: 'test'
+  ...
+# Subtest: tilde
+ok 6 - tilde
+  ---
+  duration_ms: 0.652083
+  type: 'test'
+  ...
+# Subtest: caret
+ok 7 - caret
+  ---
+  duration_ms: 0.144042
+  type: 'test'
+  ...
+# Subtest: hyphen ranges
+ok 8 - hyphen ranges
+  ---
+  duration_ms: 0.159209
+  type: 'test'
+  ...
+# Subtest: alternatives with ||
+ok 9 - alternatives with ||
+  ---
+  duration_ms: 0.118917
+  type: 'test'
+  ...
+# Subtest: invalid versions throw TypeError
+ok 10 - invalid versions throw TypeError
+  ---
+  duration_ms: 0.332084
+  type: 'test'
+  ...
+# Subtest: invalid ranges throw TypeError
+ok 11 - invalid ranges throw TypeError
+  ---
+  duration_ms: 0.257708
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 93.022208
+

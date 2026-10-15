@@ -1,0 +1,398 @@
+ shop/orders.py       | 127 +++++++++++++++++++++++++++---
+ tests/test_orders.py | 216 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 331 insertions(+), 12 deletions(-)
+
+diff --git a/shop/orders.py b/shop/orders.py
+index e1abc8f..6b93f15 100644
+--- a/shop/orders.py
++++ b/shop/orders.py
+@@ -1,40 +1,145 @@
+ """Orders and their lifecycle."""
+ 
++from datetime import datetime, timedelta, timezone
++from typing import NamedTuple
++
++
++class Transition(NamedTuple):
++    """One successful lifecycle event, as recorded in `Order.history`."""
++
++    event: str
++    from_state: str
++    to_state: str
++    at: datetime
++
++
++class InvalidTransition(Exception):
++    """An event that is not allowed from the order's current status."""
++
++    def __init__(self, state, event):
++        super().__init__(f"cannot {event} an order in {state}")
++        self.state = state
++        self.event = event
++
++
++# (event, from_status) -> to_status, per docs/ORDER_LIFECYCLE.md.
++_TRANSITIONS = {
++    ("pay", "pending"): "paid",
++    ("pack", "paid"): "packed",
++    ("ship", "packed"): "shipped",
++    ("deliver", "shipped"): "delivered",
++    ("cancel", "pending"): "cancelled",
++    ("cancel", "paid"): "cancelled",
++    ("cancel", "packed"): "cancelled",
++    ("refund", "paid"): "refunded",
++    ("refund", "packed"): "refunded",
++    ("refund", "delivered"): "refunded",
++}
++
++_TERMINAL_STATUSES = frozenset({"cancelled", "refunded"})
++_REFUND_WINDOW = timedelta(days=30)
++
++
++def _utcnow():
++    return datetime.now(timezone.utc)
++
++
++def _required_text(label, value):
++    """Reject non-strings and empty or whitespace-only strings."""
++    if not isinstance(value, str) or not value.strip():
++        raise ValueError(f"{label} must be a non-empty string")
++    return value.strip()
++
+ 
+ class Order:
+     """A customer order.
+ 
+-    `items` is a list of (sku, quantity, unit_price_cents) tuples.
++    `items` is a list of (sku, quantity, unit_price_cents) tuples. `clock` is a
++    zero-argument callable returning the current datetime; every timestamp the
++    order records comes from it.
+     """
+ 
+-    def __init__(self, order_id, items):
++    def __init__(self, order_id, items, clock=None):
+         self.order_id = order_id
+         self.items = list(items)
+         self.status = "pending"
+         self.tracking_number = None
+         self.cancel_reason = None
++        self.delivered_at = None
++        self.history = []
++        self._clock = _utcnow if clock is None else clock
+ 
+     def total_cents(self):
+         return sum(quantity * price for _sku, quantity, price in self.items)
+ 
+-    # TODO: none of these check the current status (see docs/ORDER_LIFECYCLE.md).
++    @property
++    def is_terminal(self):
++        return self.status in _TERMINAL_STATUSES
++
++    def can(self, event):
++        """Whether `event` is allowed right now, ignoring ship/cancel arguments."""
++        return self._next_state(event) is not None
++
++    def allowed_events(self):
++        """The event names allowed right now, sorted alphabetically."""
++        return sorted(
++            event
++            for event, from_state in _TRANSITIONS
++            if from_state == self.status and self.can(event)
++        )
++
++    # Each lifecycle method checks the transition table first (InvalidTransition),
++    # then its arguments (ValueError). A call that raises changes nothing.
+ 
+     def pay(self):
+-        self.status = "paid"
++        self._fire("pay")
+ 
+     def pack(self):
+-        self.status = "packed"
++        self._fire("pack")
+ 
+     def ship(self, tracking_number):
+-        self.tracking_number = tracking_number
+-        self.status = "shipped"
++        to_state = self._require_transition("ship")
++        tracking_number = _required_text("tracking number", tracking_number)
++        self._commit("ship", to_state, tracking_number=tracking_number)
+ 
+     def deliver(self):
+-        self.status = "delivered"
++        self._fire("deliver")
+ 
+     def cancel(self, reason):
+-        self.cancel_reason = reason
+-        self.status = "cancelled"
++        to_state = self._require_transition("cancel")
++        reason = _required_text("reason", reason)
++        self._commit("cancel", to_state, cancel_reason=reason)
+ 
+     def refund(self):
+-        self.status = "refunded"
++        self._fire("refund")
++
++    def _next_state(self, event):
++        """The status `event` would move to, or None if it is not allowed."""
++        to_state = _TRANSITIONS.get((event, self.status))
++        if (
++            to_state is not None
++            and event == "refund"
++            and self.status == "delivered"
++            and self._clock() - self.delivered_at > _REFUND_WINDOW
++        ):
++            return None
++        return to_state
++
++    def _require_transition(self, event):
++        to_state = self._next_state(event)
++        if to_state is None:
++            raise InvalidTransition(self.status, event)
++        return to_state
++
++    def _fire(self, event):
++        self._commit(event, self._require_transition(event))
++
++    def _commit(self, event, to_state, **attributes):
++        # Everything that can raise happens before the first mutation.
++        at = self._clock()
++        if event == "deliver":
++            self.delivered_at = at
++        for name, value in attributes.items():
++            setattr(self, name, value)
++        self.history.append(Transition(event, self.status, to_state, at))
++        self.status = to_state
+diff --git a/tests/test_orders.py b/tests/test_orders.py
+index 6b5c44f..14bf664 100644
+--- a/tests/test_orders.py
++++ b/tests/test_orders.py
+@@ -1,6 +1,7 @@
+ import unittest
++from datetime import datetime, timedelta, timezone
+ 
+-from shop.orders import Order
++from shop.orders import InvalidTransition, Order, Transition
+ from shop.reports import open_value_cents, status_counts
+ 
+ 
+@@ -21,6 +22,219 @@ class OrderTest(unittest.TestCase):
+         self.assertEqual(order.cancel_reason, "customer request")
+ 
+ 
++class FakeClock:
++    """A configurable stand-in for the order's clock."""
++
++    def __init__(self, start):
++        self.now = start
++
++    def __call__(self):
++        return self.now
++
++    def advance(self, delta):
++        self.now += delta
++
++
++class StateMachineTest(unittest.TestCase):
++    def make_delivered(self, clock):
++        order = Order("D1", [], clock=clock)
++        order.pay()
++        order.pack()
++        order.ship("1Z9")
++        order.deliver()
++        return order
++
++    def test_default_clock_is_aware_utc(self):
++        order = Order("A1", [])
++        order.pay()
++        stamp = order.history[0].at
++        self.assertIsNotNone(stamp.tzinfo)
++        self.assertEqual(stamp.utcoffset(), timedelta(0))
++
++    def test_history_records_every_transition(self):
++        start = datetime(2026, 10, 1, 12, 0, tzinfo=timezone.utc)
++        clock = FakeClock(start)
++        order = Order("A1", [("PEN", 2, 150)], clock=clock)
++        self.assertEqual(order.history, [])
++        self.assertIsNone(order.delivered_at)
++
++        clock.advance(timedelta(hours=1))
++        order.pay()
++        self.assertEqual(order.history, [Transition("pay", "pending", "paid", start + timedelta(hours=1))])
++
++        clock.advance(timedelta(days=1))
++        order.pack()
++        clock.advance(timedelta(days=1))
++        order.ship("1Z999")
++        clock.advance(timedelta(days=2))
++        order.deliver()
++
++        self.assertEqual(
++            order.history,
++            [
++                Transition("pay", "pending", "paid", start + timedelta(hours=1)),
++                Transition("pack", "paid", "packed", start + timedelta(hours=1, days=1)),
++                Transition("ship", "packed", "shipped", start + timedelta(hours=1, days=2)),
++                Transition("deliver", "shipped", "delivered", start + timedelta(hours=1, days=4)),
++            ],
++        )
++        self.assertEqual(order.delivered_at, start + timedelta(hours=1, days=4))
++
++    def test_disallowed_event_raises_and_changes_nothing(self):
++        order = Order("A1", [])
++        with self.assertRaises(InvalidTransition) as ctx:
++            order.pack()
++        self.assertEqual((ctx.exception.state, ctx.exception.event), ("pending", "pack"))
++        self.assertEqual(order.status, "pending")
++        self.assertEqual(order.history, [])
++
++        with self.assertRaises(InvalidTransition) as ctx:
++            order.refund()
++        self.assertEqual((ctx.exception.state, ctx.exception.event), ("pending", "refund"))
++        self.assertEqual(order.status, "pending")
++
++    def test_terminal_states_allow_nothing(self):
++        cancelled = Order("A1", [])
++        cancelled.cancel("customer request")
++        self.assertTrue(cancelled.is_terminal)
++        self.assertEqual(cancelled.allowed_events(), [])
++        self.assertFalse(cancelled.can("pay"))
++        with self.assertRaises(InvalidTransition) as ctx:
++            cancelled.pay()
++        self.assertEqual((ctx.exception.state, ctx.exception.event), ("cancelled", "pay"))
++
++        refunded = Order("A2", [])
++        refunded.pay()
++        refunded.refund()
++        self.assertTrue(refunded.is_terminal)
++        with self.assertRaises(InvalidTransition) as ctx:
++            refunded.refund()
++        self.assertEqual((ctx.exception.state, ctx.exception.event), ("refunded", "refund"))
++        self.assertEqual(refunded.status, "refunded")
++
++    def test_shipped_orders_cannot_be_cancelled_or_refunded(self):
++        order = Order("A1", [])
++        order.pay()
++        order.pack()
++        order.ship("1Z999")
++        for event, call in (
++            ("cancel", lambda: order.cancel("customer request")),
++            ("refund", order.refund),
++        ):
++            with self.assertRaises(InvalidTransition) as ctx:
++                call()
++            self.assertEqual((ctx.exception.state, ctx.exception.event), ("shipped", event))
++        self.assertEqual(order.status, "shipped")
++
++    def test_status_check_precedes_argument_validation(self):
++        pending = Order("A1", [])  # ship is disallowed from pending
++        with self.assertRaises(InvalidTransition):
++            pending.ship(None)
++        self.assertEqual(pending.status, "pending")
++        self.assertIsNone(pending.tracking_number)
++        self.assertEqual(pending.history, [])
++
++        delivered = self.make_delivered(FakeClock(datetime(2026, 10, 1, tzinfo=timezone.utc)))
++        with self.assertRaises(InvalidTransition):  # cancel is disallowed from delivered
++            delivered.cancel(None)
++        self.assertEqual(delivered.status, "delivered")
++        self.assertIsNone(delivered.cancel_reason)
++        self.assertEqual(len(delivered.history), 4)
++
++    def test_ship_requires_a_tracking_number(self):
++        order = Order("A1", [])
++        order.pay()
++        order.pack()
++        for bad in (None, 5, "", "   "):
++            with self.assertRaises(ValueError):
++                order.ship(bad)
++            self.assertEqual(order.status, "packed")
++            self.assertIsNone(order.tracking_number)
++            self.assertEqual(len(order.history), 2)
++        order.ship("  1Z999  ")
++        self.assertEqual(order.tracking_number, "1Z999")
++        self.assertEqual(order.status, "shipped")
++
++    def test_cancel_requires_a_reason(self):
++        order = Order("A1", [])
++        for bad in (None, 5, "", " \t "):
++            with self.assertRaises(ValueError):
++                order.cancel(bad)
++            self.assertEqual(order.status, "pending")
++            self.assertIsNone(order.cancel_reason)
++            self.assertEqual(order.history, [])
++        order.cancel(" customer request ")
++        self.assertEqual(order.cancel_reason, "customer request")
++        self.assertEqual(order.status, "cancelled")
++
++    def test_refund_from_delivered_within_30_days(self):
++        clock = FakeClock(datetime(2026, 10, 1, tzinfo=timezone.utc))
++        order = self.make_delivered(clock)
++        clock.advance(timedelta(days=29, hours=23))
++        self.assertTrue(order.can("refund"))
++        order.refund()
++        self.assertEqual(order.status, "refunded")
++        self.assertTrue(order.is_terminal)
++
++    def test_refund_allowed_at_exactly_30_days(self):
++        clock = FakeClock(datetime(2026, 10, 1, tzinfo=timezone.utc))
++        order = self.make_delivered(clock)
++        clock.advance(timedelta(days=30))
++        self.assertTrue(order.can("refund"))
++        self.assertEqual(order.allowed_events(), ["refund"])
++        order.refund()
++        self.assertEqual(order.status, "refunded")
++
++    def test_refund_rejected_after_30_days(self):
++        clock = FakeClock(datetime(2026, 10, 1, tzinfo=timezone.utc))
++        order = self.make_delivered(clock)
++        clock.advance(timedelta(days=30) + timedelta(microseconds=1))
++        self.assertFalse(order.can("refund"))
++        self.assertEqual(order.allowed_events(), [])
++        with self.assertRaises(InvalidTransition) as ctx:
++            order.refund()
++        self.assertEqual((ctx.exception.state, ctx.exception.event), ("delivered", "refund"))
++        self.assertEqual(order.status, "delivered")
++        self.assertEqual(len(order.history), 4)
++
++    def test_refund_without_delivery(self):
++        order = Order("A1", [])
++        order.pay()
++        order.refund()
++        self.assertEqual(order.status, "refunded")
++
++        order = Order("A2", [])
++        order.pay()
++        order.pack()
++        order.refund()
++        self.assertEqual(order.status, "refunded")
++
++    def test_can_and_allowed_events(self):
++        clock = FakeClock(datetime(2026, 10, 1, tzinfo=timezone.utc))
++        order = Order("A1", [], clock=clock)
++        self.assertFalse(order.is_terminal)
++        self.assertEqual(order.allowed_events(), ["cancel", "pay"])
++        order.pay()
++        self.assertEqual(order.allowed_events(), ["cancel", "pack", "refund"])
++        order.pack()
++        self.assertEqual(order.allowed_events(), ["cancel", "refund", "ship"])
++        order.ship("1Z999")
++        self.assertEqual(order.allowed_events(), ["deliver"])
++        self.assertFalse(order.can("cancel"))
++        order.deliver()
++        self.assertEqual(order.allowed_events(), ["refund"])
++        self.assertFalse(order.can("deliver"))
++        self.assertFalse(order.can("bogus"))
++
++    def test_can_ignores_ship_and_cancel_arguments(self):
++        order = Order("A1", [])
++        self.assertFalse(order.can("ship"))
++        order.pay()
++        order.pack()
++        self.assertTrue(order.can("ship"))
++        self.assertTrue(order.can("cancel"))
++
++
+ class ReportsTest(unittest.TestCase):
+     def test_counts_and_open_value(self):
+         a = Order("A1", [("PEN", 2, 150)])

@@ -1,0 +1,264 @@
+ __pycache__/urlbits.cpython-311.pyc | Bin 0 -> 5942 bytes
+ test_urlbits.py                     | 122 ++++++++++++++++++++++++++++++++++++
+ urlbits.py                          | 117 +++++++++++++++++++++++++++++++---
+ 3 files changed, 229 insertions(+), 10 deletions(-)
+
+diff --git a/__pycache__/urlbits.cpython-311.pyc b/__pycache__/urlbits.cpython-311.pyc
+new file mode 100644
+index 0000000..de73193
+Binary files /dev/null and b/__pycache__/urlbits.cpython-311.pyc differ
+diff --git a/test_urlbits.py b/test_urlbits.py
+new file mode 100644
+index 0000000..2716fa7
+--- /dev/null
++++ b/test_urlbits.py
+@@ -0,0 +1,122 @@
++"""Spec tests for urlbits.parse_query / build_query.
++
++Run with an isolated interpreter:
++    python3 -I test_urlbits.py
++"""
++import os
++import sys
++
++sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
++from urlbits import parse_query, build_query
++
++passed = 0
++failed = 0
++
++
++def check(label, cond):
++    global passed, failed
++    if cond:
++        passed += 1
++    else:
++        failed += 1
++        print("FAIL:", label)
++
++
++# ---- parse_query: structure ----
++check("empty string", parse_query("") == {})
++check("only question mark", parse_query("?") == {})
++check("leading ? ignored", parse_query("?a=1") == {"a": ["1"]})
++check(
++    "spec example",
++    parse_query("a=1&flag&a=2") == {"a": ["1", "2"], "flag": [None]},
++)
++check(
++    "key order is first appearance",
++    list(parse_query("b=1&a=2&b=3").keys()) == ["b", "a"],
++)
++check("empty value x=", parse_query("x=") == {"x": [""]})
++check("bare key vs empty value", parse_query("x&y=") == {"x": [None], "y": [""]})
++check(
++    "empty segments skipped",
++    parse_query("&&a=1&&&b=2&") == {"a": ["1"], "b": ["2"]},
++)
++check("split on first = only", parse_query("x=a=b") == {"x": ["a=b"]})
++
++# ---- parse_query: decoding ----
++check("plus becomes space", parse_query("q=a+b") == {"q": ["a b"]})
++check("uppercase hex", parse_query("q=a%20b") == {"q": ["a b"]})
++check("lowercase hex", parse_query("q=a%2fb") == {"q": ["a/b"]})
++check(
++    "utf-8 sequence",
++    parse_query("name=%D0%BA%D0%BE%D1%82") == {"name": ["кот"]},
++)
++check("lone percent kept", parse_query("x=100%") == {"x": ["100%"]})
++check("non-hex escape kept", parse_query("x=%zz") == {"x": ["%zz"]})
++check("truncated escape kept", parse_query("x=%2") == {"x": ["%2"]})
++check("trailing percent kept", parse_query("x=%") == {"x": ["%"]})
++check("invalid utf-8 becomes U+FFFD", parse_query("x=%C3") == {"x": ["�"]})
++check("keys decoded too", parse_query("a+b=c+d") == {"a b": ["c d"]})
++check(
++    "decoded keys merge into one list",
++    parse_query("a+b=1&a%20b=2") == {"a b": ["1", "2"]},
++)
++
++# ---- build_query: output ----
++check("bare key", build_query({"flag": [None]}) == "flag")
++check("empty value", build_query({"x": [""]}) == "x=")
++check("plain pair", build_query({"a": ["1"]}) == "a=1")
++check(
++    "mapping and list order",
++    build_query({"b": ["1"], "a": ["2", "3"]}) == "b=1&a=2&a=3",
++)
++check(
++    "empty list writes nothing",
++    build_query({"a": [], "b": ["1"]}) == "b=1",
++)
++check("scalar str accepted", build_query({"a": "1"}) == "a=1")
++check("scalar None accepted", build_query({"flag": None}) == "flag")
++check(
++    "space plus and ampersand",
++    build_query({"q": "a b&c"}) == "q=a+b%26c",
++)
++check("uppercase hex", build_query({"x": "/"}) == "x=%2F")
++check(
++    "unreserved untouched",
++    build_query({"k": "AZaz09-._~"}) == "k=AZaz09-._~",
++)
++check(
++    "utf-8 percent-encoded",
++    build_query({"name": "кот"}) == "name=%D0%BA%D0%BE%D1%82",
++)
++check("key encoded", build_query({"a b": ["1"]}) == "a+b=1")
++check("no leading ?", not build_query({"a": ["1"]}).startswith("?"))
++
++# ---- build_query: TypeError ----
++for bad, label in [(42, "int"), (3.5, "float"), (b"x", "bytes"), (True, "bool")]:
++    try:
++        build_query({"a": [bad]})
++        check("TypeError for list item " + label, False)
++    except TypeError:
++        check("TypeError for list item " + label, True)
++    try:
++        build_query({"a": bad})
++        check("TypeError for scalar " + label, False)
++    except TypeError:
++        check("TypeError for scalar " + label, True)
++
++# ---- round-trips ----
++p = {"a": ["1", "2"], "flag": [None], "x": [""], "q": ["a b&c"]}
++check("parse(build(p)) == p", parse_query(build_query(p)) == p)
++
++s = "b=1&a=2&a=3&flag&x=&q=a+b%26c"
++check("build(parse(s)) == s", build_query(parse_query(s)) == s)
++
++s_utf8 = "name=%D0%BA%D0%BE%D1%82&flag"
++check(
++    "utf-8 round-trip",
++    build_query(parse_query(s_utf8)) == s_utf8,
++)
++
++print()
++print(passed, "passed,", failed, "failed")
++raise SystemExit(1 if failed else 0)
+diff --git a/urlbits.py b/urlbits.py
+index aed0ed5..3835985 100644
+--- a/urlbits.py
++++ b/urlbits.py
+@@ -1,15 +1,112 @@
+-"""URL helpers for the link checker."""
++"""Lossless URL query-string parsing and building.
+ 
++Unlike urllib.parse, this preserves bare keys (flag -> None), empty
++values (x= -> ""), key order, and repeated-key order, so callers like a
++link checker can rewrite a query string without changing anything they
++don't intend to.
++"""
+ 
+-def split_url(url):
+-    """Split a URL into (base, query, fragment).
++_HEX = frozenset("0123456789abcdefABCDEF")
++_UNRESERVED = frozenset(
++    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
++)
+ 
+-    The query is the text after the first "?" (without the "?") and the
+-    fragment is the text after the first "#". Missing parts are "".
+ 
+-    >>> split_url("https://x.test/a?b=1#top")
+-    ('https://x.test/a', 'b=1', 'top')
++def _decode_piece(text: str) -> str:
++    """Percent-decode one query key/value.
++
++    Valid %XX triples are raw bytes through the UTF-8 decoder; everything
++    else stays exactly as typed. "+" becomes a space. A "%" without two
++    trailing hex digits ("100%", "%zz", a trailing "%2") is kept as-is.
++    """
++    parts: list[bytes | str] = []
++    i = 0
++    n = len(text)
++    while i < n:
++        ch = text[i]
++        if (
++            ch == "%"
++            and i + 2 < n
++            and text[i + 1] in _HEX
++            and text[i + 2] in _HEX
++        ):
++            parts.append(int(text[i + 1 : i + 3], 16).to_bytes(1, "big"))
++            i += 3
++        else:
++            parts.append(" " if ch == "+" else ch)
++            i += 1
++
++    out: list[str] = []
++    buf = bytearray()
++
++    def flush() -> None:
++        if buf:
++            out.append(bytes(buf).decode("utf-8", "replace"))
++            buf.clear()
++
++    for part in parts:
++        if isinstance(part, bytes):
++            buf += part
++        else:
++            flush()
++            out.append(part)
++    flush()
++    return "".join(out)
++
++
++def _encode_piece(text: str) -> str:
++    """Percent-encode one query key/value (build_query's encoding)."""
++    out: list[str] = []
++    for byte in text.encode("utf-8"):
++        ch = chr(byte)
++        if ch in _UNRESERVED:
++            out.append(ch)
++        elif byte == 0x20:
++            out.append("+")
++        else:
++            out.append("%%%02X" % byte)
++    return "".join(out)
++
++
++def parse_query(query: str) -> dict[str, list[str | None]]:
++    """Parse a query string into an insertion-ordered dict of value lists.
++
++    A leading "?" is ignored. Bare keys map to None, "key=" maps to "".
++    """
++    result: dict[str, list[str | None]] = {}
++    if query.startswith("?"):
++        query = query[1:]
++    for segment in query.split("&"):
++        if not segment:
++            continue
++        raw_key, sep, raw_value = segment.partition("=")
++        key = _decode_piece(raw_key)
++        value = _decode_piece(raw_value) if sep else None
++        result.setdefault(key, []).append(value)
++    return result
++
++
++def build_query(params: dict[str, list[str | None] | str | None]) -> str:
++    """Build a query string from parse_query-shaped params.
++
++    Keys keep mapping order, list items keep list order; an empty list
++    writes nothing. None values become bare keys. Values (and list items)
++    that are neither str nor None raise TypeError.
+     """
+-    base, _, fragment = url.partition("#")
+-    base, _, query = base.partition("?")
+-    return base, query, fragment
++    pairs: list[str] = []
++    for key, value in params.items():
++        if not isinstance(key, str):
++            raise TypeError(f"query key must be str, got {type(key).__name__}")
++        encoded_key = _encode_piece(key)
++        values = value if isinstance(value, list) else [value]
++        for item in values:
++            if item is None:
++                pairs.append(encoded_key)
++            elif isinstance(item, str):
++                pairs.append(f"{encoded_key}={_encode_piece(item)}")
++            else:
++                raise TypeError(
++                    f"query value for {key!r} must be str or None, "
++                    f"got {type(item).__name__}"
++                )
++    return "&".join(pairs)

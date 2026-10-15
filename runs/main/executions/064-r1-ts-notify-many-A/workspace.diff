@@ -1,0 +1,50 @@
+ src/notifier.ts | 35 ++++++++++++++++++++++++++++-------
+ 1 file changed, 28 insertions(+), 7 deletions(-)
+
+diff --git a/src/notifier.ts b/src/notifier.ts
+index ec3c84d..0610730 100644
+--- a/src/notifier.ts
++++ b/src/notifier.ts
+@@ -19,14 +19,35 @@ export class Notifier {
+   }
+ 
+   /**
+-   * Send `message` to one recipient. The recipient is trimmed before sending.
+-   * Throws TypeError if the recipient is empty or only whitespace.
++   * Send `message` to one or more recipients, each trimmed before sending.
++   * Throws TypeError if any recipient is empty or only whitespace; for an
++   * array the check runs before anything is sent, so a bad list never
++   * results in a partial send. Duplicate recipients (matching
++   * case-insensitively after trimming) are sent once, using the first
++   * spelling. Returns how many messages were actually sent.
+    */
+-  notify(recipient: string, message: string): void {
+-    const to = recipient.trim();
+-    if (to === "") {
+-      throw new TypeError("recipient must be a non-empty string");
++  notify(recipients: string | readonly string[], message: string): number {
++    const list = typeof recipients === "string" ? [recipients] : recipients;
++    const trimmed = list.map((recipient) => {
++      const to = recipient.trim();
++      if (to === "") {
++        throw new TypeError("recipient must be a non-empty string");
++      }
++      return to;
++    });
++    if (typeof recipients === "string") {
++      this.transport.send(trimmed[0], message);
++      return 1;
+     }
+-    this.transport.send(to, message);
++    const seen = new Set<string>();
++    let sent = 0;
++    for (const to of trimmed) {
++      const key = to.toLowerCase();
++      if (seen.has(key)) continue;
++      seen.add(key);
++      this.transport.send(to, message);
++      sent += 1;
++    }
++    return sent;
+   }
+ }

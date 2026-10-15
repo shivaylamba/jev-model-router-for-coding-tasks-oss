@@ -1,0 +1,52 @@
+ __pycache__/kv.cpython-311.pyc | Bin 0 -> 2263 bytes
+ kv.py                          |  36 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 36 insertions(+)
+
+diff --git a/__pycache__/kv.cpython-311.pyc b/__pycache__/kv.cpython-311.pyc
+new file mode 100644
+index 0000000..60acc2e
+Binary files /dev/null and b/__pycache__/kv.cpython-311.pyc differ
+diff --git a/kv.py b/kv.py
+index f407191..ef76cf4 100644
+--- a/kv.py
++++ b/kv.py
+@@ -8,3 +8,39 @@ def format_kv(pairs):
+     'region=eu-west; replicas=3'
+     """
+     return "; ".join(f"{key}={value}" for key, value in pairs.items())
++
++
++def parse_kv(text):
++    """Parse a `key=value; key=value` string into a dict of strings.
++
++    Segments are split on ";"; empty segments are skipped. Each segment is
++    split on its first "=" only, keys and values are stripped, and repeated
++    keys keep the last value.
++
++    >>> parse_kv("a=1; b = two")
++    {'a': '1', 'b': 'two'}
++    >>> parse_kv("")
++    {}
++    >>> parse_kv("query=x=1; a=")
++    {'query': 'x=1', 'a': ''}
++    >>> parse_kv("a")
++    Traceback (most recent call last):
++    ...
++    ValueError: segment 'a' has no '='
++    >>> parse_kv(" = 2")
++    Traceback (most recent call last):
++    ...
++    ValueError: segment ' = 2' has an empty key
++    """
++    pairs = {}
++    for segment in text.split(";"):
++        if not segment.strip():
++            continue
++        if "=" not in segment:
++            raise ValueError(f"segment {segment!r} has no '='")
++        key, value = segment.split("=", 1)
++        key = key.strip()
++        if not key:
++            raise ValueError(f"segment {segment!r} has an empty key")
++        pairs[key] = value.strip()
++    return pairs

@@ -1,0 +1,102 @@
+ __pycache__/orders.cpython-311.pyc              | Bin 0 -> 1142 bytes
+ __pycache__/shipping.cpython-311.pyc            | Bin 0 -> 2379 bytes
+ orders.py                                       |   4 +--
+ shipping.py                                     |  37 +++++++++++++++++++-----
+ tests/__pycache__/__init__.cpython-311.pyc      | Bin 0 -> 206 bytes
+ tests/__pycache__/test_shipping.cpython-311.pyc | Bin 0 -> 3198 bytes
+ 6 files changed, 32 insertions(+), 9 deletions(-)
+
+diff --git a/__pycache__/orders.cpython-311.pyc b/__pycache__/orders.cpython-311.pyc
+new file mode 100644
+index 0000000..8ee2746
+Binary files /dev/null and b/__pycache__/orders.cpython-311.pyc differ
+diff --git a/__pycache__/shipping.cpython-311.pyc b/__pycache__/shipping.cpython-311.pyc
+new file mode 100644
+index 0000000..bfebdee
+Binary files /dev/null and b/__pycache__/shipping.cpython-311.pyc differ
+diff --git a/orders.py b/orders.py
+index 02777a4..7fa5b2f 100644
+--- a/orders.py
++++ b/orders.py
+@@ -1,11 +1,11 @@
+ """Order-level helpers."""
+ 
+-from shipping import calc
++from shipping import shipping_cost
+ 
+ 
+ def parcel_costs(parcels, zone, express=False):
+     """Shipping cost of each parcel, given as a list of weights in kg."""
+-    return [calc(weight, zone, express) for weight in parcels]
++    return [shipping_cost(weight, zone, express) for weight in parcels]
+ 
+ 
+ def order_shipping(parcels, zone, express=False):
+diff --git a/shipping.py b/shipping.py
+index 0d14233..4789765 100644
+--- a/shipping.py
++++ b/shipping.py
+@@ -1,25 +1,48 @@
+ """Shipping prices for a single parcel."""
+ 
+ import math
++import warnings
+ 
++BASE_FEE = 4.99
++PER_KG_RATE = 1.25
++WEIGHT_STEP_KG = 0.5
++ZONE_MULTIPLIERS = {1: 1.0, 2: 1.4, 3: 1.9}
++EXPRESS_MULTIPLIER = 1.5
++MAX_COST = 75.0
+ 
+-def calc(weight_kg, zone, express=False):
++
++def shipping_cost(weight_kg, zone, express=False):
+     """Return the shipping cost in dollars for one parcel.
+ 
+     The weight is rounded up to the next half kilogram before pricing.
+     Zones are 1 (local), 2 (regional) and 3 (national). Express
+     delivery costs extra, and no parcel costs more than the cap.
+ 
++    Prices are derived from the module-level pricing constants, which are
++    read on every call: changing BASE_FEE, PER_KG_RATE, WEIGHT_STEP_KG,
++    a ZONE_MULTIPLIERS entry, EXPRESS_MULTIPLIER or MAX_COST changes the
++    result. The set of valid zones is ZONE_MULTIPLIERS' key set.
++
+     Raises ValueError for a weight that is not positive or an unknown zone.
+     """
+     if weight_kg <= 0:
+         raise ValueError("weight must be positive")
+-    if zone not in (1, 2, 3):
++    if zone not in ZONE_MULTIPLIERS:
+         raise ValueError(f"unknown zone {zone!r}")
+-    billable = math.ceil(weight_kg / 0.5) * 0.5
+-    cost = 4.99 + billable * 1.25 * {1: 1.0, 2: 1.4, 3: 1.9}[zone]
++    billable = math.ceil(weight_kg / WEIGHT_STEP_KG) * WEIGHT_STEP_KG
++    cost = BASE_FEE + billable * PER_KG_RATE * ZONE_MULTIPLIERS[zone]
+     if express:
+-        cost = cost * 1.5
+-    if cost > 75.0:
+-        cost = 75.0
++        cost = cost * EXPRESS_MULTIPLIER
++    if cost > MAX_COST:
++        cost = MAX_COST
+     return round(cost, 2)
++
++
++def calc(weight_kg, zone, express=False):
++    """Deprecated alias for shipping_cost(); use that instead."""
++    warnings.warn(
++        "shipping.calc() is deprecated; use shipping.shipping_cost()",
++        DeprecationWarning,
++        stacklevel=2,
++    )
++    return shipping_cost(weight_kg, zone, express)
+diff --git a/tests/__pycache__/__init__.cpython-311.pyc b/tests/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..e0af179
+Binary files /dev/null and b/tests/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/tests/__pycache__/test_shipping.cpython-311.pyc b/tests/__pycache__/test_shipping.cpython-311.pyc
+new file mode 100644
+index 0000000..d789215
+Binary files /dev/null and b/tests/__pycache__/test_shipping.cpython-311.pyc differ

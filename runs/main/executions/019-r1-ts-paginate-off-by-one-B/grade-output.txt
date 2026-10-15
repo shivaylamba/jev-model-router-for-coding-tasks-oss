@@ -1,0 +1,65 @@
+TAP version 13
+# Subtest: first page starts at the first item
+ok 1 - first page starts at the first item
+  ---
+  duration_ms: 1.018625
+  type: 'test'
+  ...
+# Subtest: middle and last page
+ok 2 - middle and last page
+  ---
+  duration_ms: 0.11125
+  type: 'test'
+  ...
+# Subtest: exact multiple of the page size
+ok 3 - exact multiple of the page size
+  ---
+  duration_ms: 0.080417
+  type: 'test'
+  ...
+# Subtest: past the end
+ok 4 - past the end
+  ---
+  duration_ms: 0.081875
+  type: 'test'
+  ...
+# Subtest: empty list
+ok 5 - empty list
+  ---
+  duration_ms: 0.099958
+  type: 'test'
+  ...
+# Subtest: fewer items than one page
+ok 6 - fewer items than one page
+  ---
+  duration_ms: 0.071458
+  type: 'test'
+  ...
+# Subtest: page size one
+ok 7 - page size one
+  ---
+  duration_ms: 0.073875
+  type: 'test'
+  ...
+# Subtest: input is not modified
+ok 8 - input is not modified
+  ---
+  duration_ms: 0.080916
+  type: 'test'
+  ...
+# Subtest: listOrders uses page 1 and size 10 by default
+ok 9 - listOrders uses page 1 and size 10 by default
+  ---
+  duration_ms: 0.150792
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 104.596709
+

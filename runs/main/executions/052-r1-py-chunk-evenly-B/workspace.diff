@@ -1,0 +1,34 @@
+ __pycache__/listutil.cpython-311.pyc | Bin 0 -> 1461 bytes
+ listutil.py                          |  18 ++++++++++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/__pycache__/listutil.cpython-311.pyc b/__pycache__/listutil.cpython-311.pyc
+new file mode 100644
+index 0000000..8a7273c
+Binary files /dev/null and b/__pycache__/listutil.cpython-311.pyc differ
+diff --git a/listutil.py b/listutil.py
+index a345f6f..0a499ff 100644
+--- a/listutil.py
++++ b/listutil.py
+@@ -4,3 +4,21 @@
+ def flatten(nested):
+     """Flatten one level of nesting: [[1, 2], [3]] -> [1, 2, 3]."""
+     return [item for group in nested for item in group]
++
++
++def chunk_evenly(items, n):
++    """Split items into n consecutive chunks, longer chunks first.
++
++    chunk_evenly([1, 2, 3, 4, 5], 3) -> [[1, 2], [3, 4], [5]]
++    Extra chunks are empty lists when n exceeds len(items).
++    """
++    if n < 1:
++        raise ValueError("n must be at least 1")
++    base, extra = divmod(len(items), n)
++    chunks = []
++    start = 0
++    for i in range(n):
++        size = base + (1 if i < extra else 0)
++        chunks.append(items[start:start + size])
++        start += size
++    return chunks
