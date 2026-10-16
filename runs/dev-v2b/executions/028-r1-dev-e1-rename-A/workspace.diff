@@ -1,0 +1,33 @@
+ __pycache__/report.cpython-311.pyc | Bin 0 -> 680 bytes
+ __pycache__/shapes.cpython-311.pyc | Bin 0 -> 343 bytes
+ report.py                          |   4 ++--
+ shapes.py                          |   2 +-
+ 4 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/__pycache__/report.cpython-311.pyc b/__pycache__/report.cpython-311.pyc
+new file mode 100644
+index 0000000..57068ae
+Binary files /dev/null and b/__pycache__/report.cpython-311.pyc differ
+diff --git a/__pycache__/shapes.cpython-311.pyc b/__pycache__/shapes.cpython-311.pyc
+new file mode 100644
+index 0000000..15a0a43
+Binary files /dev/null and b/__pycache__/shapes.cpython-311.pyc differ
+diff --git a/report.py b/report.py
+index 444ab30..480413f 100644
+--- a/report.py
++++ b/report.py
+@@ -1,4 +1,4 @@
+-from shapes import calc_area
++from shapes import rectangle_area
+ 
+ def total_area(rooms):
+-    return sum(calc_area(w, h) for w, h in rooms)
++    return sum(rectangle_area(w, h) for w, h in rooms)
+diff --git a/shapes.py b/shapes.py
+index d85bd38..b525796 100644
+--- a/shapes.py
++++ b/shapes.py
+@@ -1,2 +1,2 @@
+-def calc_area(width, height):
++def rectangle_area(width, height):
+     return width * height

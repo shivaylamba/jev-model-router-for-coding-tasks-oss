@@ -1,0 +1,54 @@
+ retry.py | 44 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 44 insertions(+)
+
+diff --git a/retry.py b/retry.py
+new file mode 100644
+index 0000000..3865948
+--- /dev/null
++++ b/retry.py
+@@ -0,0 +1,44 @@
++"""Reusable retry helpers with exponential backoff."""
++
++import functools
++import time
++
++
++def retry(fn, *, attempts=3, base_delay=0.1, max_delay=5.0,
++          retry_on=(Exception,), sleep=time.sleep, on_retry=None):
++    """Call `fn` until it succeeds, backing off between retries.
++
++    Returns `fn()`'s result on the first successful call. If a call raises an
++    exception matching `retry_on` and calls remain, waits exponentially
++    (starting at `base_delay`, doubling, capped at `max_delay`) before the
++    next call, invoking `on_retry(attempt, exc, delay)` if given. When the
++    last attempt fails, the same exception object is re-raised. Exceptions
++    that do not match `retry_on` propagate immediately.
++    """
++    if attempts < 1:
++        raise ValueError("attempts must be >= 1")
++    if base_delay < 0:
++        raise ValueError("base_delay must be >= 0")
++    if max_delay < 0:
++        raise ValueError("max_delay must be >= 0")
++
++    for attempt in range(1, attempts + 1):
++        try:
++            return fn()
++        except retry_on as exc:
++            if attempt >= attempts:
++                raise
++            delay = min(max_delay, base_delay * 2 ** (attempt - 1))
++            if on_retry is not None:
++                on_retry(attempt, exc, delay)
++            sleep(delay)
++
++
++def retrying(**options):
++    """Decorator factory wrapping a function in `retry` with the given options."""
++    def decorator(fn):
++        @functools.wraps(fn)
++        def wrapper(*args, **kwargs):
++            return retry(lambda: fn(*args, **kwargs), **options)
++        return wrapper
++    return decorator
+\ No newline at end of file

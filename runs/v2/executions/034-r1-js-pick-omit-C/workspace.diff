@@ -1,0 +1,117 @@
+ src/object.js       | 33 ++++++++++++++++++++++++++++++
+ test/object.test.js | 58 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 90 insertions(+), 1 deletion(-)
+
+diff --git a/src/object.js b/src/object.js
+index 263bd36..207bd3b 100644
+--- a/src/object.js
++++ b/src/object.js
+@@ -19,3 +19,36 @@ export function mapValues(obj, fn) {
+   for (const key of Object.keys(obj)) out[key] = fn(obj[key], key);
+   return out;
+ }
++
++/**
++ * A new object containing only the listed own enumerable keys of `obj`,
++ * in the order they appear in `keys`. Missing keys are ignored, as are
++ * inherited and non-enumerable properties. A key present with value
++ * `undefined` is kept.
++ * @param {Record<string, unknown>} obj
++ * @param {readonly string[]} keys
++ */
++export function pick(obj, keys) {
++  const out = {};
++  for (const key of keys) {
++    if (Object.prototype.propertyIsEnumerable.call(obj, key)) out[key] = obj[key];
++  }
++  return out;
++}
++
++/**
++ * A new object with every own enumerable string key of `obj` except those
++ * listed in `keys`, in the original key order. Listed keys that `obj`
++ * doesn't have are ignored. Inherited and non-enumerable properties are not
++ * copied.
++ * @param {Record<string, unknown>} obj
++ * @param {readonly string[]} keys
++ */
++export function omit(obj, keys) {
++  const excluded = new Set(keys);
++  const out = {};
++  for (const key of Object.keys(obj)) {
++    if (!excluded.has(key)) out[key] = obj[key];
++  }
++  return out;
++}
+diff --git a/test/object.test.js b/test/object.test.js
+index fc18400..e023650 100644
+--- a/test/object.test.js
++++ b/test/object.test.js
+@@ -1,6 +1,6 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+-import { isPlainObject, mapValues } from "../src/object.js";
++import { isPlainObject, mapValues, pick, omit } from "../src/object.js";
+ 
+ test("isPlainObject", () => {
+   assert.equal(isPlainObject({}), true);
+@@ -12,3 +12,59 @@ test("isPlainObject", () => {
+ test("mapValues", () => {
+   assert.deepEqual(mapValues({ a: 1, b: 2 }, (v) => v * 10), { a: 10, b: 20 });
+ });
++
++test("pick keeps listed keys in order, ignoring missing ones", () => {
++  assert.deepEqual(pick({ a: 1, b: 2, c: 3 }, ["c", "a", "nope"]), { c: 3, a: 1 });
++});
++
++test("pick keeps a key whose value is undefined", () => {
++  assert.deepEqual(pick({ a: undefined }, ["a"]), { a: undefined });
++});
++
++test("pick ignores inherited and non-enumerable properties", () => {
++  const proto = { inherited: 1 };
++  const obj = Object.create(proto);
++  Object.defineProperty(obj, "hidden", { value: 2, enumerable: false });
++  obj.own = 3;
++  assert.deepEqual(pick(obj, ["inherited", "hidden", "own"]), { own: 3 });
++});
++
++test("pick returns a new empty object when nothing matches", () => {
++  const empty = pick({ a: 1 }, ["z"]);
++  assert.deepEqual(empty, {});
++  assert.notEqual(empty, {});
++});
++
++test("pick does not mutate obj or keys", () => {
++  const obj = { a: 1, b: 2 };
++  const keys = ["b", "a"];
++  pick(obj, keys);
++  assert.deepEqual(obj, { a: 1, b: 2 });
++  assert.deepEqual(keys, ["b", "a"]);
++});
++
++test("omit drops listed keys, keeping original order", () => {
++  assert.deepEqual(omit({ a: 1, b: 2, c: 3 }, ["b", "nope"]), { a: 1, c: 3 });
++});
++
++test("omit ignores inherited and non-enumerable properties", () => {
++  const proto = { inherited: 1 };
++  const obj = Object.create(proto);
++  Object.defineProperty(obj, "hidden", { value: 2, enumerable: false });
++  obj.own = 3;
++  assert.deepEqual(omit(obj, []), { own: 3 });
++});
++
++test("omit returns a new empty object when everything is omitted", () => {
++  const empty = omit({ a: 1 }, ["a"]);
++  assert.deepEqual(empty, {});
++  assert.notEqual(empty, {});
++});
++
++test("omit does not mutate obj or keys", () => {
++  const obj = { a: 1, b: 2 };
++  const keys = ["b"];
++  omit(obj, keys);
++  assert.deepEqual(obj, { a: 1, b: 2 });
++  assert.deepEqual(keys, ["b"]);
++});

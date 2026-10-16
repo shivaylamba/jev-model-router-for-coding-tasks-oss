@@ -1,0 +1,27 @@
+ src/paginate.ts | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/paginate.ts b/src/paginate.ts
+index c25874c..7078d93 100644
+--- a/src/paginate.ts
++++ b/src/paginate.ts
+@@ -25,8 +25,8 @@ export function paginate<T>(items: readonly T[], page: number, pageSize: number)
+   if (!Number.isInteger(pageSize) || pageSize < 1) throw new RangeError("pageSize must be an integer >= 1");
+ 
+   const totalItems = items.length;
+-  const totalPages = Math.floor(totalItems / pageSize);
+-  const start = page * pageSize;
++  const totalPages = Math.ceil(totalItems / pageSize);
++  const start = (page - 1) * pageSize;
+   const pageItems = items.slice(start, start + pageSize);
+ 
+   return {
+@@ -35,7 +35,7 @@ export function paginate<T>(items: readonly T[], page: number, pageSize: number)
+     pageSize,
+     totalItems,
+     totalPages,
+-    hasNext: page <= totalPages,
++    hasNext: page < totalPages,
+     hasPrev: page > 1 && totalItems > 0,
+   };
+ }

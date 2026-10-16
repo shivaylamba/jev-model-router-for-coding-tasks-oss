@@ -1,0 +1,90 @@
+ users.py | 80 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 78 insertions(+), 2 deletions(-)
+
+diff --git a/users.py b/users.py
+index 3792cc3..4bb7de1 100644
+--- a/users.py
++++ b/users.py
+@@ -1,4 +1,80 @@
++import base64
++import json
++import zlib
++
+ USERS = [{"id": i, "name": f"user{i}"} for i in (7, 3, 12, 1, 9, 4, 15, 2, 20, 6, 11)]
+ 
+-def list_users():
+-    return USERS
++MIN_LIMIT = 1
++MAX_LIMIT = 100
++DEFAULT_LIMIT = 20
++
++_CURSOR_PREFIX = "u1."
++
++
++def _encode_cursor(last_id):
++    """Encode the last-returned user id as an opaque cursor string."""
++    payload = json.dumps({"id": last_id}, separators=(",", ":")).encode("utf-8")
++    crc = zlib.crc32(payload).to_bytes(4, "big")
++    token = base64.urlsafe_b64encode(crc + payload).decode("ascii").rstrip("=")
++    return _CURSOR_PREFIX + token
++
++
++def _decode_cursor(cursor):
++    """Decode an opaque cursor string back to a user id. Raises ValueError on bad input."""
++    if not isinstance(cursor, str) or not cursor.startswith(_CURSOR_PREFIX):
++        raise ValueError("invalid cursor")
++    token = cursor[len(_CURSOR_PREFIX):]
++    try:
++        padding = "=" * (-len(token) % 4)
++        raw = base64.urlsafe_b64decode(token + padding)
++    except Exception:
++        raise ValueError("invalid cursor")
++    if len(raw) < 5:
++        raise ValueError("invalid cursor")
++    crc, payload = raw[:4], raw[4:]
++    if zlib.crc32(payload).to_bytes(4, "big") != crc:
++        raise ValueError("invalid cursor")
++    try:
++        data = json.loads(payload.decode("utf-8"))
++    except Exception:
++        raise ValueError("invalid cursor")
++    if not isinstance(data, dict) or set(data.keys()) != {"id"} or not isinstance(data["id"], int) or isinstance(data["id"], bool):
++        raise ValueError("invalid cursor")
++    return data["id"]
++
++
++def list_users(limit=DEFAULT_LIMIT, cursor=None):
++    """Return one page of users ordered by id.
++
++    Args:
++        limit: page size, must be within 1..100 (default 20).
++        cursor: opaque cursor from a previous page's ``next_cursor``, or None
++            for the first page.
++
++    Returns:
++        {"items": [...], "next_cursor": str | None} — ``next_cursor`` is None
++        on the last page.
++
++    Raises:
++        ValueError: if limit is outside 1..100 or cursor cannot be decoded.
++    """
++    if isinstance(limit, bool) or not isinstance(limit, int):
++        raise ValueError("limit must be an integer")
++    if limit < MIN_LIMIT or limit > MAX_LIMIT:
++        raise ValueError("limit must be between 1 and 100")
++
++    start_id = None
++    if cursor is not None:
++        start_id = _decode_cursor(cursor)
++
++    ordered = sorted(USERS, key=lambda u: u["id"])
++    if start_id is not None:
++        ordered = [u for u in ordered if u["id"] > start_id]
++
++    # Fetch one extra row to decide whether another page exists.
++    page = ordered[: limit + 1]
++    has_next = len(page) > limit
++    items = page[:limit]
++
++    next_cursor = _encode_cursor(items[-1]["id"]) if has_next and items else None
++    return {"items": items, "next_cursor": next_cursor}

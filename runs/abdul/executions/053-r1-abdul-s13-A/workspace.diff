@@ -1,0 +1,11 @@
+ answer.json | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/answer.json b/answer.json
+new file mode 100644
+index 0000000..548b78a
+--- /dev/null
++++ b/answer.json
+@@ -0,0 +1 @@
++{"id":"E-88","amount":190,"currency":"EUR","tax_amount":null}
+\ No newline at end of file

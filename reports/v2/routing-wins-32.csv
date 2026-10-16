@@ -1,0 +1,33 @@
+task_id,title,category,difficulty,language,jev_tier,first_tier,models_used,escalated,fixed_kimi_k3_cost_usd,routed_cost_usd,saving_pct,fixed_passed,routed_passed
+js-cli-json-flag,--json output for tally,feature,easy,javascript,routine,fast,DeepSeek V4 Flash×12 + Kimi K3×5,yes,0.3804,0.3161,16.9,True,True
+js-client-options,createClient takes an options object,api-change,medium,javascript,routine,fast,DeepSeek V4 Flash×12,no,0.7019,0.0310,95.6,True,True
+js-human-duration,Human-readable durations,formatting,medium,javascript,routine,fast,DeepSeek V4 Flash×13,no,0.5313,0.0363,93.2,True,True
+js-parse-ini,INI parser,parsing,medium,javascript,routine,fast,DeepSeek V4 Flash×15,no,0.6680,0.0560,91.6,True,True
+js-pick-omit,pick and omit for plain objects,utility,easy,javascript,routine,fast,DeepSeek V4 Flash×13,no,0.1324,0.0240,81.9,True,True
+js-pluralize,pluralize for CLI messages,formatting,easy,javascript,routine,fast,DeepSeek V4 Flash×8,no,0.1312,0.0132,90.0,True,True
+js-site-plugins,Plugin hooks for the site builder,feature,medium,javascript,routine,balanced,Kimi K2.6×11,no,0.5077,0.1611,68.3,True,True
+py-async-rate-limiter,Asyncio rate limiter with per-key buckets and a concurrency cap,state,hard,python,hard,strong,Kimi K3×19 + DeepSeek V4 Flash×8,downshift,2.7393,1.3170,51.9,False,True
+py-card-iban,Card brand detection and IBAN validation,validation,medium,python,routine,fast,DeepSeek V4 Flash×13,no,0.6005,0.0325,94.6,True,True
+py-chunk-evenly,Split a list into near-equal chunks,utility,easy,python,routine,fast,DeepSeek V4 Flash×12,no,0.5230,0.0207,96.0,True,True
+py-extract-validators,Extract shared field validators,refactor,medium,python,moderate,balanced,Kimi K2.6×11,no,0.5150,0.1524,70.4,True,True
+py-flatten-records-csv,Flatten nested records to CSV,formatting,medium,python,routine,fast,DeepSeek V4 Flash×17,no,0.5235,0.0438,91.6,True,True
+py-memoize,A memoize decorator with cache stats,state,easy,python,routine,fast,DeepSeek V4 Flash×7 + Kimi K3×3,yes,0.1953,0.1501,23.2,True,True
+py-parse-kv,Parse key=value; key=value strings,parsing,easy,python,routine,fast,DeepSeek V4 Flash×11,no,0.3253,0.0201,93.8,True,True
+py-report-csv-export,CSV export for reports,feature,medium,python,routine,fast,DeepSeek V4 Flash×22,no,0.8134,0.0574,92.9,True,True
+py-shared-default-tags,Tags leak from one note into the next,bugfix,easy,python,hard,balanced,Kimi K2.6×3,no,0.3880,0.0305,92.1,True,True
+py-shipping-constants,Rename calc and name its magic numbers,refactor,easy,python,routine,fast,DeepSeek V4 Flash×10,no,0.5680,0.0206,96.4,True,True
+py-user-stats-dataclass,get_user_stats returns a dataclass,api-change,medium,python,routine,fast,DeepSeek V4 Flash×16,no,0.4467,0.0350,92.2,True,True
+py-validate-username,Validate usernames,validation,easy,python,routine,fast,DeepSeek V4 Flash×10,no,0.2056,0.0270,86.9,True,True
+py-weekly-report-bugs,Weekly hours report is wrong around New Year,bugfix,medium,python,moderate,balanced,Kimi K2.6×11,no,0.6518,0.1391,78.7,True,True
+ts-clamp-range,clamp and a Python-style range,utility,easy,typescript,routine,fast,DeepSeek V4 Flash×14,no,0.2306,0.0256,88.9,True,True
+ts-config-promise,Promise-based readConfig with callback support,refactor,easy,typescript,routine,balanced,Kimi K2.6×10,no,0.2523,0.1100,56.4,True,True
+ts-hex-color,Normalize hex colour strings,validation,easy,typescript,routine,fast,DeepSeek V4 Flash×10,no,0.3540,0.0255,92.8,True,True
+ts-notify-many,notify accepts several recipients,api-change,easy,typescript,routine,fast,DeepSeek V4 Flash×7,no,0.3946,0.0138,96.5,True,True
+ts-paginate-off-by-one,Pagination shows the wrong orders,bugfix,easy,typescript,routine,fast,DeepSeek V4 Flash×10,no,0.0969,0.0174,82.0,True,True
+ts-parse-clock,Parse a time of day into minutes,parsing,easy,typescript,routine,fast,DeepSeek V4 Flash×11,no,0.2456,0.0221,91.0,True,True
+ts-pricing-rules,Split order pricing into a rule pipeline and add bundle discounts,refactor,hard,typescript,moderate,balanced,Kimi K2.6×23,no,0.9636,0.5011,48.0,False,True
+ts-schema-validator,Finish the JSON Schema subset validator,validation,hard,typescript,hard,balanced,Kimi K2.6×24,no,1.1059,0.5938,46.3,True,True
+ts-semver-range,Check versions against dependency ranges,parsing,medium,typescript,moderate,balanced,Kimi K2.6×25,no,1.6069,1.0306,35.9,True,True
+ts-signup-validate,Validate a sign-up request,validation,medium,typescript,routine,fast,DeepSeek V4 Flash×24,no,3.8943,0.0990,97.5,True,True
+ts-table-wrap,Plain-text table that fits a width,formatting,hard,typescript,routine,fast,DeepSeek V4 Flash×14 + Kimi K3×3,yes,3.3188,0.2441,92.6,True,True
+ts-todo-query,Filtering and sorting todos,feature,medium,typescript,routine,fast,DeepSeek V4 Flash×20,no,1.2885,0.0813,93.7,False,True

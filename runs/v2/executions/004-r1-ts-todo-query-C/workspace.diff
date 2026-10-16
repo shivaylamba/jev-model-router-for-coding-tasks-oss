@@ -1,0 +1,172 @@
+ src/http.ts  |  34 +++++++++++++++++--
+ src/todos.ts | 104 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 136 insertions(+), 2 deletions(-)
+
+diff --git a/src/http.ts b/src/http.ts
+index 2344733..9efea7c 100644
+--- a/src/http.ts
++++ b/src/http.ts
+@@ -1,4 +1,4 @@
+-import type { TodoService } from "./todos.ts";
++import type { TodoService, TodoQuery } from "./todos.ts";
+ 
+ export interface Response {
+   status: number;
+@@ -11,6 +11,36 @@ export function handleTodos(service: TodoService, url: string): Response {
+   if (parsed.pathname !== "/todos") {
+     return { status: 404, body: { error: "not found" } };
+   }
+-  const items = service.list();
++
++  const query: TodoQuery = {};
++
++  const status = parsed.searchParams.get("status");
++  if (status !== null) query.status = status as TodoQuery["status"];
++
++  const tags = parsed.searchParams.getAll("tag").filter((t) => t !== "");
++  if (tags.length > 0) query.tags = tags;
++
++  const text = parsed.searchParams.get("q");
++  if (text !== null) query.text = text;
++
++  const dueBefore = parsed.searchParams.get("dueBefore");
++  if (dueBefore !== null) query.dueBefore = dueBefore;
++
++  const sort = parsed.searchParams.get("sort");
++  if (sort !== null) query.sort = sort as TodoQuery["sort"];
++
++  const order = parsed.searchParams.get("order");
++  if (order !== null) query.order = order as TodoQuery["order"];
++
++  let items: ReturnType<TodoService["list"]>;
++  try {
++    items = service.query(query);
++  } catch (err) {
++    if (err instanceof RangeError) {
++      return { status: 400, body: { error: err.message } };
++    }
++    throw err;
++  }
++
+   return { status: 200, body: { items, count: items.length } };
+ }
+diff --git a/src/todos.ts b/src/todos.ts
+index 786f66d..4fac2f0 100644
+--- a/src/todos.ts
++++ b/src/todos.ts
+@@ -17,6 +17,33 @@ export interface NewTodo {
+   due?: string | null;
+ }
+ 
++export interface TodoQuery {
++  status?: "open" | "done" | "all";
++  tags?: string[];
++  text?: string;
++  dueBefore?: string;
++  sort?: "id" | "created" | "due" | "title";
++  order?: "asc" | "desc";
++}
++
++/** True when `s` is a real calendar date written as zero-padded `YYYY-MM-DD`. */
++function isValidDateString(s: string): boolean {
++  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
++  if (!m) return false;
++  const year = Number(m[1]);
++  const month = Number(m[2]);
++  const day = Number(m[3]);
++  if (month < 1 || month > 12) return false;
++  const dt = new Date(0);
++  dt.setUTCFullYear(year, month - 1, day);
++  dt.setUTCHours(0, 0, 0, 0);
++  return (
++    dt.getUTCFullYear() === year &&
++    dt.getUTCMonth() === month - 1 &&
++    dt.getUTCDate() === day
++  );
++}
++
+ export class TodoService {
+   private todos: Todo[] = [];
+   private nextId = 1;
+@@ -52,4 +79,81 @@ export class TodoService {
+   list(): Todo[] {
+     return [...this.todos];
+   }
++
++  /** Filter and sort the todos. Returns a new array; the service is never reordered. */
++  query(query?: TodoQuery): Todo[] {
++    const status = query?.status ?? "all";
++    const tags = query?.tags ?? [];
++    const text = query?.text;
++    const dueBefore = query?.dueBefore;
++    const sort = query?.sort ?? "id";
++    const order = query?.order ?? "asc";
++
++    if (!["open", "done", "all"].includes(status)) {
++      throw new RangeError(`invalid status: ${JSON.stringify(status)}`);
++    }
++    if (!["id", "created", "due", "title"].includes(sort)) {
++      throw new RangeError(`invalid sort: ${JSON.stringify(sort)}`);
++    }
++    if (!["asc", "desc"].includes(order)) {
++      throw new RangeError(`invalid order: ${JSON.stringify(order)}`);
++    }
++    if (dueBefore !== undefined && !isValidDateString(dueBefore)) {
++      throw new RangeError(`invalid dueBefore: ${JSON.stringify(dueBefore)}`);
++    }
++
++    const trimmedText = text?.trim();
++    const dir = order === "desc" ? -1 : 1;
++
++    const result = this.todos.filter((t) => {
++      if (status === "open" && t.status !== "open") return false;
++      if (status === "done" && t.status !== "done") return false;
++      if (tags.length > 0) {
++        const wanted = tags.map((tag) => tag.toLowerCase());
++        if (
++          !wanted.every((want) => t.tags.some((tt) => tt.toLowerCase() === want))
++        ) {
++          return false;
++        }
++      }
++      if (trimmedText && !t.title.toLowerCase().includes(trimmedText.toLowerCase())) {
++        return false;
++      }
++      if (dueBefore !== undefined && (t.due === null || t.due > dueBefore)) {
++        return false;
++      }
++      return true;
++    });
++
++    result.sort((a, b) => {
++      let keyCmp: number;
++      if (sort === "due") {
++        // Todos without a due date always come last, in both orders.
++        if (a.due === null && b.due === null) keyCmp = 0;
++        else if (a.due === null) keyCmp = 1;
++        else if (b.due === null) keyCmp = -1;
++        else keyCmp = (a.due < b.due ? -1 : a.due > b.due ? 1 : 0) * dir;
++      } else {
++        let ka: number | string;
++        let kb: number | string;
++        if (sort === "id") {
++          ka = a.id;
++          kb = b.id;
++        } else if (sort === "created") {
++          ka = a.createdAt;
++          kb = b.createdAt;
++        } else {
++          ka = a.title.toLowerCase();
++          kb = b.title.toLowerCase();
++        }
++        keyCmp = ka < kb ? -1 : ka > kb ? 1 : 0;
++        keyCmp *= dir;
++      }
++      if (keyCmp !== 0) return keyCmp;
++      // Ties are always broken by id ascending, whatever the order.
++      return a.id - b.id;
++    });
++
++    return result;
++  }
+ }

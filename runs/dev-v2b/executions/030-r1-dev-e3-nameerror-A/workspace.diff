@@ -1,0 +1,21 @@
+ __pycache__/stats.cpython-311.pyc | Bin 0 -> 725 bytes
+ stats.py                          |   2 +-
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/__pycache__/stats.cpython-311.pyc b/__pycache__/stats.cpython-311.pyc
+new file mode 100644
+index 0000000..e9fff19
+Binary files /dev/null and b/__pycache__/stats.cpython-311.pyc differ
+diff --git a/stats.py b/stats.py
+index ae50e55..825645f 100644
+--- a/stats.py
++++ b/stats.py
+@@ -4,7 +4,7 @@ def mean(values):
+     total = 0
+     for value in values:
+         total += value
+-    return totl / len(values)
++    return total / len(values)
+ 
+ def spread(values):
+     return max(values) - min(values)

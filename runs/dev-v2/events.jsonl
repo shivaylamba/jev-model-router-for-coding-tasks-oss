@@ -1,0 +1,2 @@
+{"at": "2026-10-15T10:17:58.104Z", "event": "prepared", "tasks": 15, "executions": 30, "conditions": ["A", "C"]}
+{"at": "2026-10-15T10:18:02.286Z", "event": "run started", "budget_usd": 10.0, "max_hours": 2.0}

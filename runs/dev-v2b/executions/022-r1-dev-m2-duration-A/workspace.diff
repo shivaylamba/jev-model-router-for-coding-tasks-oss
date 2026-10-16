@@ -1,0 +1,45 @@
+ durations.py | 34 +++++++++++++++++++++++++++++++++-
+ 1 file changed, 33 insertions(+), 1 deletion(-)
+
+diff --git a/durations.py b/durations.py
+index dd7e38e..37f3b57 100644
+--- a/durations.py
++++ b/durations.py
+@@ -9,4 +9,36 @@ def parse_duration(text):
+     Raise ValueError for anything else: an empty string, a number with no unit,
+     an unknown unit, a repeated unit, or units out of order.
+     """
+-    raise NotImplementedError
++    import re
++
++    _UNIT_SECONDS = {"d": 86400, "h": 3600, "m": 60, "s": 1}
++    _ORDER = ["d", "h", "m", "s"]
++
++    if not isinstance(text, str) or not text.strip():
++        raise ValueError("duration must be a non-empty string")
++
++    total = 0.0
++    pos = 0          # position after the last consumed character
++    last_rank = -1   # rank of the last unit seen (must strictly increase)
++
++    for match in re.finditer(r"(\d+(?:\.\d+)?)\s*([a-zA-Z])", text):
++        # Everything between the previous part and this number must be whitespace.
++        if text[pos:match.start()].strip():
++            raise ValueError("unrecognised characters in duration")
++        pos = match.end()
++
++        unit = match.group(2).lower()
++        if unit not in _UNIT_SECONDS:
++            raise ValueError("unknown unit: %r" % unit)
++        rank = _ORDER.index(unit)
++        if rank <= last_rank:
++            raise ValueError("units must appear once, largest to smallest")
++        last_rank = rank
++
++        total += float(match.group(1)) * _UNIT_SECONDS[unit]
++
++    # No parts matched, or junk trails the last part.
++    if pos == 0 or text[pos:].strip():
++        raise ValueError("invalid duration")
++
++    return int(total) if total == int(total) else total

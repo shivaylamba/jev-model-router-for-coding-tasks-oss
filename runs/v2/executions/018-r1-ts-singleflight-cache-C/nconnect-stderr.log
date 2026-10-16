@@ -1,0 +1,5 @@
+NConnect ▸ Routing Claude Code → Nebius Token Factory (Auto). Not Anthropic.
+[nconnect proxy] daemon: http://127.0.0.1:7897
+[nconnect proxy] session: http://127.0.0.1:7897/session/nconnect-EdJdl5e3HK6qAVVI-LlQIZ37y29JxNE7
+[nconnect claude] model: nebius-auto
+[claude-code:unrecognized_model] {"model":"nebius-auto","query_source":"sdk"}

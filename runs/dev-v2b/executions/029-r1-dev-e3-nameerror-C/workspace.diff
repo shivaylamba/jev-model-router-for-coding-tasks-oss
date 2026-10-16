@@ -1,0 +1,16 @@
+ stats.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/stats.py b/stats.py
+index ae50e55..825645f 100644
+--- a/stats.py
++++ b/stats.py
+@@ -4,7 +4,7 @@ def mean(values):
+     total = 0
+     for value in values:
+         total += value
+-    return totl / len(values)
++    return total / len(values)
+ 
+ def spread(values):
+     return max(values) - min(values)

@@ -1,0 +1,212 @@
+[
+  {
+    "seq": 1,
+    "repetition": 1,
+    "task_id": "dev-e2-flag",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 2,
+    "repetition": 1,
+    "task_id": "dev-e2-flag",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 3,
+    "repetition": 1,
+    "task_id": "smoke-py-average-bug",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 4,
+    "repetition": 1,
+    "task_id": "smoke-py-average-bug",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 5,
+    "repetition": 1,
+    "task_id": "dev-m3-pagination",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 6,
+    "repetition": 1,
+    "task_id": "dev-m3-pagination",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 7,
+    "repetition": 1,
+    "task_id": "smoke-ts-initials",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 8,
+    "repetition": 1,
+    "task_id": "smoke-ts-initials",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 9,
+    "repetition": 1,
+    "task_id": "dev-m1-ttl-cache",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 10,
+    "repetition": 1,
+    "task_id": "dev-m1-ttl-cache",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 11,
+    "repetition": 1,
+    "task_id": "dev-e4-slugify",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 12,
+    "repetition": 1,
+    "task_id": "dev-e4-slugify",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 13,
+    "repetition": 1,
+    "task_id": "dev-h2-free-slots",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 14,
+    "repetition": 1,
+    "task_id": "dev-h2-free-slots",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 15,
+    "repetition": 1,
+    "task_id": "dev-m4-csv-jsonl",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 16,
+    "repetition": 1,
+    "task_id": "dev-m4-csv-jsonl",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 17,
+    "repetition": 1,
+    "task_id": "dev-h4-rate-limiter",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 18,
+    "repetition": 1,
+    "task_id": "dev-h4-rate-limiter",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 19,
+    "repetition": 1,
+    "task_id": "dev-h1-off-by-a-cent",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 20,
+    "repetition": 1,
+    "task_id": "dev-h1-off-by-a-cent",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 21,
+    "repetition": 1,
+    "task_id": "dev-m2-duration",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 22,
+    "repetition": 1,
+    "task_id": "dev-m2-duration",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 23,
+    "repetition": 1,
+    "task_id": "dev-h3-install-order",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 24,
+    "repetition": 1,
+    "task_id": "dev-h3-install-order",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 25,
+    "repetition": 1,
+    "task_id": "smoke-py-word-count",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 26,
+    "repetition": 1,
+    "task_id": "smoke-py-word-count",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 27,
+    "repetition": 1,
+    "task_id": "dev-e1-rename",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 28,
+    "repetition": 1,
+    "task_id": "dev-e1-rename",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 29,
+    "repetition": 1,
+    "task_id": "dev-e3-nameerror",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 30,
+    "repetition": 1,
+    "task_id": "dev-e3-nameerror",
+    "condition": "A",
+    "pair_position": "second"
+  }
+]

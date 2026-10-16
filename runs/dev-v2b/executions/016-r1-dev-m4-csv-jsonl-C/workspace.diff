@@ -1,0 +1,74 @@
+ __pycache__/convert.cpython-311.pyc | Bin 0 -> 2853 bytes
+ convert.py                          |  60 +++++++++++++++++++++++++++++++++++-
+ 2 files changed, 59 insertions(+), 1 deletion(-)
+
+diff --git a/__pycache__/convert.cpython-311.pyc b/__pycache__/convert.cpython-311.pyc
+new file mode 100644
+index 0000000..e9028cb
+Binary files /dev/null and b/__pycache__/convert.cpython-311.pyc differ
+diff --git a/convert.py b/convert.py
+index b4b48d0..5c81670 100644
+--- a/convert.py
++++ b/convert.py
+@@ -1 +1,59 @@
+-# convert(csv_text) goes here
++import csv
++import io
++import json
++
++
++def _to_value(raw):
++    """Convert a raw CSV field into a JSON value.
++
++    Empty fields become null, integer- and decimal-looking values become
++    numbers, and everything else stays a (unmodified) string.
++    """
++    if raw == '':
++        return None
++    stripped = raw.strip()
++    if stripped == '':
++        return None
++
++    # Plain integers first, so e.g. '42' -> 42 rather than 42.0.
++    try:
++        return int(stripped)
++    except ValueError:
++        pass
++
++    # Decimals (and scientific notation), excluding non-finite tokens.
++    try:
++        if stripped.lower() in ('nan', 'inf', '-inf', '+inf'):
++            raise ValueError
++        return float(stripped)
++    except ValueError:
++        return raw
++
++
++def convert(csv_text):
++    """Convert CSV text into JSON Lines.
++
++    One JSON object per data row, keyed by the (trimmed) header. Empty
++    lines are skipped. Quoted fields containing commas or newlines are
++    handled by the csv module. Returns a string with one object per line
++    and no trailing newline.
++    """
++    rows = []
++    for row in csv.reader(io.StringIO(csv_text)):
++        if not row or all(cell == '' for cell in row):
++            continue
++        rows.append(row)
++
++    if not rows:
++        return ''
++
++    header = [h.strip() for h in rows[0]]
++    lines = []
++    for row in rows[1:]:
++        obj = {}
++        for i, name in enumerate(header):
++            raw = row[i] if i < len(row) else ''
++            obj[name] = _to_value(raw)
++        lines.append(json.dumps(obj))
++
++    return '\n'.join(lines)
+\ No newline at end of file

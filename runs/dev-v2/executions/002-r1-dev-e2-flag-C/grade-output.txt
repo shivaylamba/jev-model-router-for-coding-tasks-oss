@@ -1,0 +1,9 @@
+
+test_default (acceptance_tests.test_hidden.T.test_default) ... ok
+test_upper (acceptance_tests.test_hidden.T.test_upper) ... ok
+test_upper_default_name (acceptance_tests.test_hidden.T.test_upper_default_name) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+OK

@@ -1,0 +1,10 @@
+
+test_all_pages (acceptance_tests.test_hidden.T.test_all_pages) ... ok
+test_bad_input (acceptance_tests.test_hidden.T.test_bad_input) ... ok
+test_default (acceptance_tests.test_hidden.T.test_default) ... ok
+test_exact_fit_has_no_next (acceptance_tests.test_hidden.T.test_exact_fit_has_no_next) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK

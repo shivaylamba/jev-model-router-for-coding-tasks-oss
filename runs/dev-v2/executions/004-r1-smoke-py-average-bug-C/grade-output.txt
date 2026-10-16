@@ -1,0 +1,35 @@
+
+test_all (acceptance_tests.test_average.T.test_all) ... FAIL
+test_all_none (acceptance_tests.test_average.T.test_all_none) ... ok
+test_empty (acceptance_tests.test_average.T.test_empty) ... ok
+test_last_counts (acceptance_tests.test_average.T.test_last_counts) ... FAIL
+test_none_skipped (acceptance_tests.test_average.T.test_none_skipped) ... FAIL
+
+======================================================================
+FAIL: test_all (acceptance_tests.test_average.T.test_all)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zafjkq0_/ws/acceptance_tests/test_average.py", line 6, in test_all
+    self.assertEqual(average_reading([1, 2, 3]), 2)
+AssertionError: 1.5 != 2
+
+======================================================================
+FAIL: test_last_counts (acceptance_tests.test_average.T.test_last_counts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zafjkq0_/ws/acceptance_tests/test_average.py", line 10, in test_last_counts
+    self.assertEqual(average_reading([2, 10]), 6)
+AssertionError: 2.0 != 6
+
+======================================================================
+FAIL: test_none_skipped (acceptance_tests.test_average.T.test_none_skipped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-zafjkq0_/ws/acceptance_tests/test_average.py", line 8, in test_none_skipped
+    self.assertEqual(average_reading([None, 4, None, 6]), 5)
+AssertionError: 4.0 != 5
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+FAILED (failures=3)

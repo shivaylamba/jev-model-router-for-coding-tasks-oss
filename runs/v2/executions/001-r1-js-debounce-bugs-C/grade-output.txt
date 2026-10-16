@@ -1,0 +1,107 @@
+TAP version 13
+# Subtest: trailing call uses the most recent arguments
+ok 1 - trailing call uses the most recent arguments
+  ---
+  duration_ms: 1.387083
+  type: 'test'
+  ...
+# Subtest: consecutive bursts each use their own latest arguments
+ok 2 - consecutive bursts each use their own latest arguments
+  ---
+  duration_ms: 0.108375
+  type: 'test'
+  ...
+# Subtest: leading and trailing: a single call invokes once
+ok 3 - leading and trailing: a single call invokes once
+  ---
+  duration_ms: 0.08675
+  type: 'test'
+  ...
+# Subtest: leading and trailing: a burst invokes first and last
+ok 4 - leading and trailing: a burst invokes first and last
+  ---
+  duration_ms: 0.098625
+  type: 'test'
+  ...
+# Subtest: leading only
+ok 5 - leading only
+  ---
+  duration_ms: 0.096958
+  type: 'test'
+  ...
+# Subtest: maxWait invokes with the latest arguments during a long burst
+ok 6 - maxWait invokes with the latest arguments during a long burst
+  ---
+  duration_ms: 0.108125
+  type: 'test'
+  ...
+# Subtest: maxWait followed by a trailing call
+ok 7 - maxWait followed by a trailing call
+  ---
+  duration_ms: 0.091583
+  type: 'test'
+  ...
+# Subtest: maxWait applies even without trailing
+ok 8 - maxWait applies even without trailing
+  ---
+  duration_ms: 0.086625
+  type: 'test'
+  ...
+# Subtest: cancel drops the pending call
+ok 9 - cancel drops the pending call
+  ---
+  duration_ms: 0.090542
+  type: 'test'
+  ...
+# Subtest: cancel also stops the maxWait call
+ok 10 - cancel also stops the maxWait call
+  ---
+  duration_ms: 0.11925
+  type: 'test'
+  ...
+# Subtest: a call after cancel starts a fresh burst
+ok 11 - a call after cancel starts a fresh burst
+  ---
+  duration_ms: 0.098542
+  type: 'test'
+  ...
+# Subtest: flush invokes now with the latest arguments
+ok 12 - flush invokes now with the latest arguments
+  ---
+  duration_ms: 0.101625
+  type: 'test'
+  ...
+# Subtest: flush after a leading-only invocation does not invoke again
+ok 13 - flush after a leading-only invocation does not invoke again
+  ---
+  duration_ms: 0.055083
+  type: 'test'
+  ...
+# Subtest: return value is the latest result
+ok 14 - return value is the latest result
+  ---
+  duration_ms: 0.052375
+  type: 'test'
+  ...
+# Subtest: this comes from the call whose arguments are used
+ok 15 - this comes from the call whose arguments are used
+  ---
+  duration_ms: 0.097458
+  type: 'test'
+  ...
+# Subtest: search box searches for the latest text and clear cancels
+ok 16 - search box searches for the latest text and clear cancels
+  ---
+  duration_ms: 0.164292
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 70.66975
+

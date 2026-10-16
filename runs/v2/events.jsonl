@@ -1,0 +1,8 @@
+{"at": "2026-10-15T11:07:41.956Z", "event": "prepared", "tasks": 50, "executions": 50, "conditions": ["C"]}
+{"at": "2026-10-15T11:07:42.882Z", "event": "run started", "budget_usd": 40.0, "max_hours": 6.0}
+{"at": "2026-10-15T11:58:16.161Z", "event": "infrastructure failure: excluded and queued for re-run", "execution": "012-r1-js-parse-ini-C", "reason": "4 of 77 model requests got no provider response (moonshotai/Kimi-K3)"}
+{"at": "2026-10-15T11:58:28.638Z", "event": "run started", "budget_usd": 45.0, "max_hours": 8.0}
+{"at": "2026-10-15T11:58:48.746Z", "event": "provider unhealthy; waiting", "models": {"moonshotai/Kimi-K3": "slow: 14.1s for a short reply"}, "wait_s": 300}
+{"at": "2026-10-15T12:04:01.777Z", "event": "provider unhealthy; waiting", "models": {"moonshotai/Kimi-K3": "slow: 7.3s for a short reply"}, "wait_s": 300}
+{"at": "2026-10-15T12:13:05.375Z", "event": "kept interrupted attempt", "execution": "014-r1-py-async-rate-limiter-C", "attempt": 1}
+{"at": "2026-10-15T13:22:58.251Z", "event": "run complete", "spent_usd": 27.9275}

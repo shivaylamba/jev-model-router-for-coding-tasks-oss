@@ -1,0 +1,217 @@
+ src/table.ts | 204 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 202 insertions(+), 2 deletions(-)
+
+diff --git a/src/table.ts b/src/table.ts
+index b1886b8..0b3e4f9 100644
+--- a/src/table.ts
++++ b/src/table.ts
+@@ -8,6 +8,206 @@ export interface TableOptions {
+   header?: boolean;
+ }
+ 
+-export function renderTable(rows: string[][], options: TableOptions = {}): string {
+-  throw new Error("renderTable is not implemented yet");
++/** East Asian wide code-point ranges; each such code point takes 2 columns. */
++function isWide(cp: number): boolean {
++  return (
++    (cp >= 0x1100 && cp <= 0x115f) ||
++    (cp >= 0x2e80 && cp <= 0x303e) ||
++    (cp >= 0x3041 && cp <= 0x33ff) ||
++    (cp >= 0x3400 && cp <= 0x4dbf) ||
++    (cp >= 0x4e00 && cp <= 0x9fff) ||
++    (cp >= 0xa000 && cp <= 0xa4cf) ||
++    (cp >= 0xac00 && cp <= 0xd7a3) ||
++    (cp >= 0xf900 && cp <= 0xfaff) ||
++    (cp >= 0xfe30 && cp <= 0xfe4f) ||
++    (cp >= 0xff00 && cp <= 0xff60) ||
++    (cp >= 0xffe0 && cp <= 0xffe6) ||
++    (cp >= 0x1f300 && cp <= 0x1f64f) ||
++    (cp >= 0x1f900 && cp <= 0x1f9ff) ||
++    (cp >= 0x20000 && cp <= 0x3fffd)
++  );
++}
++
++/** Display width of a string in terminal columns, per code point. */
++function widthOf(text: string): number {
++  let w = 0;
++  for (const ch of text) w += isWide(ch.codePointAt(0)!) ? 2 : 1;
++  return w;
++}
++
++/** True if any code point in the string is wide. */
++function containsWide(text: string): boolean {
++  for (const ch of text) if (isWide(ch.codePointAt(0)!)) return true;
++  return false;
++}
++
++/** Split a paragraph into words on runs of U+0020; empty results are dropped. */
++function splitWords(paragraph: string): string[] {
++  return paragraph.split(/ +/).filter((s) => s.length > 0);
++}
++
++/**
++ * Cut a single word wider than `w` into chunks, each the longest prefix of the
++ * remaining code points that fits in `w`.
++ */
++function chunkWord(word: string, w: number): string[] {
++  const chunks: string[] = [];
++  let chunk = "";
++  let chunkW = 0;
++  for (const ch of word) {
++    const cw = widthOf(ch);
++    if (chunkW + cw > w) {
++      chunks.push(chunk);
++      chunk = ch;
++      chunkW = cw;
++    } else {
++      chunk += ch;
++      chunkW += cw;
++    }
++  }
++  chunks.push(chunk);
++  return chunks;
++}
++
++/** Greedily wrap a paragraph's words to column width `w`. */
++function wrap(words: string[], w: number): string[] {
++  const lines: string[] = [];
++  let cur = "";
++  let curW = 0;
++  for (const word of words) {
++    const wordW = widthOf(word);
++    if (wordW > w) {
++      // Word wider than the column: finish the line, then break the word.
++      if (curW > 0) {
++        lines.push(cur);
++        cur = "";
++        curW = 0;
++      }
++      const pieces = chunkWord(word, w);
++      for (let i = 0; i < pieces.length - 1; i++) lines.push(pieces[i]);
++      cur = pieces[pieces.length - 1];
++      curW = widthOf(cur);
++    } else if (curW === 0 || curW + 1 + wordW <= w) {
++      // Fits on the current line (with a leading space when non-empty).
++      if (curW > 0) {
++        cur += " ";
++        curW += 1;
++      }
++      cur += word;
++      curW += wordW;
++    } else {
++      // Fits on a fresh line.
++      lines.push(cur);
++      cur = word;
++      curW = wordW;
++    }
++  }
++  if (curW > 0) lines.push(cur);
++  return lines;
++}
++
++/** The lines a cell occupies when wrapped to column width `w`. */
++function cellLines(cell: string, w: number): string[] {
++  const out: string[] = [];
++  for (const paragraph of cell.split("\n")) {
++    const words = splitWords(paragraph);
++    if (words.length === 0) {
++      out.push("");
++      continue;
++    }
++    out.push(...wrap(words, w));
++  }
++  return out;
+ }
++
++/** Pad `text` to exactly `w` columns according to the alignment. */
++function pad(text: string, w: number, align: Align): string {
++  const extra = w - widthOf(text);
++  if (align === "left") return text + " ".repeat(extra);
++  if (align === "right") return " ".repeat(extra) + text;
++  const left = Math.floor(extra / 2);
++  return " ".repeat(left) + text + " ".repeat(extra - left);
++}
++
++function resolveAligns(align: Align[] | undefined, numCols: number): Align[] {
++  const out: Align[] = new Array(numCols).fill("left");
++  if (align) for (let i = 0; i < numCols && i < align.length; i++) out[i] = align[i];
++  return out;
++}
++
++export function renderTable(rows: string[][], options: TableOptions = {}): string {
++  if (options.maxWidth !== undefined) {
++    if (!Number.isInteger(options.maxWidth) || options.maxWidth <= 0) {
++      throw new RangeError(`invalid maxWidth ${options.maxWidth}`);
++    }
++  }
++  if (options.align) {
++    for (const a of options.align) {
++      if (a !== "left" && a !== "right" && a !== "center") {
++        throw new RangeError(`invalid align ${a}`);
++      }
++    }
++  }
++
++  const numCols = Math.max(0, ...rows.map((r) => r.length));
++  if (numCols === 0) return "";
++
++  // Treat shorter rows as padded with empty cells.
++  const filled = rows.map((r) => {
++    const copy = r.slice();
++    while (copy.length < numCols) copy.push("");
++    return copy;
++  });
++
++  // Natural width: widest paragraph (words joined by single spaces) per column.
++  const natural: number[] = new Array(numCols).fill(0);
++  const min: number[] = new Array(numCols).fill(1);
++  for (const row of filled) {
++    for (let j = 0; j < numCols; j++) {
++      const cell = row[j];
++      if (containsWide(cell)) min[j] = 2;
++      for (const paragraph of cell.split("\n")) {
++        const width = widthOf(splitWords(paragraph).join(" "));
++        if (width > natural[j]) natural[j] = width;
++      }
++    }
++  }
++
++  const widths = natural.map((n, j) => Math.max(n, min[j]));
++  let tableWidth = widths.reduce((a, b) => a + b, 0) + 3 * (numCols - 1);
++
++  if (options.maxWidth !== undefined) {
++    while (tableWidth > options.maxWidth) {
++      // Shrink the widest column still above its minimum; rightmost on ties.
++      let pick = -1;
++      for (let j = 0; j < numCols; j++) {
++        if (widths[j] <= min[j]) continue;
++        if (pick === -1 || widths[j] >= widths[pick]) pick = j;
++      }
++      if (pick === -1) {
++        throw new RangeError(`table cannot fit in ${options.maxWidth} columns`);
++      }
++      widths[pick]--;
++      tableWidth--;
++    }
++  }
++
++  const aligns = resolveAligns(options.align, numCols);
++
++  const out: string[] = [];
++  for (let ri = 0; ri < filled.length; ri++) {
++    const cells = filled[ri].map((cell, j) => cellLines(cell, widths[j]));
++    const height = Math.max(...cells.map((c) => c.length));
++    for (let li = 0; li < height; li++) {
++      const parts: string[] = [];
++      for (let j = 0; j < numCols; j++) {
++        parts.push(pad(cells[j][li] ?? "", widths[j], aligns[j]));
++      }
++      out.push(parts.join(" | "));
++    }
++    if (options.header && ri === 0) {
++      out.push(widths.map((w) => "-".repeat(w)).join("-+-"));
++    }
++  }
++  return out.join("\n");
++}
+\ No newline at end of file

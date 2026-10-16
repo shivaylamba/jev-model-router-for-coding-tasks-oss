@@ -1,0 +1,21 @@
+ __pycache__/sensors.cpython-311.pyc | Bin 0 -> 685 bytes
+ sensors.py                          |   2 +-
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/__pycache__/sensors.cpython-311.pyc b/__pycache__/sensors.cpython-311.pyc
+new file mode 100644
+index 0000000..54c95b0
+Binary files /dev/null and b/__pycache__/sensors.cpython-311.pyc differ
+diff --git a/sensors.py b/sensors.py
+index 9d80b88..51233b9 100644
+--- a/sensors.py
++++ b/sensors.py
+@@ -2,7 +2,7 @@
+ 
+ 
+ def average_reading(readings):
+-    values = [r for r in readings[:-1] if r is not None]
++    values = [r for r in readings if r is not None]
+     if not values:
+         return None
+     return sum(values) / len(values)

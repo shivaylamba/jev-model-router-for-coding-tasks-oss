@@ -1,0 +1,60 @@
+ src/emitter.ts | 25 ++++++++++++++++++++++---
+ 1 file changed, 22 insertions(+), 3 deletions(-)
+
+diff --git a/src/emitter.ts b/src/emitter.ts
+index d91175d..93eeed7 100644
+--- a/src/emitter.ts
++++ b/src/emitter.ts
+@@ -8,6 +8,8 @@ export type Listener = (...args: unknown[]) => void;
+  */
+ export class Emitter {
+   private listeners = new Map<string, Listener[]>();
++  /** Maps the wrapper registered by `once` back to its original listener. */
++  private onceOriginals = new Map<Listener, Listener>();
+ 
+   /** Register `listener` for `event`. Returns a function that removes this registration. */
+   on(event: string, listener: Listener): () => void {
+@@ -28,6 +30,7 @@ export class Emitter {
+       this.off(event, wrapper);
+       listener(...args);
+     };
++    this.onceOriginals.set(wrapper, listener);
+     return this.on(event, wrapper);
+   }
+ 
+@@ -39,7 +42,18 @@ export class Emitter {
+     const list = this.listeners.get(event);
+     if (!list) return;
+     const index = list.indexOf(listener);
+-    if (index !== -1) list.splice(index, 1);
++    if (index !== -1) {
++      list.splice(index, 1);
++      this.onceOriginals.delete(listener);
++      return;
++    }
++    // Not registered directly: it may be the original of a `once` wrapper.
++    for (const registered of list) {
++      if (this.onceOriginals.get(registered) === listener) {
++        this.off(event, registered);
++        return;
++      }
++    }
+   }
+ 
+   /**
+@@ -55,8 +69,13 @@ export class Emitter {
+   emit(event: string, ...args: unknown[]): boolean {
+     const list = this.listeners.get(event);
+     if (!list || list.length === 0) return false;
+-    for (let i = 0; i < list.length; i++) {
+-      list[i](...args);
++    // Fix the roster when emit starts: registrations made during this emit
++    // first apply to the next emit, and removals cannot shift the iteration.
++    const roster = list.slice();
++    for (const listener of roster) {
++      // Skip registrations removed (via off) before their turn came.
++      if (!list.includes(listener)) continue;
++      listener(...args);
+     }
+     return true;
+   }

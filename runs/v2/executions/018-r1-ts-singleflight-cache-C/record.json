@@ -1,0 +1,640 @@
+{
+  "run_id": "v2",
+  "seq": 18,
+  "repetition": 1,
+  "task_id": "ts-singleflight-cache",
+  "category": "state",
+  "difficulty": "hard",
+  "language": "typescript",
+  "condition": "C",
+  "condition_label": "Router on: Auto v2 with Jev (DeepSeek V4 Flash 0731 / Kimi K2.6 / Kimi K3, no effort raise)",
+  "pair_position": "first",
+  "started_at": "2026-10-15T12:26:48.518Z",
+  "ended_at": "2026-10-15T12:44:02.966Z",
+  "duration_s": 1032.815,
+  "termination": "request_limit",
+  "exit_code": -15,
+  "passed": false,
+  "tests_total": 1,
+  "tests_failed": 1,
+  "grade_timed_out": false,
+  "claude_code_version": "2.1.299",
+  "claude_session_model": "nebius-auto",
+  "claude_tools_available": 18,
+  "assistant_messages": 81,
+  "tool_calls": 82,
+  "tool_calls_by_name": {
+    "Read": 16,
+    "Bash": 39,
+    "Write": 14,
+    "Edit": 13
+  },
+  "tool_errors": 14,
+  "output_limit_resumes": 0,
+  "ttft_visible_s": 212.241,
+  "first_output_s": 2.538,
+  "first_assistant_text_s": 218.218,
+  "first_stream_event_s": 0.551,
+  "result_subtype": "success",
+  "result_is_error": false,
+  "num_turns": 14,
+  "claude_duration_ms": 164390,
+  "claude_api_duration_ms": 400935,
+  "claude_reported_usage": {
+    "input_tokens": 895782,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 10681,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "",
+    "iterations": [],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "claude_reported_cost_usd_not_applicable": 15.134039999999997,
+  "has_result_event": true,
+  "upstream_requests": 84,
+  "upstream_requests_by_kind": {
+    "jev_warmup": 1,
+    "jev": 1,
+    "agent": 82
+  },
+  "upstream_status_counts": {
+    "200": 83,
+    "none": 1
+  },
+  "upstream_retries": 0,
+  "upstream_errors": 0,
+  "upstream_aborted": 1,
+  "upstream_requests_without_usage": 1,
+  "unknown_price_models": [],
+  "by_model": {
+    "moonshotai/Kimi-K2.6": {
+      "requests": 48,
+      "prompt_tokens": 1435131,
+      "completion_tokens": 22858,
+      "cached_tokens": 1411200,
+      "reasoning_tokens": 0,
+      "cost_usd": 1.454806,
+      "cost_usd_cache_free": 0.114166,
+      "requests_without_usage": 0,
+      "estimated_cost_usd": 0.0
+    },
+    "moonshotai/Kimi-K3": {
+      "requests": 34,
+      "prompt_tokens": 2126494,
+      "completion_tokens": 24934,
+      "cached_tokens": 1984320,
+      "reasoning_tokens": 0,
+      "cost_usd": 6.753492,
+      "cost_usd_cache_free": 0.800532,
+      "requests_without_usage": 1,
+      "estimated_cost_usd": 0.0
+    }
+  },
+  "tokens": {
+    "jev_input_tokens": 1066,
+    "foreground_prompt_tokens": 3561625,
+    "foreground_completion_tokens": 47792,
+    "foreground_cached_tokens": 3395520,
+    "foreground_reasoning_tokens": 0
+  },
+  "cost_foreground_usd": 8.208298,
+  "cost_background_usd": 0.0,
+  "cost_jev_usd": 4.5e-05,
+  "cost_unmetered_estimate_usd": 0.0,
+  "cost_foreground_cache_free_usd": 0.914698,
+  "cost_background_cache_free_usd": 0.0,
+  "jev_calls": [
+    {
+      "kind": "jev_warmup",
+      "ms": 359,
+      "status": 200,
+      "error": null,
+      "response_model": "jev-1.13.0",
+      "choice": "routine",
+      "probabilities": {
+        "routine": 1,
+        "moderate": 0,
+        "hard": 0
+      },
+      "input_tokens": 443,
+      "usage_estimated": false,
+      "cost_usd": 1.8606e-05
+    },
+    {
+      "kind": "jev",
+      "ms": 400,
+      "status": 200,
+      "error": null,
+      "response_model": "jev-1.13.0",
+      "choice": "hard",
+      "probabilities": {
+        "routine": 0.32,
+        "moderate": 0.05,
+        "hard": 0.63
+      },
+      "input_tokens": 623,
+      "usage_estimated": false,
+      "cost_usd": 2.6166e-05
+    }
+  ],
+  "upstream_header_ms_median": 1116,
+  "foreground_models": [
+    "moonshotai/Kimi-K2.6",
+    "moonshotai/Kimi-K3"
+  ],
+  "auto_routes": [
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "balanced",
+      "reason": "decider_moderate",
+      "model": "moonshotai/Kimi-K2.6"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    },
+    {
+      "tier": "strong",
+      "reason": "stuck",
+      "model": "moonshotai/Kimi-K3"
+    }
+  ],
+  "auto_tier_counts": {
+    "balanced": 48,
+    "strong": 34
+  },
+  "auto_reason_counts": {
+    "decider_moderate": 48,
+    "stuck": 34
+  },
+  "auto_first_tier": "balanced",
+  "auto_tiers_used": [
+    "balanced",
+    "strong"
+  ],
+  "auto_escalations": 1,
+  "auto_downshifts": 0,
+  "auto_stuck_routes": 34,
+  "decider_events": [
+    {
+      "decider": "jev",
+      "difficulty": 0,
+      "ms": 362
+    },
+    {
+      "decider": "jev",
+      "difficulty": 0.655,
+      "ms": 400
+    }
+  ],
+  "decider_no_answer": 0,
+  "decider_late": 0,
+  "nconnect_estimated_cost_usd": 8.2083,
+  "reasoning_effort_counts": {
+    "none": 82
+  },
+  "nebius_stream_requests_logged": 82,
+  "nconnect_session_cost_usd": null,
+  "nconnect_session_input_tokens": null,
+  "nconnect_session_cached_tokens": null,
+  "nconnect_session_output_tokens": null,
+  "nconnect_by_model_line": null,
+  "nconnect_session_id": "nconnect-EdJdl5e3HK6qAVVI-LlQIZ37y29JxNE7",
+  "jev_task_decisions": 1,
+  "jev_decision_ms": 400,
+  "jev_decision_choice": "hard",
+  "jev_model_version": "jev-1.13.0",
+  "cost_total_usd": 8.208343,
+  "cost_basis": "estimated: provider-reported tokens x prices snapshotted in the manifest; cached input at the full input rate (no published cached price)",
+  "contamination_flags": [],
+  "anomalies": [],
+  "versions": {
+    "nconnect_bundle_sha256": "db122e2754730104b6dd6854ad39161018a219c09baeb53090bd1684331ef9b0",
+    "condition_bundles": {
+      "C": {
+        "path": "vendor/nconnect-0.23.0-autov2.2.js",
+        "sha256": "1e392f7eb140d747d20d891149005092483be1c5d941608b6610bec2032e2390",
+        "source_commit": "12ad392e0afb7b671fd6eb515c36711b6ef293ab"
+      }
+    },
+    "catalog_copied_from": "main",
+    "nconnect_version": "nconnect v0.23.0",
+    "nconnect_source_commit": "66bf93fd609b30f1ce40e44d748bcb1b025355a7",
+    "nconnect_provenance": "The installed bundle (~/.nconnect/bin/nconnect.js) is byte-identical to https://nconnect.sh/nconnect.js, which Vercel builds from main at 66bf93f (PR #32 merge, v0.23.0).",
+    "claude_code": "2.1.299 (Claude Code)",
+    "claude_code_binary_sha256": "ba5ab7b8c195fa03ab8d5bf3915c76153b576a2c40e79a5c46e265e7ed9744b3",
+    "node": "v24.18.1",
+    "node_binary_sha256": "f480e325ee0ca9cb9eef00b5ca6057a2a104807a1b073f1bc373a55c67facff5",
+    "python": "Python 3.11.5",
+    "bun": "1.4.2",
+    "os": "26.5.2"
+  }
+}

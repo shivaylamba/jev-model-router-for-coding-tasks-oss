@@ -1,0 +1,423 @@
+ src/semver.ts | 405 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 405 insertions(+)
+
+diff --git a/src/semver.ts b/src/semver.ts
+index 4af9c3e..4b012db 100644
+--- a/src/semver.ts
++++ b/src/semver.ts
+@@ -1,6 +1,9 @@
+ export type Version = { major: number; minor: number; patch: number };
+ 
+ const VERSION_PATTERN = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
++const PART_PATTERN = /^(0|[1-9]\d*|x|X|\*)$/;
++const NUMBER_PATTERN = /^(0|[1-9]\d*)$/;
++const OPERATOR_PATTERN = /^(=|>=|<=|>|<|~|\^)/;
+ 
+ /**
+  * Parse a release version "MAJOR.MINOR.PATCH" (an optional leading "v" is
+@@ -21,3 +24,405 @@ export function compareVersions(a: Version | string, b: Version | string): numbe
+   const right = typeof b === "string" ? parseVersion(b) : b;
+   return left.major - right.major || left.minor - right.minor || left.patch - right.patch;
+ }
++
++// --------------------------------------------------------------------------
++// Internal helpers
++// --------------------------------------------------------------------------
++
++interface PartialVersion {
++  major: number | null;
++  minor: number | null;
++  patch: number | null;
++}
++
++/** Parse a partial version string like "1.2", "1", "1.x.3" etc. Throws TypeError if invalid. */
++function parsePartialVersion(text: string): PartialVersion {
++  const trimmed = text.trim();
++  const prefixMatch = /^v?/.exec(trimmed);
++  const rest = trimmed.slice(prefixMatch![0].length);
++  const parts = rest.split(".");
++
++  if (parts.length === 0 || parts.length > 3) {
++    throw new TypeError(`invalid range: ${JSON.stringify(text)}`);
++  }
++
++  const result: PartialVersion = { major: null, minor: null, patch: null };
++  let sawWildcard = false;
++
++  for (let i = 0; i < parts.length; i++) {
++    const part = parts[i];
++    if (!PART_PATTERN.test(part)) {
++      throw new TypeError(`invalid range: ${JSON.stringify(text)}`);
++    }
++    if (part === "x" || part === "X" || part === "*") {
++      sawWildcard = true;
++      continue;
++    }
++    if (sawWildcard) {
++      throw new TypeError(`invalid range: ${JSON.stringify(text)}`);
++    }
++    if (!NUMBER_PATTERN.test(part)) {
++      throw new TypeError(`invalid range: ${JSON.stringify(text)}`);
++    }
++    const num = Number(part);
++    if (i === 0) result.major = num;
++    else if (i === 1) result.minor = num;
++    else if (i === 2) result.patch = num;
++  }
++
++  return result;
++}
++
++/** Build a version by filling missing parts with zeros. */
++function zeroFill(p: PartialVersion): Version {
++  return {
++    major: p.major ?? 0,
++    minor: p.minor ?? 0,
++    patch: p.patch ?? 0,
++  };
++}
++
++/** True if the partial version is fully specified (no wildcards, no missing parts). */
++function isFullVersion(p: PartialVersion): boolean {
++  return p.patch !== null;
++}
++
++/** Is this a wildcard partial version (no major specified)? */
++function isWildcard(p: PartialVersion): boolean {
++  return p.major === null;
++}
++
++// --------------------------------------------------------------------------
++// Comparator parsing
++// --------------------------------------------------------------------------
++
++interface Comparator {
++  /** For '*', matches anything. For 'none', matches nothing. */
++  op: ">=" | "<" | "<=" | "=" | "^" | "~" | "*" | "none";
++  version: PartialVersion;
++}
++
++/** Parse a single comparator token into one or more comparators. */
++function parseComparatorToken(text: string): Comparator[] {
++  const trimmed = text.trim();
++  if (trimmed === "" || trimmed === "*" || trimmed === "x" || trimmed === "X") {
++    return [{ op: "*", version: { major: null, minor: null, patch: null } }];
++  }
++
++  const opMatch = OPERATOR_PATTERN.exec(trimmed);
++  let rawOp: string;
++  let versionStr: string;
++  if (opMatch) {
++    rawOp = opMatch[0];
++    versionStr = trimmed.slice(rawOp.length).trim();
++  } else {
++    rawOp = "=";
++    versionStr = trimmed;
++  }
++
++  // Handle bare operators (e.g. token was just ">=" with no version)
++  if (versionStr === "") {
++    throw new TypeError(`invalid range: ${JSON.stringify(text)}`);
++  }
++
++  // Wildcard versions with operators
++  if (versionStr === "*" || versionStr === "x" || versionStr === "X") {
++    if (rawOp === ">" || rawOp === "<") {
++      return [{ op: "none", version: { major: null, minor: null, patch: null } }];
++    }
++    // =, >=, <=, ~, ^ with wildcard all mean "any version"
++    return [{ op: "*", version: { major: null, minor: null, patch: null } }];
++  }
++
++  const partial = parsePartialVersion(versionStr);
++
++  if (rawOp === "~") {
++    return [{ op: "~", version: partial }];
++  }
++  if (rawOp === "^") {
++    return [{ op: "^", version: partial }];
++  }
++  if (rawOp === ">=") {
++    return [{ op: ">=", version: partial }];
++  }
++  if (rawOp === "<=") {
++    if (isFullVersion(partial)) {
++      return [{ op: "<=", version: partial }];
++    }
++    if (partial.patch === null && partial.minor !== null) {
++      // <=1.2 means <1.3.0
++      return [{ op: "<", version: { major: partial.major!, minor: partial.minor + 1, patch: 0 } }];
++    }
++    if (partial.minor === null && partial.major !== null) {
++      // <=1 means <2.0.0
++      return [{ op: "<", version: { major: partial.major + 1, minor: 0, patch: 0 } }];
++    }
++    return [{ op: "*", version: { major: null, minor: null, patch: null } }];
++  }
++  if (rawOp === ">") {
++    if (isFullVersion(partial)) {
++      // >1.2.3 means >=1.2.4
++      return [{ op: ">=", version: { major: partial.major!, minor: partial.minor!, patch: partial.patch! + 1 } }];
++    }
++    if (partial.patch === null && partial.minor !== null) {
++      // >1.2 means >=1.3.0
++      return [{ op: ">=", version: { major: partial.major!, minor: partial.minor + 1, patch: 0 } }];
++    }
++    if (partial.minor === null && partial.major !== null) {
++      // >1 means >=2.0.0
++      return [{ op: ">=", version: { major: partial.major + 1, minor: 0, patch: 0 } }];
++    }
++    return [{ op: "*", version: { major: null, minor: null, patch: null } }];
++  }
++  if (rawOp === "<") {
++    if (isFullVersion(partial)) {
++      return [{ op: "<", version: partial }];
++    }
++    // <1.2 means <1.2.0, <1 means <1.0.0
++    return [{ op: "<", version: zeroFill(partial) }];
++  }
++
++  // rawOp === "=" or bare version
++  if (isWildcard(partial)) {
++    return [{ op: "*", version: { major: null, minor: null, patch: null } }];
++  }
++  if (isFullVersion(partial)) {
++    return [{ op: "=", version: partial }];
++  }
++  if (partial.patch === null && partial.minor !== null) {
++    // 1.2 means >=1.2.0 <1.3.0
++    return [
++      { op: ">=", version: zeroFill(partial) },
++      { op: "<", version: { major: partial.major!, minor: partial.minor + 1, patch: 0 } },
++    ];
++  }
++  if (partial.minor === null && partial.major !== null) {
++    // 1 means >=1.0.0 <2.0.0
++    return [
++      { op: ">=", version: zeroFill(partial) },
++      { op: "<", version: { major: partial.major + 1, minor: 0, patch: 0 } },
++    ];
++  }
++
++  return [{ op: "none", version: { major: null, minor: null, patch: null } }];
++}
++
++function compareVersionsNum(a: Version, b: Version): number {
++  return a.major - b.major || a.minor - b.minor || a.patch - b.patch;
++}
++
++/** Check if a version satisfies a single comparator. */
++function satisfiesSingle(v: Version, comp: Comparator): boolean {
++  if (comp.op === "*") return true;
++  if (comp.op === "none") return false;
++
++  const cv = comp.version;
++  const left = zeroFill(cv);
++
++  if (comp.op === ">=") {
++    return compareVersionsNum(v, left) >= 0;
++  }
++  if (comp.op === "<=") {
++    return compareVersionsNum(v, left) <= 0;
++  }
++  if (comp.op === "<") {
++    return compareVersionsNum(v, left) < 0;
++  }
++  if (comp.op === "=") {
++    return compareVersionsNum(v, left) === 0;
++  }
++  if (comp.op === "~") {
++    // ~1.2.3 means >=1.2.3 <1.3.0
++    // ~1.2 means >=1.2.0 <1.3.0
++    // ~1 means >=1.0.0 <2.0.0
++    if (compareVersionsNum(v, left) < 0) return false;
++    const upper: Version = cv.minor !== null
++      ? { major: cv.major!, minor: cv.minor + 1, patch: 0 }
++      : { major: (cv.major ?? 0) + 1, minor: 0, patch: 0 };
++    return compareVersionsNum(v, upper) < 0;
++  }
++  if (comp.op === "^") {
++    // ^1.2.3 means >=1.2.3 <2.0.0
++    // ^0.2.3 means >=0.2.3 <0.3.0
++    // ^0.0.3 means >=0.0.3 <0.0.4
++    // ^1.2 means >=1.2.0 <2.0.0
++    // ^1 means >=1.0.0 <2.0.0
++    // ^0.2 means >=0.2.0 <0.3.0
++    // ^0.0 means >=0.0.0 <0.1.0
++    // ^0 means >=0.0.0 <1.0.0
++    if (compareVersionsNum(v, left) < 0) return false;
++    const major = cv.major ?? 0;
++    if (major === 0) {
++      if (cv.minor !== null && cv.minor !== 0) {
++        // ^0.2 or ^0.2.3 => >=0.x.0 <0.(x+1).0
++        const upper: Version = { major: 0, minor: cv.minor + 1, patch: 0 };
++        return compareVersionsNum(v, upper) < 0;
++      }
++      if (cv.minor === 0) {
++        // ^0.0, ^0.0.3
++        if (cv.patch !== null) {
++          const upper: Version = { major: 0, minor: 0, patch: cv.patch + 1 };
++          return compareVersionsNum(v, upper) < 0;
++        }
++        // ^0.0 => >=0.0.0 <0.1.0
++        return compareVersionsNum(v, { major: 0, minor: 1, patch: 0 }) < 0;
++      }
++      // ^0 => >=0.0.0 <1.0.0
++      return compareVersionsNum(v, { major: 1, minor: 0, patch: 0 }) < 0;
++    }
++    // ^1.x.x => >=1.x.x <2.0.0
++    const upper: Version = { major: major + 1, minor: 0, patch: 0 };
++    return compareVersionsNum(v, upper) < 0;
++  }
++  return false;
++}
++
++// --------------------------------------------------------------------------
++// Hyphen ranges
++// --------------------------------------------------------------------------
++
++function parseHyphenRange(text: string): Comparator[] {
++  const parts = text.split(/\s+-\s+/);
++  if (parts.length !== 2) {
++    throw new TypeError(`invalid range: ${JSON.stringify(text)}`);
++  }
++  const left = parts[0].trim();
++  const right = parts[1].trim();
++
++  // Operators are not allowed inside hyphen ranges
++  if (OPERATOR_PATTERN.test(left) || OPERATOR_PATTERN.test(right)) {
++    throw new TypeError(`invalid range: ${JSON.stringify(text)}`);
++  }
++
++  const comparators: Comparator[] = [];
++
++  // Lower bound
++  if (left === "*" || left === "x" || left === "X") {
++    // no lower bound
++  } else {
++    const lp = parsePartialVersion(left);
++    comparators.push({ op: ">=", version: zeroFill(lp) });
++  }
++
++  // Upper bound
++  if (right === "*" || right === "x" || right === "X") {
++    // no upper bound
++  } else {
++    const rp = parsePartialVersion(right);
++    if (isFullVersion(rp)) {
++      // exact upper bound: <= version
++      comparators.push({ op: "<=", version: rp });
++    } else {
++      // partial upper bound: everything it covers
++      // e.g. 2.3 => <2.4.0, 2 => <3.0.0
++      if (rp.patch === null && rp.minor !== null) {
++        comparators.push({ op: "<", version: { major: rp.major!, minor: rp.minor + 1, patch: 0 } });
++      } else if (rp.minor === null && rp.major !== null) {
++        comparators.push({ op: "<", version: { major: rp.major + 1, minor: 0, patch: 0 } });
++      }
++    }
++  }
++
++  return comparators;
++}
++
++// --------------------------------------------------------------------------
++// Tokenisation helpers
++// --------------------------------------------------------------------------
++
++/** Check whether a token is JUST an operator with no version attached. */
++function isLoneOperator(text: string): boolean {
++  const trimmed = text.trim();
++  const opMatch = OPERATOR_PATTERN.exec(trimmed);
++  if (!opMatch) return false;
++  return trimmed.slice(opMatch[0].length).trim() === "";
++}
++
++/** Split an alternative string into comparator tokens, handling operators separated from versions by whitespace. */
++function splitComparators(text: string): string[] {
++  const rawTokens = text.trim().split(/\s+/);
++  const tokens: string[] = [];
++
++  let i = 0;
++  while (i < rawTokens.length) {
++    const token = rawTokens[i];
++    if (isLoneOperator(token) && i + 1 < rawTokens.length) {
++      // Merge with the next token
++      tokens.push(token + rawTokens[i + 1]);
++      i += 2;
++    } else {
++      tokens.push(token);
++      i += 1;
++    }
++  }
++
++  return tokens;
++}
++
++/** Parse one alternative (the part between ||). May be empty or contain hyphen ranges. */
++function parseAlternative(text: string): Comparator[] {
++  const trimmed = text.trim();
++  if (trimmed === "") return []; // empty alternative matches anything
++
++  // Check if it's a hyphen range: contains " - " and neither token starts with an operator.
++  const spaceTokens = trimmed.split(/\s+/);
++  const dashIndex = spaceTokens.indexOf("-");
++
++  if (dashIndex !== -1) {
++    // A hyphen range must have tokens before and after the dash,
++    // and neither side contains operator-starting tokens.
++    // There must be exactly one un-hyphenated "-" token serving as the hyphen range operator.
++    const before = spaceTokens.slice(0, dashIndex).join(" ");
++    const after = spaceTokens.slice(dashIndex + 1).join(" ");
++    if (!OPERATOR_PATTERN.test(before.trim()) && !OPERATOR_PATTERN.test(after.trim())) {
++      if (spaceTokens.indexOf("-", dashIndex + 1) === -1) {
++        return parseHyphenRange(trimmed);
++      }
++    }
++  }
++
++  // Otherwise tokenise into comparators
++  const tokens = splitComparators(trimmed);
++  const comparators: Comparator[] = [];
++  for (const token of tokens) {
++    // Skip empty tokens
++    if (!token) continue;
++    const comps = parseComparatorToken(token);
++    comparators.push(...comps);
++  }
++  return comparators;
++}
++
++/** Check if v satisfies all comparators in the alternative. */
++function satisfiesAlternative(v: Version, comparators: Comparator[]): boolean {
++  if (comparators.length === 0) return true;
++  return comparators.every((comp) => satisfiesSingle(v, comp));
++}
++
++// --------------------------------------------------------------------------
++// Public API
++// --------------------------------------------------------------------------
++
++/**
++ * Return true if `version` satisfies `range`.
++ * Throws TypeError for invalid versions or ranges.
++ */
++export function satisfies(version: string, range: string): boolean {
++  const v = parseVersion(version);
++
++  if (range.trim() === "") {
++    // Empty range matches all versions
++    return true;
++  }
++
++  const alternatives = range.split("||");
++
++  for (const alt of alternatives) {
++    const comparators = parseAlternative(alt);
++    if (satisfiesAlternative(v, comparators)) {
++      return true;
++    }
++  }
++
++  return false;
++}

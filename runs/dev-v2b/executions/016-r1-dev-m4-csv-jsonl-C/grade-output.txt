@@ -1,0 +1,12 @@
+
+test_basic (acceptance_tests.test_hidden.T.test_basic) ... ok
+test_header_trim_and_blank_lines (acceptance_tests.test_hidden.T.test_header_trim_and_blank_lines) ... ok
+test_no_trailing_newline (acceptance_tests.test_hidden.T.test_no_trailing_newline) ... ok
+test_not_numbers (acceptance_tests.test_hidden.T.test_not_numbers) ... ok
+test_quoted (acceptance_tests.test_hidden.T.test_quoted) ... ok
+test_types (acceptance_tests.test_hidden.T.test_types) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.000s
+
+OK

@@ -1,0 +1,47 @@
+TAP version 13
+# Subtest: singular only for exactly one
+ok 1 - singular only for exactly one
+  ---
+  duration_ms: 0.608583
+  type: 'test'
+  ...
+# Subtest: es endings
+ok 2 - es endings
+  ---
+  duration_ms: 0.090209
+  type: 'test'
+  ...
+# Subtest: consonant plus y
+ok 3 - consonant plus y
+  ---
+  duration_ms: 0.072167
+  type: 'test'
+  ...
+# Subtest: vowel plus y just adds s
+ok 4 - vowel plus y just adds s
+  ---
+  duration_ms: 0.060625
+  type: 'test'
+  ...
+# Subtest: explicit plural
+ok 5 - explicit plural
+  ---
+  duration_ms: 0.499375
+  type: 'test'
+  ...
+# Subtest: invalid count
+ok 6 - invalid count
+  ---
+  duration_ms: 0.286584
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 64.558666
+

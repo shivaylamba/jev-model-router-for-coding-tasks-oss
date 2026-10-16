@@ -1,0 +1,40 @@
+ src/numbers.ts | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+
+diff --git a/src/numbers.ts b/src/numbers.ts
+index de9dac4..2c0fbc9 100644
+--- a/src/numbers.ts
++++ b/src/numbers.ts
+@@ -10,3 +10,32 @@ export function mean(values: readonly number[]): number {
+   if (values.length === 0) throw new RangeError("mean of an empty list");
+   return sum(values) / values.length;
+ }
++
++/** Limit `value` to the closed interval [min, max]. Throws RangeError if min > max. */
++export function clamp(value: number, min: number, max: number): number {
++  if (min > max) throw new RangeError("min must not exceed max");
++  return Math.min(Math.max(value, min), max);
++}
++
++/**
++ * Build an array of numbers stepping from `start` toward `stop` (exclusive),
++ * mirroring Python's `range`. The step defaults to 1. When the step points away
++ * from `stop` (or `start` already equals it) the result is empty. A step of 0
++ * throws a RangeError.
++ */
++export function range(start: number, stop?: number, step?: number): number[] {
++  if (stop === undefined) {
++    stop = start;
++    start = 0;
++  }
++  const stepValue = step ?? 1;
++  if (stepValue === 0) throw new RangeError("step must not be zero");
++
++  const result: number[] = [];
++  if (stepValue > 0) {
++    for (let i = start; i < stop; i += stepValue) result.push(i);
++  } else {
++    for (let i = start; i > stop; i += stepValue) result.push(i);
++  }
++  return result;
++}

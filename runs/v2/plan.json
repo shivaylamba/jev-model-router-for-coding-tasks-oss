@@ -1,0 +1,352 @@
+[
+  {
+    "seq": 1,
+    "repetition": 1,
+    "task_id": "js-debounce-bugs",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 2,
+    "repetition": 1,
+    "task_id": "py-flatten-records-csv",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 3,
+    "repetition": 1,
+    "task_id": "ts-deep-merge",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 4,
+    "repetition": 1,
+    "task_id": "ts-todo-query",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 5,
+    "repetition": 1,
+    "task_id": "py-memoize",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 6,
+    "repetition": 1,
+    "task_id": "py-parse-query",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 7,
+    "repetition": 1,
+    "task_id": "ts-signup-validate",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 8,
+    "repetition": 1,
+    "task_id": "js-score-sort",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 9,
+    "repetition": 1,
+    "task_id": "ts-semver-range",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 10,
+    "repetition": 1,
+    "task_id": "ts-paginate-off-by-one",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 11,
+    "repetition": 1,
+    "task_id": "ts-config-promise",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 12,
+    "repetition": 1,
+    "task_id": "js-parse-ini",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 13,
+    "repetition": 1,
+    "task_id": "py-weekly-report-bugs",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 14,
+    "repetition": 1,
+    "task_id": "py-async-rate-limiter",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 15,
+    "repetition": 1,
+    "task_id": "py-card-iban",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 16,
+    "repetition": 1,
+    "task_id": "js-pluralize",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 17,
+    "repetition": 1,
+    "task_id": "py-expr-eval",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 18,
+    "repetition": 1,
+    "task_id": "ts-singleflight-cache",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 19,
+    "repetition": 1,
+    "task_id": "py-cursor-pagination",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 20,
+    "repetition": 1,
+    "task_id": "py-format-phone",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 21,
+    "repetition": 1,
+    "task_id": "py-validate-username",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 22,
+    "repetition": 1,
+    "task_id": "ts-schema-validator",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 23,
+    "repetition": 1,
+    "task_id": "ts-parse-clock",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 24,
+    "repetition": 1,
+    "task_id": "js-human-duration",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 25,
+    "repetition": 1,
+    "task_id": "py-extract-validators",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 26,
+    "repetition": 1,
+    "task_id": "py-chunk-evenly",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 27,
+    "repetition": 1,
+    "task_id": "py-shipping-constants",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 28,
+    "repetition": 1,
+    "task_id": "js-client-options",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 29,
+    "repetition": 1,
+    "task_id": "py-retry-backoff",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 30,
+    "repetition": 1,
+    "task_id": "ts-clamp-range",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 31,
+    "repetition": 1,
+    "task_id": "js-email-list",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 32,
+    "repetition": 1,
+    "task_id": "ts-notify-many",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 33,
+    "repetition": 1,
+    "task_id": "ts-emitter-bugs",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 34,
+    "repetition": 1,
+    "task_id": "js-pick-omit",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 35,
+    "repetition": 1,
+    "task_id": "ts-pricing-rules",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 36,
+    "repetition": 1,
+    "task_id": "py-parse-kv",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 37,
+    "repetition": 1,
+    "task_id": "py-cron-next",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 38,
+    "repetition": 1,
+    "task_id": "ts-weighted-lru",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 39,
+    "repetition": 1,
+    "task_id": "ts-hex-color",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 40,
+    "repetition": 1,
+    "task_id": "py-order-state-machine",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 41,
+    "repetition": 1,
+    "task_id": "py-shared-default-tags",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 42,
+    "repetition": 1,
+    "task_id": "py-user-stats-dataclass",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 43,
+    "repetition": 1,
+    "task_id": "ts-table-wrap",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 44,
+    "repetition": 1,
+    "task_id": "py-top-n-reverse",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 45,
+    "repetition": 1,
+    "task_id": "py-inventory-reservations",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 46,
+    "repetition": 1,
+    "task_id": "ts-format-money",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 47,
+    "repetition": 1,
+    "task_id": "py-report-csv-export",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 48,
+    "repetition": 1,
+    "task_id": "ts-undo-redo",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 49,
+    "repetition": 1,
+    "task_id": "js-cli-json-flag",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 50,
+    "repetition": 1,
+    "task_id": "js-site-plugins",
+    "condition": "C",
+    "pair_position": "first"
+  }
+]

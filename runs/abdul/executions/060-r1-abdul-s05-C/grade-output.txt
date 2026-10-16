@@ -1,0 +1,7 @@
+
+test_answer (acceptance_tests.test_answer.T.test_answer) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+OK

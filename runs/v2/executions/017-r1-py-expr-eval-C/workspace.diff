@@ -1,0 +1,621 @@
+ calc/__init__.py                                |  10 +-
+ calc/evaluator.py                               |  92 +++++++++++
+ calc/parser.py                                  | 170 ++++++++++++++++++++
+ calc/tokenizer.py                               |  98 ++++++++++++
+ tests/__pycache__/test_evaluate.cpython-311.pyc | Bin 0 -> 16142 bytes
+ tests/test_evaluate.py                          | 200 ++++++++++++++++++++++++
+ 6 files changed, 569 insertions(+), 1 deletion(-)
+
+diff --git a/calc/__init__.py b/calc/__init__.py
+index 82b286e..4033965 100644
+--- a/calc/__init__.py
++++ b/calc/__init__.py
+@@ -1,6 +1,9 @@
+ """Formula engine for computed columns. See SPEC.md."""
+ 
+ from calc.errors import ExprError
++from calc.evaluator import evaluate as _eval_ast
++from calc.parser import Parser
++from calc.tokenizer import Tokenizer
+ 
+ __all__ = ["ExprError", "evaluate"]
+ 
+@@ -11,4 +14,9 @@ def evaluate(expr, variables=None):
+     `variables` maps names to int or float values. Raises ExprError, with a
+     `position`, for any syntax or evaluation error.
+     """
+-    raise NotImplementedError
++    variables = variables or {}
++    tokenizer = Tokenizer(expr)
++    tokens = tokenizer.tokenize()
++    parser = Parser(tokens)
++    ast = parser.parse()
++    return _eval_ast(ast, variables)
+diff --git a/calc/evaluator.py b/calc/evaluator.py
+new file mode 100644
+index 0000000..d7fd843
+--- /dev/null
++++ b/calc/evaluator.py
+@@ -0,0 +1,92 @@
++"""Evaluator for parsed formula ASTs."""
++
++import math
++
++from calc.errors import ExprError
++from calc.functions import CONSTANTS, FUNCTIONS, arity_ok
++from calc.parser import (
++    ASTNode,
++    BinaryOpNode,
++    CallNode,
++    NameNode,
++    NumberNode,
++    UnaryOpNode,
++)
++
++
++def evaluate(node: ASTNode, variables: dict) -> float:
++    """Evaluate an AST node and return a float."""
++    if isinstance(node, NumberNode):
++        return node.value
++
++    if isinstance(node, NameNode):
++        # Names are looked up: variables first, then constants
++        if node.name in variables:
++            val = variables[node.name]
++            return float(val)
++        if node.name in CONSTANTS:
++            return float(CONSTANTS[node.name])
++        raise ExprError(f"unknown name '{node.name}'", node.pos)
++
++    if isinstance(node, UnaryOpNode):
++        val = evaluate(node.operand, variables)
++        if node.op == '+':
++            return val
++        elif node.op == '-':
++            return -val
++
++    if isinstance(node, BinaryOpNode):
++        left = evaluate(node.left, variables)
++        right = evaluate(node.right, variables)
++
++        if node.op == '+':
++            return left + right
++        elif node.op == '-':
++            return left - right
++        elif node.op == '*':
++            return left * right
++        elif node.op == '/':
++            if right == 0:
++                raise ExprError("division by zero", node.pos)
++            return left / right
++        elif node.op == '%':
++            if right == 0:
++                raise ExprError("modulo by zero", node.pos)
++            # Python's % already handles negative correctly for floored modulo
++            return left % right
++        elif node.op == '^':
++            try:
++                result = math.pow(left, right)
++            except (ValueError, OverflowError):
++                raise ExprError("bad power", node.pos)
++            if not math.isfinite(result):
++                raise ExprError("bad power", node.pos)
++            return result
++
++    if isinstance(node, CallNode):
++        # Unknown function
++        if node.name not in FUNCTIONS:
++            raise ExprError(f"unknown function '{node.name}'", node.name_pos)
++
++        # Check arity before evaluating arguments
++        arg_count = len(node.args)
++        if not arity_ok(node.name, arg_count):
++            raise ExprError(
++                f"wrong number of arguments for '{node.name}'", node.name_pos
++            )
++
++        # Evaluate arguments left to right
++        evaluated_args = []
++        for arg in node.args:
++            evaluated_args.append(evaluate(arg, variables))
++
++        # Call the function
++        _, _, func = FUNCTIONS[node.name]
++        try:
++            result = func(*evaluated_args)
++        except Exception:
++            raise ExprError(f"error in function '{node.name}'", node.name_pos)
++
++        return float(result)
++
++    raise ExprError("unknown node type", 0)
+diff --git a/calc/parser.py b/calc/parser.py
+new file mode 100644
+index 0000000..19f1e0a
+--- /dev/null
++++ b/calc/parser.py
+@@ -0,0 +1,170 @@
++"""Recursive-descent parser for formula expressions."""
++
++from calc.errors import ExprError
++
++
++class ASTNode:
++    pass
++
++
++class NumberNode(ASTNode):
++    def __init__(self, value: str, pos: int):
++        self.value = float(value)
++        self.pos = pos
++
++
++class NameNode(ASTNode):
++    def __init__(self, name: str, pos: int):
++        self.name = name
++        self.pos = pos
++
++
++class BinaryOpNode(ASTNode):
++    def __init__(self, op: str, pos: int, left: ASTNode, right: ASTNode):
++        self.op = op
++        self.pos = pos
++        self.left = left
++        self.right = right
++
++
++class UnaryOpNode(ASTNode):
++    def __init__(self, op: str, pos: int, operand: ASTNode):
++        self.op = op
++        self.pos = pos
++        self.operand = operand
++
++
++class CallNode(ASTNode):
++    def __init__(self, name: str, name_pos: int, args: list):
++        self.name = name
++        self.name_pos = name_pos
++        self.args = args
++
++
++class Parser:
++    def __init__(self, tokens):
++        self.tokens = tokens
++        self.pos = 0
++        self.current = tokens[0]
++
++    def _advance(self):
++        self.pos += 1
++        self.current = self.tokens[self.pos]
++
++    def parse(self):
++        result = self._expr()
++        if self.current.kind != 'EOF':
++            self._unexpected(self.current)
++        return result
++
++    def _expect(self, kind, message=None):
++        if self.current.kind != kind:
++            self._unexpected(self.current, message)
++        tok = self.current
++        self._advance()
++        return tok
++
++    def _unexpected(self, token, message=None):
++        if message is None:
++            if token.kind == 'EOF':
++                message = "expected an operand, found end of input"
++            elif token.kind in ('PLUS', 'MINUS', 'STAR', 'SLASH', 'PERCENT', 'CARET'):
++                message = f"expected an operand, found '{token.value}'"
++            elif token.kind == 'RPAREN':
++                message = "unexpected ')'"
++            elif token.kind == 'COMMA':
++                message = "a comma outside a call"
++            elif token.kind in ('NUMBER', 'NAME', 'LPAREN') and self.pos > 0:
++                # reach here only after a complete operand was parsed
++                message = "two operands in a row"
++            else:
++                message = f"unexpected character '{token.value}'"
++        raise ExprError(message, token.pos)
++
++    def _expr(self):
++        """Addition and subtraction (lowest precedence)."""
++        left = self._term()
++        while self.current.kind in ('PLUS', 'MINUS'):
++            op = self.current.value
++            pos = self.current.pos
++            self._advance()
++            right = self._term()
++            left = BinaryOpNode(op, pos, left, right)
++        return left
++
++    def _term(self):
++        """Multiplication, division, modulo."""
++        left = self._unary()
++        while self.current.kind in ('STAR', 'SLASH', 'PERCENT'):
++            op = self.current.value
++            pos = self.current.pos
++            self._advance()
++            right = self._unary()
++            left = BinaryOpNode(op, pos, left, right)
++        return left
++
++    def _unary(self):
++        """Unary + and - (prefix, may repeat)."""
++        if self.current.kind in ('PLUS', 'MINUS'):
++            op = self.current.value
++            pos = self.current.pos
++            self._advance()
++            operand = self._unary()
++            return UnaryOpNode(op, pos, operand)
++        return self._power()
++
++    def _power(self):
++        """Power: right-associative, binds tighter than unary."""
++        left = self._primary()
++        if self.current.kind == 'CARET':
++            pos = self.current.pos
++            self._advance()
++            right = self._unary()  # right side can have unary ops
++            left = BinaryOpNode('^', pos, left, right)
++        return left
++
++    def _primary(self):
++        """Numbers, names, function calls, parenthesized expressions."""
++        if self.current.kind == 'NUMBER':
++            node = NumberNode(self.current.value, self.current.pos)
++            self._advance()
++            return node
++
++        if self.current.kind == 'NAME':
++            name = self.current.value
++            name_pos = self.current.pos
++            self._advance()
++            # Check for function call: name followed by LPAREN (whitespace allowed)
++            if self.current.kind == 'LPAREN':
++                self._advance()  # consume (
++                args = self._arg_list()
++                self._expect('RPAREN', "expected ')', found end of input")
++                return CallNode(name, name_pos, args)
++            else:
++                return NameNode(name, name_pos)
++
++        if self.current.kind == 'LPAREN':
++            self._advance()  # consume (
++            inner = self._expr()
++            self._expect('RPAREN', "expected ')', found end of input")
++            return inner
++
++        # Anything else is an unexpected token where we need an operand
++        self._unexpected(self.current)
++
++    def _arg_list(self):
++        """Parse arguments inside parentheses: zero or more comma-separated."""
++        args = []
++        if self.current.kind == 'RPAREN':
++            return args
++        while True:
++            args.append(self._expr())
++            if self.current.kind == 'COMMA':
++                self._advance()  # consume ,
++                # After a comma, we expect either another argument or RPAREN
++                if self.current.kind == 'RPAREN':
++                    # Trailing comma: expected an operand, found ')'
++                    self._unexpected(self.current, "expected an operand, found ')'")
++                continue
++            break
++        return args
+diff --git a/calc/tokenizer.py b/calc/tokenizer.py
+new file mode 100644
+index 0000000..d5b3ab1
+--- /dev/null
++++ b/calc/tokenizer.py
+@@ -0,0 +1,98 @@
++"""Tokenizer for formula expressions."""
++
++from dataclasses import dataclass
++
++from calc.errors import ExprError
++
++
++@dataclass(frozen=True)
++class Token:
++    kind: str
++    value: str
++    pos: int
++
++
++class Tokenizer:
++    def __init__(self, text):
++        self.text = text
++        self.pos = 0
++        self.length = len(text)
++
++    def tokenize(self):
++        tokens = []
++        while self.pos < self.length:
++            ch = self.text[self.pos]
++
++            if ch in ' \t':
++                self.pos += 1
++                continue
++
++            # Number
++            if ch.isdigit() or ch == '.':
++                start = self.pos
++                # Check for number
++                match = self._match_number()
++                if match:
++                    tokens.append(Token('NUMBER', match, start))
++                    continue
++                # If it started with '.' and didn't match, it's just a '.'
++                if ch == '.':
++                    raise ExprError(f"unexpected character '{ch}'", self.pos)
++
++            # Name
++            if ch.isalpha() or ch == '_':
++                start = self.pos
++                while self.pos < self.length and (self.text[self.pos].isalnum() or self.text[self.pos] == '_'):
++                    self.pos += 1
++                tokens.append(Token('NAME', self.text[start:self.pos], start))
++                continue
++
++            # Operators and punctuation
++            if ch in '+-*/%^(),':
++                kind_map = {'+': 'PLUS', '-': 'MINUS', '*': 'STAR', '/': 'SLASH',
++                            '%': 'PERCENT', '^': 'CARET', '(': 'LPAREN', ')': 'RPAREN', ',': 'COMMA'}
++                tokens.append(Token(kind_map[ch], ch, self.pos))
++                self.pos += 1
++                continue
++
++            raise ExprError(f"unexpected character '{ch}'", self.pos)
++
++        # End of input token
++        tokens.append(Token('EOF', '', self.pos))
++        return tokens
++
++    def _match_number(self):
++        """Try to match a number at current position. Return string or None."""
++        start = self.pos
++        text = self.text
++
++        # Integer part
++        if self.pos < self.length and text[self.pos].isdigit():
++            while self.pos < self.length and text[self.pos].isdigit():
++                self.pos += 1
++
++        # Fractional part
++        if self.pos < self.length and text[self.pos] == '.':
++            next_pos = self.pos + 1
++            if next_pos < self.length and text[next_pos].isdigit():
++                self.pos = next_pos
++                while self.pos < self.length and text[self.pos].isdigit():
++                    self.pos += 1
++
++        # Exponent part
++        if self.pos < self.length and text[self.pos] in 'eE':
++            exp_start = self.pos
++            next_pos = self.pos + 1
++            if next_pos < self.length and text[next_pos] in '+-':
++                next_pos += 1
++            if next_pos < self.length and text[next_pos].isdigit():
++                self.pos = next_pos
++                while self.pos < self.length and text[self.pos].isdigit():
++                    self.pos += 1
++            else:
++                # No digits after e/E, don't include it in the number
++                self.pos = exp_start
++
++        if self.pos == start:
++            return None
++        return text[start:self.pos]
+diff --git a/tests/__pycache__/test_evaluate.cpython-311.pyc b/tests/__pycache__/test_evaluate.cpython-311.pyc
+new file mode 100644
+index 0000000..7b448e0
+Binary files /dev/null and b/tests/__pycache__/test_evaluate.cpython-311.pyc differ
+diff --git a/tests/test_evaluate.py b/tests/test_evaluate.py
+new file mode 100644
+index 0000000..dc59245
+--- /dev/null
++++ b/tests/test_evaluate.py
+@@ -0,0 +1,200 @@
++"""Tests for calc.evaluate against the SPEC.md contract."""
++
++import unittest
++
++from calc import ExprError, evaluate
++
++
++def expect_error(expr, position, variables=None):
++    """Assert evaluate(expr) raises ExprError at exactly `position`."""
++    try:
++        evaluate(expr, vars if False else variables)
++    except ExprError as e:
++        assert e.position == position, (
++            f"{expr!r}: expected position {position}, got {e.position}"
++        )
++        return
++    raise AssertionError(f"expected ExprError for {expr!r}")
++
++
++class ArithmeticTest(unittest.TestCase):
++    def test_basic_operators(self):
++        self.assertEqual(evaluate("2+3"), 5.0)
++        self.assertEqual(evaluate("6-2"), 4.0)
++        self.assertEqual(evaluate("2*3"), 6.0)
++        self.assertEqual(evaluate("6/2"), 3.0)
++        self.assertEqual(evaluate("10%3"), 1.0)
++        self.assertEqual(evaluate("2^3"), 8.0)
++
++    def test_precedence(self):
++        self.assertEqual(evaluate("2+3*4"), 14.0)
++        self.assertEqual(evaluate("(2+3)*4"), 20.0)
++        self.assertEqual(evaluate("2*3+4*5"), 26.0)
++
++    def test_power_right_associative(self):
++        self.assertEqual(evaluate("2^3^2"), 512.0)
++        self.assertEqual(evaluate("2^2^3"), 256.0)
++
++    def test_unary_binds_less_tightly_than_power(self):
++        self.assertEqual(evaluate("-2^2"), -4.0)
++        self.assertEqual(evaluate("2^-1"), 0.5)
++        self.assertEqual(evaluate("-2^-2"), -0.25)
++        self.assertEqual(evaluate("--2"), 2.0)
++
++    def test_left_associativity(self):
++        self.assertEqual(evaluate("10 - 4 - 3"), 3.0)
++        self.assertEqual(evaluate("16 / 4 / 2"), 2.0)
++
++    def test_precedence_mixed(self):
++        self.assertEqual(evaluate("2 + 3 * 4 ^ 2"), 50.0)
++        self.assertEqual(evaluate("(2 + 3) * 4"), 20.0)
++
++    def test_returns_float(self):
++        self.assertIsInstance(evaluate("2"), float)
++        self.assertIsInstance(evaluate("4/2"), float)
++        self.assertIsInstance(evaluate("x", {"x": 5}), float)
++
++    def test_numbers(self):
++        self.assertEqual(evaluate(".5"), 0.5)
++        self.assertEqual(evaluate("3.5"), 3.5)
++        self.assertEqual(evaluate("1e3"), 1000.0)
++        self.assertEqual(evaluate("2.5E-2"), 0.025)
++        self.assertEqual(evaluate("5"), 5.0)
++        self.assertEqual(evaluate("2e+3"), 2000.0)
++
++    def test_number_edge_tokens(self):
++        # "5." -> number 5 then stray "." at position 1
++        expect_error("5.", 1)
++        # "2e" -> number 2 then name "e" starting at position 1
++        expect_error("2e", 1)
++
++    def test_modulo_floored(self):
++        self.assertEqual(evaluate("-7 % 3"), 2.0)
++        self.assertEqual(evaluate("7 % -3"), -2.0)
++
++    def test_constants(self):
++        self.assertAlmostEqual(evaluate("pi"), 3.141592653589793)
++        self.assertAlmostEqual(evaluate("e"), 2.718281828459045)
++
++    def test_variables(self):
++        self.assertEqual(evaluate("x*2 + y", {"x": 3, "y": 4}), 10.0)
++        self.assertIsInstance(evaluate("x", {"x": 5}), float)
++        # variables override constants
++        self.assertEqual(evaluate("pi", {"pi": 3}), 3.0)
++
++
++class FunctionTest(unittest.TestCase):
++    def test_builtin_functions(self):
++        self.assertEqual(evaluate("abs(-5)"), 5.0)
++        self.assertEqual(evaluate("sqrt(4)"), 2.0)
++        self.assertEqual(evaluate("min(1,2,3)"), 1.0)
++        self.assertEqual(evaluate("max(1,2)"), 2.0)
++        self.assertEqual(evaluate("round(3.5)"), 4.0)
++        self.assertEqual(evaluate("hypot(3,4)"), 5.0)
++
++    def test_whitespace_before_paren_still_call(self):
++        self.assertEqual(evaluate("sqrt (9)"), 3.0)
++
++    def test_unknown_function(self):
++        expect_error("foo(1)", 0)
++
++    def test_arity_errors_at_name(self):
++        expect_error("sqrt(1,2)", 0)
++        expect_error("sqrt()", 0)
++        expect_error("hypot(1)", 0)
++        expect_error("hypot(3,4,5)", 0)
++        expect_error("min()", 0)
++
++    def test_zero_arg_call_ok_when_allowed(self):
++        # min/max require at least 1 arg; covered above. No zero-arg builtins exist.
++        pass
++
++
++class SyntaxErrorPositionTest(unittest.TestCase):
++    """Error positions from the SPEC.md table."""
++
++    def check(self, expr, position):
++        expect_error(expr, position)
++
++    def test_empty_and_blank(self):
++        self.check("", 0)
++        self.check("   ", 3)
++
++    def test_trailing_operator(self):
++        self.check("1 +", 3)
++
++    def test_unclosed_paren(self):
++        self.check("(1 + 2", 6)
++
++    def test_unexpected_close_paren(self):
++        self.check("1 + 2)", 5)
++
++    def test_two_operands(self):
++        self.check("2 3", 2)
++        self.check("2x", 1)
++        self.check("2e", 1)
++
++    def test_number_dot_edge(self):
++        self.check("5.", 1)
++
++    def test_double_operator(self):
++        self.check("1 * * 2", 4)
++
++    def test_trailing_comma(self):
++        self.check("min(1,)", 6)
++
++    def test_comma_outside_call(self):
++        self.check("1, 2", 1)
++
++    def test_bad_character(self):
++        self.check("3 $ 4", 2)
++
++    def test_no_implicit_multiplication(self):
++        self.check("2(3)", 1)
++        self.check("(1)(2)", 3)
++
++
++class EvalErrorPositionTest(unittest.TestCase):
++    def check(self, expr, position, variables=None):
++        with self.assertRaises(ExprError) as ctx:
++            evaluate(expr, variables)
++        self.assertEqual(
++            ctx.exception.position,
++            position,
++            f"{expr!r}: expected position {position}, got {ctx.exception.position}",
++        )
++
++    def test_unknown_name(self):
++        self.check("unknown_name + 1", 0)
++        self.check("min(unknown_name, 2)", 4)
++
++    def test_unknown_function(self):
++        self.check("foo(1)", 0)
++
++    def test_arity_checked_before_arg_eval(self):
++        # arity wrong AND argument unknown: arity error wins, at name pos
++        self.check("sqrt(unknown_name, 2)", 0)
++
++    def test_function_failure_at_name(self):
++        self.check("sqrt(-1)", 0)
++        self.check("1 + sqrt(-1)", 4)
++
++    def test_division_and_modulo_by_zero(self):
++        self.check("1 / 0", 2)
++        self.check("1 % 0", 2)
++
++    def test_bad_powers(self):
++        self.check("0^-1", 1)
++        self.check("(-8)^(1/3)", 4)
++        self.check("10^400", 2)
++
++    def test_syntax_error_beats_eval_error(self):
++        # whole formula parsed first: syntax error at end wins over earlier eval error
++        self.check("unknown_name + (1 +", 20 - 1)
++
++    def test_variables_override_constants(self):
++        self.assertEqual(evaluate("pi", {"pi": 3}), 3.0)
++
++
++if __name__ == "__main__":
++    unittest.main()

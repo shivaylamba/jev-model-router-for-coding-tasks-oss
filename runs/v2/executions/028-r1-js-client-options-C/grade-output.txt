@@ -1,0 +1,65 @@
+TAP version 13
+# Subtest: options object with defaults
+ok 1 - options object with defaults
+  ---
+  duration_ms: 1.139375
+  type: 'test'
+  ...
+# Subtest: options object with every option
+ok 2 - options object with every option
+  ---
+  duration_ms: 0.219542
+  type: 'test'
+  ...
+# Subtest: undefined option values fall back to defaults
+ok 3 - undefined option values fall back to defaults
+  ---
+  duration_ms: 0.125708
+  type: 'test'
+  ...
+# Subtest: validation
+ok 4 - validation
+  ---
+  duration_ms: 0.349208
+  type: 'test'
+  ...
+# Subtest: unknown option names are rejected, naming the option
+ok 5 - unknown option names are rejected, naming the option
+  ---
+  duration_ms: 0.186625
+  type: 'test'
+  ...
+# Subtest: positional form still works and warns once
+ok 6 - positional form still works and warns once
+  ---
+  duration_ms: 0.200083
+  type: 'test'
+  ...
+# Subtest: positional form uses the same defaults and validation
+ok 7 - positional form uses the same defaults and validation
+  ---
+  duration_ms: 0.152167
+  type: 'test'
+  ...
+# Subtest: options form never warns
+ok 8 - options form never warns
+  ---
+  duration_ms: 0.091083
+  type: 'test'
+  ...
+# Subtest: callers use the options form and keep their settings
+ok 9 - callers use the options form and keep their settings
+  ---
+  duration_ms: 0.252833
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 68.317625
+

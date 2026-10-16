@@ -1,0 +1,67 @@
+ __pycache__/funcutil.cpython-311.pyc | Bin 0 -> 2949 bytes
+ funcutil.py                          |  44 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 44 insertions(+)
+
+diff --git a/__pycache__/funcutil.cpython-311.pyc b/__pycache__/funcutil.cpython-311.pyc
+new file mode 100644
+index 0000000..958cd13
+Binary files /dev/null and b/__pycache__/funcutil.cpython-311.pyc differ
+diff --git a/funcutil.py b/funcutil.py
+index f1ca4e7..303d378 100644
+--- a/funcutil.py
++++ b/funcutil.py
+@@ -1,6 +1,9 @@
+ """Function decorators."""
+ 
+ import functools
++from collections import namedtuple
++
++CacheInfo = namedtuple("CacheInfo", "hits misses size")
+ 
+ 
+ def once(func):
+@@ -14,3 +17,44 @@ def once(func):
+         return result[0]
+ 
+     return wrapper
++
++
++def memoize(func):
++    """Cache results per distinct set of arguments.
++
++    Re-running with the same arguments returns the cached value instead of
++    calling `func` again. Keyword arguments are matched regardless of order,
++    but positional and keyword forms of the same call are distinct entries.
++    `None` results are cached; raised exceptions propagate without caching.
++    """
++    cache = {}
++
++    @functools.wraps(func)
++    def wrapper(*args, **kwargs):
++        if kwargs:
++            key = (args, frozenset(kwargs.items()))
++        else:
++            key = (args, None)
++        try:
++            result = cache[key]
++        except KeyError:
++            wrapper.misses += 1
++            result = func(*args, **kwargs)
++            cache[key] = result
++            return result
++        wrapper.hits += 1
++        return result
++
++    def cache_info():
++        return CacheInfo(wrapper.hits, wrapper.misses, len(cache))
++
++    def cache_clear():
++        cache.clear()
++        wrapper.hits = 0
++        wrapper.misses = 0
++
++    wrapper.hits = 0
++    wrapper.misses = 0
++    wrapper.cache_info = cache_info
++    wrapper.cache_clear = cache_clear
++    return wrapper

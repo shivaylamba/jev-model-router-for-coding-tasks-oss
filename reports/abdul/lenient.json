@@ -1,0 +1,436 @@
+{
+  "summary": {
+    "A": {
+      "tasks": 30,
+      "strict_passed": 24,
+      "lenient_passed": 30
+    },
+    "C": {
+      "tasks": 30,
+      "strict_passed": 29,
+      "lenient_passed": 29
+    }
+  },
+  "rows": [
+    {
+      "execution": "001-r1-abdul-s26-A",
+      "task_id": "abdul-s26",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "002-r1-abdul-s26-C",
+      "task_id": "abdul-s26",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "003-r1-abdul-s25-C",
+      "task_id": "abdul-s25",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "004-r1-abdul-s25-A",
+      "task_id": "abdul-s25",
+      "condition": "A",
+      "strict": false,
+      "lenient": true
+    },
+    {
+      "execution": "005-r1-abdul-s17-C",
+      "task_id": "abdul-s17",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "006-r1-abdul-s17-A",
+      "task_id": "abdul-s17",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "007-r1-abdul-s09-A",
+      "task_id": "abdul-s09",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "008-r1-abdul-s09-C",
+      "task_id": "abdul-s09",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "009-r1-abdul-s18-A",
+      "task_id": "abdul-s18",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "010-r1-abdul-s18-C",
+      "task_id": "abdul-s18",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "011-r1-abdul-s04-C",
+      "task_id": "abdul-s04",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "012-r1-abdul-s04-A",
+      "task_id": "abdul-s04",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "013-r1-abdul-s23-C",
+      "task_id": "abdul-s23",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "014-r1-abdul-s23-A",
+      "task_id": "abdul-s23",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "015-r1-abdul-s28-A",
+      "task_id": "abdul-s28",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "016-r1-abdul-s28-C",
+      "task_id": "abdul-s28",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "017-r1-abdul-s21-C",
+      "task_id": "abdul-s21",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "018-r1-abdul-s21-A",
+      "task_id": "abdul-s21",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "019-r1-abdul-s03-C",
+      "task_id": "abdul-s03",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "020-r1-abdul-s03-A",
+      "task_id": "abdul-s03",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "021-r1-abdul-s06-C",
+      "task_id": "abdul-s06",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "022-r1-abdul-s06-A",
+      "task_id": "abdul-s06",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "023-r1-abdul-s02-A",
+      "task_id": "abdul-s02",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "024-r1-abdul-s02-C",
+      "task_id": "abdul-s02",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "025-r1-abdul-s08-A",
+      "task_id": "abdul-s08",
+      "condition": "A",
+      "strict": false,
+      "lenient": true
+    },
+    {
+      "execution": "026-r1-abdul-s08-C",
+      "task_id": "abdul-s08",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "027-r1-abdul-s20-A",
+      "task_id": "abdul-s20",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "028-r1-abdul-s20-C",
+      "task_id": "abdul-s20",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "029-r1-abdul-s16-C",
+      "task_id": "abdul-s16",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "030-r1-abdul-s16-A",
+      "task_id": "abdul-s16",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "031-r1-abdul-s12-A",
+      "task_id": "abdul-s12",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "032-r1-abdul-s12-C",
+      "task_id": "abdul-s12",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "033-r1-abdul-s07-A",
+      "task_id": "abdul-s07",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "034-r1-abdul-s07-C",
+      "task_id": "abdul-s07",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "035-r1-abdul-s30-C",
+      "task_id": "abdul-s30",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "036-r1-abdul-s30-A",
+      "task_id": "abdul-s30",
+      "condition": "A",
+      "strict": false,
+      "lenient": true
+    },
+    {
+      "execution": "037-r1-abdul-s11-C",
+      "task_id": "abdul-s11",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "038-r1-abdul-s11-A",
+      "task_id": "abdul-s11",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "039-r1-abdul-s14-A",
+      "task_id": "abdul-s14",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "040-r1-abdul-s14-C",
+      "task_id": "abdul-s14",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "041-r1-abdul-s24-A",
+      "task_id": "abdul-s24",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "042-r1-abdul-s24-C",
+      "task_id": "abdul-s24",
+      "condition": "C",
+      "strict": false,
+      "lenient": false
+    },
+    {
+      "execution": "043-r1-abdul-s22-C",
+      "task_id": "abdul-s22",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "044-r1-abdul-s22-A",
+      "task_id": "abdul-s22",
+      "condition": "A",
+      "strict": false,
+      "lenient": true
+    },
+    {
+      "execution": "045-r1-abdul-s27-A",
+      "task_id": "abdul-s27",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "046-r1-abdul-s27-C",
+      "task_id": "abdul-s27",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "047-r1-abdul-s15-C",
+      "task_id": "abdul-s15",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "048-r1-abdul-s15-A",
+      "task_id": "abdul-s15",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "049-r1-abdul-s10-C",
+      "task_id": "abdul-s10",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "050-r1-abdul-s10-A",
+      "task_id": "abdul-s10",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "051-r1-abdul-s19-C",
+      "task_id": "abdul-s19",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "052-r1-abdul-s19-A",
+      "task_id": "abdul-s19",
+      "condition": "A",
+      "strict": false,
+      "lenient": true
+    },
+    {
+      "execution": "053-r1-abdul-s13-A",
+      "task_id": "abdul-s13",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "054-r1-abdul-s13-C",
+      "task_id": "abdul-s13",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "055-r1-abdul-s29-A",
+      "task_id": "abdul-s29",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "056-r1-abdul-s29-C",
+      "task_id": "abdul-s29",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "057-r1-abdul-s01-C",
+      "task_id": "abdul-s01",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "058-r1-abdul-s01-A",
+      "task_id": "abdul-s01",
+      "condition": "A",
+      "strict": true,
+      "lenient": true
+    },
+    {
+      "execution": "059-r1-abdul-s05-A",
+      "task_id": "abdul-s05",
+      "condition": "A",
+      "strict": false,
+      "lenient": true
+    },
+    {
+      "execution": "060-r1-abdul-s05-C",
+      "task_id": "abdul-s05",
+      "condition": "C",
+      "strict": true,
+      "lenient": true
+    }
+  ]
+}

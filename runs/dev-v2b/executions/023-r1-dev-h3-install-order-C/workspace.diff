@@ -1,0 +1,75 @@
+ __pycache__/resolver.cpython-311.pyc | Bin 0 -> 4019 bytes
+ resolver.py                          |  57 +++++++++++++++++++++++++++--------
+ 2 files changed, 45 insertions(+), 12 deletions(-)
+
+diff --git a/__pycache__/resolver.cpython-311.pyc b/__pycache__/resolver.cpython-311.pyc
+new file mode 100644
+index 0000000..9249fb5
+Binary files /dev/null and b/__pycache__/resolver.cpython-311.pyc differ
+diff --git a/resolver.py b/resolver.py
+index f144cd4..381d6a7 100644
+--- a/resolver.py
++++ b/resolver.py
+@@ -21,17 +21,50 @@ def resolve(packages):
+     it must never hang or hit the recursion limit, however deep the graph is.
+     """
+ 
+-    order = []
+-    seen = set()
+-
+-    def visit(name):
+-        if name in seen:
+-            return
+-        order.append(name)
+-        seen.add(name)
++    deps = {}
++    for name in packages:
++        deps[name] = []
+         for dep in packages[name]:
+-            visit(dep)
++            if dep not in packages:
++                raise MissingDependency(dep)
++            deps[name].append(dep)
+ 
+-    for name in packages:
+-        visit(name)
+-    return list(reversed(order))
++    visited = [False] * len(deps)
++    names = sorted(deps)
++    idx = {name: i for i, name in enumerate(names)}
++    state = {}  # name -> 1 (in stack) | 2 (done)
++
++    # iterative DFS with explicit stack; detects cycles via state dict
++    order = []
++    for root in names:
++        if state.get(root) == 2:
++            continue
++        stack = [(root, iter(deps[root]))]
++        state[root] = 1
++        path = [root]
++        while stack:
++            node, it = stack[-1]
++            advanced = False
++            for dep in it:
++                if state.get(dep) == 1:
++                    # cycle found: extract from path
++                    cycle_start = path.index(dep)
++                    cycle = path[cycle_start:]
++                    # rotate so alphabetically smallest is first
++                    smallest = min(cycle)
++                    si = cycle.index(smallest)
++                    cycle = cycle[si:] + cycle[:si]
++                    raise CycleError(cycle)
++                if state.get(dep) != 2:
++                    state[dep] = 1
++                    path.append(dep)
++                    stack.append((dep, iter(deps[dep])))
++                    advanced = True
++                    break
++            if not advanced:
++                state[node] = 2
++                order.append(node)
++                path.pop()
++                stack.pop()
++
++    return order

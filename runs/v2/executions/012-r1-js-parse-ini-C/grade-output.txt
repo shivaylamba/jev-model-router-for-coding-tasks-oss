@@ -1,0 +1,83 @@
+TAP version 13
+# Subtest: sections, keys and trimming
+ok 1 - sections, keys and trimming
+  ---
+  duration_ms: 1.088208
+  type: 'test'
+  ...
+# Subtest: global keys go to the empty section, which is omitted when empty
+ok 2 - global keys go to the empty section, which is omitted when empty
+  ---
+  duration_ms: 0.709084
+  type: 'test'
+  ...
+# Subtest: comments and blank lines; no inline comments
+ok 3 - comments and blank lines; no inline comments
+  ---
+  duration_ms: 0.128959
+  type: 'test'
+  ...
+# Subtest: section names are kept literally and empty sections appear
+ok 4 - section names are kept literally and empty sections appear
+  ---
+  duration_ms: 0.099625
+  type: 'test'
+  ...
+# Subtest: first = splits; empty values allowed
+ok 5 - first = splits; empty values allowed
+  ---
+  duration_ms: 0.093333
+  type: 'test'
+  ...
+# Subtest: duplicate sections merge and last key wins, in first-appearance order
+ok 6 - duplicate sections merge and last key wins, in first-appearance order
+  ---
+  duration_ms: 0.103709
+  type: 'test'
+  ...
+# Subtest: quoted values keep whitespace and decode escapes
+ok 7 - quoted values keep whitespace and decode escapes
+  ---
+  duration_ms: 0.139041
+  type: 'test'
+  ...
+# Subtest: line continuation joins with a single space
+ok 8 - line continuation joins with a single space
+  ---
+  duration_ms: 0.096542
+  type: 'test'
+  ...
+# Subtest: CRLF line endings
+ok 9 - CRLF line endings
+  ---
+  duration_ms: 0.0865
+  type: 'test'
+  ...
+# Subtest: round trip with stringifyIni
+ok 10 - round trip with stringifyIni
+  ---
+  duration_ms: 0.306667
+  type: 'test'
+  ...
+# Subtest: syntax errors carry the line number
+ok 11 - syntax errors carry the line number
+  ---
+  duration_ms: 0.406083
+  type: 'test'
+  ...
+# Subtest: continuation on the last line is an error at that line
+ok 12 - continuation on the last line is an error at that line
+  ---
+  duration_ms: 0.09525
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 72.706083
+

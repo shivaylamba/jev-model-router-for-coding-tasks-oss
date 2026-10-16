@@ -1,0 +1,10 @@
+
+test_basic (acceptance_tests.test_hidden.T.test_basic) ... ok
+test_digits (acceptance_tests.test_hidden.T.test_digits) ... ok
+test_empty (acceptance_tests.test_hidden.T.test_empty) ... ok
+test_runs (acceptance_tests.test_hidden.T.test_runs) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK

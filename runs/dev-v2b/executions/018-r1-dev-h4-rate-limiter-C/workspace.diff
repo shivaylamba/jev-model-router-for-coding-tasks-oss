@@ -1,0 +1,62 @@
+ ratelimit.py | 43 ++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 34 insertions(+), 9 deletions(-)
+
+diff --git a/ratelimit.py b/ratelimit.py
+index 92d20d5..d6948af 100644
+--- a/ratelimit.py
++++ b/ratelimit.py
+@@ -1,3 +1,6 @@
++from collections import deque
++
++
+ class RateLimiter:
+     """Allow at most `limit` requests per key in any `window` seconds.
+ 
+@@ -18,16 +21,38 @@ class RateLimiter:
+         self.limit = limit
+         self.window = window
+         self.clock = clock
+-        self.counts = {}
++        self.requests = {}
+ 
+     def allow(self, key):
+-        bucket = int(self.clock() // self.window)
+-        current = self.counts.get(key)
+-        if current is None or current[0] != bucket:
+-            current = [bucket, 0]
+-            self.counts[key] = current
+-        current[1] += 1
+-        return current[1] <= self.limit
++        now = self.clock()
++        timestamps = self._live_timestamps(key, now)
++        if len(timestamps) >= self.limit:
++            return False
++        timestamps.append(now)
++        # _live_timestamps may have dropped the key when its last request
++        # expired; re-register it so the just-allowed request is tracked.
++        self.requests[key] = timestamps
++        return True
+ 
+     def tracked_keys(self):
+-        return len(self.counts)
++        now = self.clock()
++        # Pruning here (not only in allow) also purges keys that simply went
++        # idle, so memory stays bounded even if they never call allow again.
++        self._prune(now)
++        return len(self.requests)
++
++    def _live_timestamps(self, key, now):
++        timestamps = self.requests.get(key)
++        if timestamps is None:
++            timestamps = self.requests[key] = deque()
++        cutoff = now - self.window
++        # A request allowed at t stops counting at exactly t + window.
++        while timestamps and timestamps[0] <= cutoff:
++            timestamps.popleft()
++        if not timestamps:
++            del self.requests[key]
++        return timestamps
++
++    def _prune(self, now):
++        for key in list(self.requests):
++            self._live_timestamps(key, now)

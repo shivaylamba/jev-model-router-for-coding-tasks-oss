@@ -1,0 +1,51 @@
+ __pycache__/contacts.cpython-311.pyc            | Bin 0 -> 2671 bytes
+ contacts.py                                     |  30 ++++++++++++++++++++++++
+ tests/__pycache__/test_contacts.cpython-311.pyc | Bin 0 -> 1430 bytes
+ 3 files changed, 30 insertions(+)
+
+diff --git a/__pycache__/contacts.cpython-311.pyc b/__pycache__/contacts.cpython-311.pyc
+new file mode 100644
+index 0000000..7cf5439
+Binary files /dev/null and b/__pycache__/contacts.cpython-311.pyc differ
+diff --git a/contacts.py b/contacts.py
+index f36e8f9..9c278be 100644
+--- a/contacts.py
++++ b/contacts.py
+@@ -10,3 +10,33 @@ def format_name(first, last):
+ def normalize_email(email):
+     """Trim and lowercase an e-mail address."""
+     return email.strip().lower()
++
++
++_IGNORED = set("()-.+ ")
++
++
++def format_us_phone(raw):
++    """Format a US phone number as '(415) 555-0123'.
++
++    Spaces, parentheses, hyphens, dots and '+' are ignored; any other
++    non-digit character raises ValueError. Exactly 10 digits are required,
++    or 11 where the first is the country code '1' (which is dropped). The
++    area code and exchange may not start with 0 or 1.
++    """
++    chars = []
++    for c in raw:
++        if c in _IGNORED:
++            continue
++        if c.isdigit():
++            chars.append(c)
++        else:
++            raise ValueError(f"invalid character {c!r} in US phone number: {raw!r}")
++    digits = "".join(chars)
++    if len(digits) == 11 and digits[0] == "1":
++        digits = digits[1:]
++    if len(digits) != 10:
++        raise ValueError(f"invalid US phone number: {raw!r}")
++    area, exchange, rest = digits[:3], digits[3:6], digits[6:]
++    if area[0] in "01" or exchange[0] in "01":
++        raise ValueError(f"invalid US phone number: {raw!r}")
++    return f"({area}) {exchange}-{rest}"
+diff --git a/tests/__pycache__/test_contacts.cpython-311.pyc b/tests/__pycache__/test_contacts.cpython-311.pyc
+new file mode 100644
+index 0000000..1dd5b79
+Binary files /dev/null and b/tests/__pycache__/test_contacts.cpython-311.pyc differ

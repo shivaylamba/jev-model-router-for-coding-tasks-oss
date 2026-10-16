@@ -1,0 +1,79 @@
+ shop/__pycache__/__init__.cpython-311.pyc  | Bin 0 -> 256 bytes
+ shop/__pycache__/cart.cpython-311.pyc      | Bin 0 -> 632 bytes
+ shop/__pycache__/discounts.cpython-311.pyc | Bin 0 -> 1700 bytes
+ shop/__pycache__/tax.cpython-311.pyc       | Bin 0 -> 624 bytes
+ shop/cart.py                               |   6 ++----
+ shop/discounts.py                          |  19 +++++++++++++++++--
+ shop/tax.py                                |   7 ++++++-
+ 7 files changed, 25 insertions(+), 7 deletions(-)
+
+diff --git a/shop/__pycache__/__init__.cpython-311.pyc b/shop/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..dd05d85
+Binary files /dev/null and b/shop/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/shop/__pycache__/cart.cpython-311.pyc b/shop/__pycache__/cart.cpython-311.pyc
+new file mode 100644
+index 0000000..d4f9979
+Binary files /dev/null and b/shop/__pycache__/cart.cpython-311.pyc differ
+diff --git a/shop/__pycache__/discounts.cpython-311.pyc b/shop/__pycache__/discounts.cpython-311.pyc
+new file mode 100644
+index 0000000..7c4f9d1
+Binary files /dev/null and b/shop/__pycache__/discounts.cpython-311.pyc differ
+diff --git a/shop/__pycache__/tax.cpython-311.pyc b/shop/__pycache__/tax.cpython-311.pyc
+new file mode 100644
+index 0000000..55d8335
+Binary files /dev/null and b/shop/__pycache__/tax.cpython-311.pyc differ
+diff --git a/shop/cart.py b/shop/cart.py
+index ee95c26..e875def 100644
+--- a/shop/cart.py
++++ b/shop/cart.py
+@@ -1,10 +1,8 @@
+ from .discounts import apply_discount
+ from .tax import add_tax
+ 
++
+ def checkout(lines, discount_percent=0, tax_rate="0"):
+-    subtotal = 0.0
+-    for price, quantity in lines:
+-        subtotal += float(price) * quantity
+-    subtotal = apply_discount(subtotal, discount_percent)
++    subtotal = apply_discount(lines, discount_percent)
+     total = add_tax(subtotal, tax_rate)
+     return f"{total:.2f}"
+diff --git a/shop/discounts.py b/shop/discounts.py
+index 0db9009..343fa3f 100644
+--- a/shop/discounts.py
++++ b/shop/discounts.py
+@@ -1,2 +1,17 @@
+-def apply_discount(amount, percent):
+-    return round(amount * (1 - float(percent) / 100), 2)
++from decimal import Decimal, ROUND_HALF_UP
++
++
++def round_cents(amount):
++    return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
++
++
++def discounted_line_total(price, quantity, percent):
++    line = Decimal(str(price)) * quantity
++    factor = Decimal("1") - Decimal(str(percent)) / Decimal("100")
++    return round_cents(line * factor)
++
++
++def apply_discount(lines, percent):
++    """Apply the percentage discount to each line separately, round each
++    discounted line to the nearest cent (halves up), and return the subtotal."""
++    return sum((discounted_line_total(p, q, percent) for p, q in lines), Decimal("0"))
+diff --git a/shop/tax.py b/shop/tax.py
+index 97d96a1..195d036 100644
+--- a/shop/tax.py
++++ b/shop/tax.py
+@@ -1,2 +1,7 @@
++from decimal import Decimal
++
++from .discounts import round_cents
++
++
+ def add_tax(amount, rate):
+-    return amount + round(amount * float(rate), 2)
++    return amount + round_cents(Decimal(amount) * Decimal(str(rate)))

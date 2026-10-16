@@ -1,0 +1,220 @@
+ src/ini.js         | 99 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ test/parse.test.js | 94 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ test/probe.js      |  2 ++
+ 3 files changed, 195 insertions(+)
+
+diff --git a/src/ini.js b/src/ini.js
+index d9b9cf5..688b38d 100644
+--- a/src/ini.js
++++ b/src/ini.js
+@@ -35,3 +35,102 @@ export function stringifyIni(data) {
+   }
+   return lines.join("\n") + "\n";
+ }
++
++const ESCAPES = { '"': '"', '\\': '\\', n: '\n', t: '\t' };
++
++function iniError(message, line) {
++  const err = new SyntaxError(message + " (line " + line + ")");
++  err.line = line;
++  return err;
++}
++
++// Parse a quoted value. `value` starts with the opening quote. Throws on bad
++// escape, missing closing quote, or non-whitespace after the closing quote.
++function parseQuoted(value, line) {
++  let out = "";
++  let i = 1;
++  let closed = false;
++  while (i < value.length) {
++    const ch = value[i];
++    if (ch === '"') {
++      closed = true;
++      i++;
++      break;
++    }
++    if (ch === '\\') {
++      if (i + 1 >= value.length) throw iniError("missing closing quote", line);
++      const esc = ESCAPES[value[i + 1]];
++      if (esc === undefined) throw iniError("invalid escape \\" + value[i + 1], line);
++      out += esc;
++      i += 2;
++    } else {
++      out += ch;
++      i += 1;
++    }
++  }
++  if (!closed) throw iniError("missing closing quote", line);
++  for (let k = i; k < value.length; k++) {
++    if (value[k] !== ' ' && value[k] !== '\t') {
++      throw iniError("unexpected characters after closing quote", line);
++    }
++  }
++  return out;
++}
++
++/**
++ * Parse INI text into { section: { key: value } }. Sections appear in the
++ * order first encountered; keys before the first header go in the "" section.
++ * Throws a SyntaxError with a 1-based numeric `line` property on bad input.
++ */
++export function parseIni(text) {
++  const result = {};
++  let current = null;
++  const lines = text.split(/\r?\n/);
++  // A trailing newline ends the last line; it does not start a new one.
++  if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
++
++  const ensureSection = (name) => {
++    if (!Object.prototype.hasOwnProperty.call(result, name)) result[name] = {};
++    return result[name];
++  };
++
++  for (let index = 0; index < lines.length; index++) {
++    const lineNumber = index + 1;
++    const trimmed = lines[index].trim();
++    if (trimmed === "" || trimmed.startsWith(";") || trimmed.startsWith("#")) continue;
++
++    if (trimmed.startsWith("[")) {
++      if (!trimmed.endsWith("]")) throw iniError("unterminated section header", lineNumber);
++      const name = trimmed.slice(1, -1).trim();
++      if (name === "") throw iniError("empty section name", lineNumber);
++      current = ensureSection(name);
++      continue;
++    }
++
++    const eq = trimmed.indexOf("=");
++    if (eq === -1) throw iniError('expected "key = value"', lineNumber);
++    const key = trimmed.slice(0, eq).trim();
++    if (key === "") throw iniError('missing key before "="', lineNumber);
++    if (current === null) current = ensureSection("");
++    const value = trimmed.slice(eq + 1).trim();
++
++    if (value.startsWith('"')) {
++      current[key] = parseQuoted(value, lineNumber);
++      continue;
++    }
++
++    let acc = value;
++    while (acc.endsWith("\\")) {
++      acc = acc.slice(0, -1).trimEnd();
++      index++;
++      if (index >= lines.length) throw iniError("line continuation reaches end of file", index);
++      acc += " " + lines[index].trim();
++    }
++    current[key] = acc;
++  }
++
++  return result;
++}
++
++  return result;
++}
+diff --git a/test/parse.test.js b/test/parse.test.js
+new file mode 100644
+index 0000000..74808f1
+--- /dev/null
++++ b/test/parse.test.js
+@@ -0,0 +1,94 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { parseIni, stringifyIni } from "../src/ini.js";
++
++test("parses a basic section and key", () => {
++  assert.deepEqual(parseIni("[server]\nport = 8080\n"), {
++    server: { port: "8080" },
++  });
++});
++
++test("keys before the first header go in the empty section", () => {
++  assert.deepEqual(parseIni("name = api\n[server]\nport = 8080\n"), {
++    "": { name: "api" },
++    server: { port: "8080" },
++  });
++});
++
++test("the empty section is omitted when it has no keys", () => {
++  assert.deepEqual(parseIni("[a]\nx = 1\n"), { a: { x: "1" } });
++});
++
++test("duplicate sections merge and duplicate keys take the last value", () => {
++  const text = "[s]\na = 1\n[t]\nb = 2\n[s]\na = 3\nc = 4\n";
++  assert.deepEqual(parseIni(text), { s: { a: "3", c: "4" }, t: { b: "2" } });
++});
++
++test("comments and blank lines are ignored", () => {
++  const text = "; comment\n\n# comment\n[s]\nport = 8080 ; not a comment\n";
++  assert.deepEqual(parseIni(text), { s: { port: "8080 ; not a comment" } });
++});
++
++test("an empty section still appears; a dotted name is not nesting", () => {
++  assert.deepEqual(parseIni("[server.http]\n[empty]\n"), {
++    "server.http": {},
++    empty: {},
++  });
++});
++
++test("quoted values keep whitespace and decode escapes", () => {
++  const text = '[s]\nmotd = " hi \\"there\\" \\\\ \\n \\t "\nempty = ""\n';
++  assert.deepEqual(parseIni(text), { s: { motd: ' hi "there" \\ \n \t ', empty: "" } });
++});
++
++test("whitespace inside quotes is kept and unquoted values are trimmed", () => {
++  assert.deepEqual(parseIni('[s]\na =   spaced   \nb = " padded "\n'), {
++    s: { a: "spaced", b: " padded " },
++  });
++});
++
++test("backslash continues the value onto the next line", () => {
++  const text = "[s]\nnote = first\\\nsecond \\\n[not a header]\n";
++  assert.deepEqual(parseIni(text), { s: { note: "first second [not a header]" } });
++});
++
++test("continuation swallows comment-looking lines", () => {
++  assert.deepEqual(parseIni("[s]\na = one\\\n; two\n"), { s: { a: "one ; two" } });
++});
++
++test("CRLF line endings parse the same as LF", () => {
++  assert.deepEqual(parseIni("[s]\r\nport = 8080\r\n"), parseIni("[s]\nport = 8080\n"));
++});
++
++test("empty value is allowed; empty key is a syntax error", () => {
++  assert.deepEqual(parseIni("[s]\na =\n"), { s: { a: "" } });
++  assert.throws(() => parseIni("[s]\n= value\n"), (e) => e instanceof SyntaxError && e.line === 2);
++});
++
++test("section header errors report the offending line", () => {
++  assert.throws(() => parseIni("[s]\nx = 1\n[]\n"), (e) => e instanceof SyntaxError && e.line === 3);
++  assert.throws(() => parseIni("[s]\nx = 1\n[unterminated\n"), (e) => e.line === 3);
++});
++
++test("a line with no = is a syntax error at its line", () => {
++  assert.throws(() => parseIni("[s]\njust some words\n"), (e) => e instanceof SyntaxError && e.line === 2);
++});
++
++test("quoted-value errors report the offending line", () => {
++  assert.throws(() => parseIni("[s]\na = one\nb = \"bad \\q\"\n"), (e) => e.line === 3);
++  assert.throws(() => parseIni("[s]\nb = \"unterminated\n"), (e) => e.line === 2);
++  assert.throws(() => parseIni("[s]\nb = \"ok\" trailing\n"), (e) => e.line === 2);
++});
++
++test("continuation on the last line points at the backslash line", () => {
++  assert.throws(() => parseIni("[s]\na = one\nb = two\\\n"), (e) => e.line === 3);
++});
++
++test("round trip: parseIni(stringifyIni(data)) returns the data", () => {
++  const data = {
++    "": { name: "api" },
++    server: { port: "8080", motd: ' hi "there" \\ \n\t ' },
++    "server.http": { empty: "", plain: "8080 ; keep" },
++  };
++  assert.deepEqual(parseIni(stringifyIni(data)), data);
++});
+diff --git a/test/probe.js b/test/probe.js
+new file mode 100644
+index 0000000..93952d8
+--- /dev/null
++++ b/test/probe.js
+@@ -0,0 +1,2 @@
++const lines = ["a", "b"];
++console.log("LINES: " + lines.length);

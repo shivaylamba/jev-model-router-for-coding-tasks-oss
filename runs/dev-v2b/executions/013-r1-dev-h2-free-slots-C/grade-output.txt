@@ -1,0 +1,15 @@
+
+test_contained (acceptance_tests.test_hidden.T.test_contained) ... ok
+test_empty_day (acceptance_tests.test_hidden.T.test_empty_day) ... ok
+test_ignores_empty_meetings (acceptance_tests.test_hidden.T.test_ignores_empty_meetings) ... ok
+test_meeting_at_edges (acceptance_tests.test_hidden.T.test_meeting_at_edges) ... ok
+test_min_minutes_is_inclusive (acceptance_tests.test_hidden.T.test_min_minutes_is_inclusive) ... ok
+test_outside_hours (acceptance_tests.test_hidden.T.test_outside_hours) ... ok
+test_simple (acceptance_tests.test_hidden.T.test_simple) ... ok
+test_touching (acceptance_tests.test_hidden.T.test_touching) ... ok
+test_unsorted_and_overlap (acceptance_tests.test_hidden.T.test_unsorted_and_overlap) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.000s
+
+OK

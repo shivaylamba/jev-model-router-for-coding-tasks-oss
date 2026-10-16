@@ -1,0 +1,124 @@
+ resolver.py | 111 +++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 98 insertions(+), 13 deletions(-)
+
+diff --git a/resolver.py b/resolver.py
+index f144cd4..d9daae8 100644
+--- a/resolver.py
++++ b/resolver.py
+@@ -20,18 +20,103 @@ def resolve(packages):
+     same every time. Raises MissingDependency or CycleError as described above;
+     it must never hang or hit the recursion limit, however deep the graph is.
+     """
++    import heapq
++
++    for name, deps in packages.items():
++        for dep in deps:
++            if dep not in packages:
++                raise MissingDependency(dep)
++
++    # pending[u] = deps of u that are not yet installed (deduplicated)
++    pending = {u: set(deps) for u, deps in packages.items()}
++    dependents = {u: [] for u in packages}
++    for u, deps in packages.items():
++        for dep in set(deps):
++            dependents[dep].append(u)
++
++    ready = [u for u, deps in pending.items() if not deps]
++    heapq.heapify(ready)
+ 
+     order = []
+-    seen = set()
+-
+-    def visit(name):
+-        if name in seen:
+-            return
+-        order.append(name)
+-        seen.add(name)
+-        for dep in packages[name]:
+-            visit(dep)
+-
+-    for name in packages:
+-        visit(name)
+-    return list(reversed(order))
++    while ready:
++        u = heapq.heappop(ready)
++        order.append(u)
++        for v in dependents[u]:
++            pending[v].discard(u)
++            if not pending[v]:
++                heapq.heappush(ready, v)
++
++    if len(order) == len(packages):
++        return order
++
++    # What remains is one or more cycles (possibly linked by edges); find a
++    # strongly connected component with an iterative Tarjan pass, then rotate
++    # it so it starts at its alphabetically smallest member.
++    leftover = {u: [d for d in packages[u] if d in pending and pending[d]]
++                for u in packages if pending[u]}
++
++    index_of = {}
++    lowlink = {}
++    on_stack = set()
++    stack = []
++    counter = [0]
++
++    def strongconnect(root):
++        work = [(root, iter(leftover[root]))]
++        index_of[root] = lowlink[root] = counter[0]
++        counter[0] += 1
++        stack.append(root)
++        on_stack.add(root)
++        while work:
++            v, it = work[-1]
++            advanced = False
++            for w in it:
++                if w not in index_of:
++                    index_of[w] = lowlink[w] = counter[0]
++                    counter[0] += 1
++                    stack.append(w)
++                    on_stack.add(w)
++                    work.append((w, iter(leftover[w])))
++                    advanced = True
++                    break
++                elif w in on_stack:
++                    lowlink[v] = min(lowlink[v], index_of[w])
++            if advanced:
++                continue
++            work.pop()
++            if work:
++                parent = work[-1][0]
++                lowlink[parent] = min(lowlink[parent], lowlink[v])
++            if lowlink[v] == index_of[v]:
++                scc = []
++                while True:
++                    w = stack.pop()
++                    on_stack.discard(w)
++                    scc.append(w)
++                    if w == v:
++                        break
++                raise CycleError(_normalize_cycle(scc, leftover))
++
++    for u in leftover:
++        if u not in index_of:
++            strongconnect(u)
++
++def _normalize_cycle(scc, leftover):
++    """Extract one cycle from an SCC and rotate it to start at its smallest member."""
++    if len(scc) == 1:
++        return list(scc)
++
++    # Walk dependency edges inside the SCC until we revisit a node.
++    nxt = {u: [d for d in leftover[u] if d in scc] for u in scc}
++    start = scc[0]
++    path = [start]
++    visited_at = {start: 0}
++    while True:
++        for w in nxt[path[-1]]:
++            if w in visited_at:
++                cycle = path[visited_at[w]:]
++                smallest = min(range(len(cycle)), key=lambda i: cycle[i])
++                return cycle[smallest:] + cycle[:smallest]
++            visited_at[w] = len(path)
++            path.append(w)
++            break

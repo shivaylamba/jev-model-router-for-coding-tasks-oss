@@ -1,0 +1,89 @@
+ src/text.js       | 29 +++++++++++++++++++++++++++++
+ test/text.test.js | 34 +++++++++++++++++++++++++++++++++-
+ 2 files changed, 62 insertions(+), 1 deletion(-)
+
+diff --git a/src/text.js b/src/text.js
+index fcabc22..13ada69 100644
+--- a/src/text.js
++++ b/src/text.js
+@@ -14,3 +14,32 @@ export function capitalize(s) {
+ export function truncate(s, max) {
+   return s.length <= max ? s : s.slice(0, Math.max(0, max - 1)) + "…";
+ }
++
++/**
++ * Format a count with the correct plural form of its noun.
++ * @param {number} count
++ * @param {string} singular
++ * @param {string} [plural]
++ */
++export function pluralize(count, singular, plural) {
++  if (typeof count !== "number" || !Number.isFinite(count)) {
++    throw new TypeError("count must be a finite number");
++  }
++  if (count === 1) {
++    return String(count) + " " + singular;
++  }
++  if (plural !== undefined) {
++    return String(count) + " " + plural;
++  }
++  return String(count) + " " + pluralOf(singular);
++}
++
++function pluralOf(singular) {
++  if (/(s|x|z|ch|sh)$/.test(singular)) {
++    return singular + "es";
++  }
++  if (/([bcdfghjklmnpqrstvwxyz])y$/.test(singular)) {
++    return singular.slice(0, -1) + "ies";
++  }
++  return singular + "s";
++}
+diff --git a/test/text.test.js b/test/text.test.js
+index d0918a6..3eabde6 100644
+--- a/test/text.test.js
++++ b/test/text.test.js
+@@ -1,6 +1,6 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+-import { capitalize, truncate } from "../src/text.js";
++import { capitalize, truncate, pluralize } from "../src/text.js";
+ 
+ test("capitalize", () => {
+   assert.equal(capitalize("hello"), "Hello");
+@@ -11,3 +11,35 @@ test("truncate", () => {
+   assert.equal(truncate("abcdef", 10), "abcdef");
+   assert.equal(truncate("abcdef", 4), "abc…");
+ });
++
++test("pluralize", () => {
++  assert.equal(pluralize(1, "file"), "1 file");
++  assert.equal(pluralize(0, "file"), "0 files");
++  assert.equal(pluralize(2, "file"), "2 files");
++  assert.equal(pluralize(-1, "file"), "-1 files");
++  assert.equal(pluralize(1.5, "file"), "1.5 files");
++
++  // explicit plural
++  assert.equal(pluralize(2, "child", "children"), "2 children");
++  assert.equal(pluralize(1, "child", "children"), "1 child");
++
++  // es endings
++  assert.equal(pluralize(2, "bus"), "2 buses");
++  assert.equal(pluralize(2, "box"), "2 boxes");
++  assert.equal(pluralize(2, "quiz"), "2 quizes");
++  assert.equal(pluralize(2, "match"), "2 matches");
++  assert.equal(pluralize(2, "dish"), "2 dishes");
++
++  // y endings
++  assert.equal(pluralize(2, "city"), "2 cities");
++  assert.equal(pluralize(2, "day"), "2 days");
++
++  // everything else
++  assert.equal(pluralize(2, "cat"), "2 cats");
++});
++
++test("pluralize throws on non-finite count", () => {
++  assert.throws(() => pluralize(NaN, "file"), TypeError);
++  assert.throws(() => pluralize(Infinity, "file"), TypeError);
++  assert.throws(() => pluralize("2", "file"), TypeError);
++});

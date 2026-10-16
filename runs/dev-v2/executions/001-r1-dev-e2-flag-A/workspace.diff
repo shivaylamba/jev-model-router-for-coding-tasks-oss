@@ -1,0 +1,22 @@
+ cli.py | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/cli.py b/cli.py
+index 38d26b2..da8a036 100644
+--- a/cli.py
++++ b/cli.py
+@@ -3,8 +3,13 @@ import argparse
+ def main(argv=None):
+     parser = argparse.ArgumentParser()
+     parser.add_argument("--name", default="world")
++    parser.add_argument("--upper", action="store_true",
++                        help="print the greeting in uppercase")
+     args = parser.parse_args(argv)
+-    return f"Hello, {args.name}!"
++    greeting = f"Hello, {args.name}!"
++    if args.upper:
++        greeting = greeting.upper()
++    return greeting
+ 
+ if __name__ == "__main__":
+     print(main())

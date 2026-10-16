@@ -1,0 +1,422 @@
+[
+  {
+    "seq": 1,
+    "repetition": 1,
+    "task_id": "abdul-s26",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 2,
+    "repetition": 1,
+    "task_id": "abdul-s26",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 3,
+    "repetition": 1,
+    "task_id": "abdul-s25",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 4,
+    "repetition": 1,
+    "task_id": "abdul-s25",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 5,
+    "repetition": 1,
+    "task_id": "abdul-s17",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 6,
+    "repetition": 1,
+    "task_id": "abdul-s17",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 7,
+    "repetition": 1,
+    "task_id": "abdul-s09",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 8,
+    "repetition": 1,
+    "task_id": "abdul-s09",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 9,
+    "repetition": 1,
+    "task_id": "abdul-s18",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 10,
+    "repetition": 1,
+    "task_id": "abdul-s18",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 11,
+    "repetition": 1,
+    "task_id": "abdul-s04",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 12,
+    "repetition": 1,
+    "task_id": "abdul-s04",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 13,
+    "repetition": 1,
+    "task_id": "abdul-s23",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 14,
+    "repetition": 1,
+    "task_id": "abdul-s23",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 15,
+    "repetition": 1,
+    "task_id": "abdul-s28",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 16,
+    "repetition": 1,
+    "task_id": "abdul-s28",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 17,
+    "repetition": 1,
+    "task_id": "abdul-s21",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 18,
+    "repetition": 1,
+    "task_id": "abdul-s21",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 19,
+    "repetition": 1,
+    "task_id": "abdul-s03",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 20,
+    "repetition": 1,
+    "task_id": "abdul-s03",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 21,
+    "repetition": 1,
+    "task_id": "abdul-s06",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 22,
+    "repetition": 1,
+    "task_id": "abdul-s06",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 23,
+    "repetition": 1,
+    "task_id": "abdul-s02",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 24,
+    "repetition": 1,
+    "task_id": "abdul-s02",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 25,
+    "repetition": 1,
+    "task_id": "abdul-s08",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 26,
+    "repetition": 1,
+    "task_id": "abdul-s08",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 27,
+    "repetition": 1,
+    "task_id": "abdul-s20",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 28,
+    "repetition": 1,
+    "task_id": "abdul-s20",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 29,
+    "repetition": 1,
+    "task_id": "abdul-s16",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 30,
+    "repetition": 1,
+    "task_id": "abdul-s16",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 31,
+    "repetition": 1,
+    "task_id": "abdul-s12",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 32,
+    "repetition": 1,
+    "task_id": "abdul-s12",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 33,
+    "repetition": 1,
+    "task_id": "abdul-s07",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 34,
+    "repetition": 1,
+    "task_id": "abdul-s07",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 35,
+    "repetition": 1,
+    "task_id": "abdul-s30",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 36,
+    "repetition": 1,
+    "task_id": "abdul-s30",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 37,
+    "repetition": 1,
+    "task_id": "abdul-s11",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 38,
+    "repetition": 1,
+    "task_id": "abdul-s11",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 39,
+    "repetition": 1,
+    "task_id": "abdul-s14",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 40,
+    "repetition": 1,
+    "task_id": "abdul-s14",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 41,
+    "repetition": 1,
+    "task_id": "abdul-s24",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 42,
+    "repetition": 1,
+    "task_id": "abdul-s24",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 43,
+    "repetition": 1,
+    "task_id": "abdul-s22",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 44,
+    "repetition": 1,
+    "task_id": "abdul-s22",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 45,
+    "repetition": 1,
+    "task_id": "abdul-s27",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 46,
+    "repetition": 1,
+    "task_id": "abdul-s27",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 47,
+    "repetition": 1,
+    "task_id": "abdul-s15",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 48,
+    "repetition": 1,
+    "task_id": "abdul-s15",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 49,
+    "repetition": 1,
+    "task_id": "abdul-s10",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 50,
+    "repetition": 1,
+    "task_id": "abdul-s10",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 51,
+    "repetition": 1,
+    "task_id": "abdul-s19",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 52,
+    "repetition": 1,
+    "task_id": "abdul-s19",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 53,
+    "repetition": 1,
+    "task_id": "abdul-s13",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 54,
+    "repetition": 1,
+    "task_id": "abdul-s13",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 55,
+    "repetition": 1,
+    "task_id": "abdul-s29",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 56,
+    "repetition": 1,
+    "task_id": "abdul-s29",
+    "condition": "C",
+    "pair_position": "second"
+  },
+  {
+    "seq": 57,
+    "repetition": 1,
+    "task_id": "abdul-s01",
+    "condition": "C",
+    "pair_position": "first"
+  },
+  {
+    "seq": 58,
+    "repetition": 1,
+    "task_id": "abdul-s01",
+    "condition": "A",
+    "pair_position": "second"
+  },
+  {
+    "seq": 59,
+    "repetition": 1,
+    "task_id": "abdul-s05",
+    "condition": "A",
+    "pair_position": "first"
+  },
+  {
+    "seq": 60,
+    "repetition": 1,
+    "task_id": "abdul-s05",
+    "condition": "C",
+    "pair_position": "second"
+  }
+]

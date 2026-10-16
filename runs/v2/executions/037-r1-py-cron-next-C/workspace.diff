@@ -1,0 +1,281 @@
+ cron.py | 267 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 265 insertions(+), 2 deletions(-)
+
+diff --git a/cron.py b/cron.py
+index a26cda8..01a7596 100644
+--- a/cron.py
++++ b/cron.py
+@@ -1,8 +1,271 @@
+ """Cron expression evaluation. The supported syntax is described in SPEC.md."""
+ 
+-from datetime import datetime
++import calendar
++import re
++from datetime import datetime, timedelta
++
++
++# Month and weekday names (case-insensitive)
++_MONTH_NAMES = {
++    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
++    'may': 5, 'jun': 6, 'jul': 7, 'aug': 8,
++    'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
++}
++_WDAY_NAMES = {
++    'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3,
++    'thu': 4, 'fri': 5, 'sat': 6,
++}
++
++_FIELD_RANGES = [
++    (0, 59),   # minute
++    (0, 23),   # hour
++    (1, 31),   # day of month
++    (1, 12),   # month
++    (0, 7),    # day of week (0 and 7 are Sunday)
++]
++
++# Macros (case-insensitive)
++_MACROS = {
++    '@yearly': '0 0 1 1 *',
++    '@annually': '0 0 1 1 *',
++    '@monthly': '0 0 1 * *',
++    '@weekly': '0 0 * * 0',
++    '@daily': '0 0 * * *',
++    '@midnight': '0 0 * * *',
++    '@hourly': '0 * * * *',
++}
++
++
++def _parse_value(token: str, field_idx: int) -> int:
++    """Parse a single number or name for the given field."""
++    token_lower = token.lower()
++    if field_idx == 3 and token_lower in _MONTH_NAMES:
++        return _MONTH_NAMES[token_lower]
++    if field_idx == 4 and token_lower in _WDAY_NAMES:
++        return _WDAY_NAMES[token_lower]
++    if not token.isdigit():
++        raise ValueError(f"invalid value {token!r}")
++    return int(token)
++
++
++def _parse_item(item: str, field_idx: int) -> set:
++    """Parse a single item (not a comma-separated list) into a set of valid values."""
++    lo, hi = _FIELD_RANGES[field_idx]
++
++    # Check for step
++    if '/' in item:
++        if item.count('/') != 1:
++            raise ValueError(f"invalid item {item!r}")
++        base, step_str = item.split('/')
++        if not step_str.isdigit() or step_str == '0':
++            raise ValueError(f"invalid step {step_str!r}")
++        step = int(step_str)
++    else:
++        base = item
++        step = 1
++
++    # Determine start/end
++    if base == '*':
++        start = lo
++        end = hi
++    elif '-' in base:
++        if base.count('-') != 1:
++            raise ValueError(f"invalid range {base!r}")
++        a_str, b_str = base.split('-')
++        start = _parse_value(a_str, field_idx)
++        end = _parse_value(b_str, field_idx)
++        if start > end:
++            raise ValueError(f"range start > end in {base!r}")
++    else:
++        start = _parse_value(base, field_idx)
++        end = hi if item.count('/') == 1 else start
++        if item.count('/') != 1:
++            end = start
++
++    # Validate range
++    if not (lo <= start <= hi):
++        raise ValueError(f"value {start} out of range for field {field_idx}")
++    if not (lo <= end <= hi):
++        raise ValueError(f"value {end} out of range for field {field_idx}")
++
++    result = set()
++    v = start
++    while v <= end:
++        result.add(v)
++        v += step
++    return result
++
++
++def _parse_field(text: str, field_idx: int) -> set:
++    """Parse a full field (comma-separated items) into a set of values."""
++    if not text:
++        raise ValueError("empty field")
++    items = text.split(',')
++    result = set()
++    for item in items:
++        if not item:
++            raise ValueError("empty item in field")
++        result |= _parse_item(item, field_idx)
++    return result
++
++
++class _Matcher:
++    """Holds parsed cron fields and tests candidate datetimes."""
++
++    def __init__(self, minutes, hours, days, months, weekdays, dom_restricted, dow_restricted):
++        self.minutes = minutes
++        self.hours = hours
++        self.days = days
++        self.months = months
++        self.weekdays = weekdays
++        self.dom_restricted = dom_restricted
++        self.dow_restricted = dow_restricted
++
++    def matches(self, dt: datetime) -> bool:
++        """Check if a datetime (with second==0) matches."""
++        if dt.minute not in self.minutes:
++            return False
++        if dt.hour not in self.hours:
++            return False
++        if dt.month not in self.months:
++            return False
++
++        # Day matching
++        dom_match = dt.day in self.days
++        # weekday(): Monday=0 ... Sunday=6, but our field has Sunday=0/7
++        python_wday = dt.weekday()  # 0=Mon, 6=Sun
++        cron_wday = (python_wday + 1) % 7  # 0=Sun, 1=Mon, ... 6=Sat
++        dow_match = cron_wday in self.weekdays
++
++        if self.dom_restricted and self.dow_restricted:
++            return dom_match or dow_match
++        else:
++            return dom_match and dow_match
++
++
++def _parse(expr: str) -> _Matcher:
++    """Parse a cron expression into a _Matcher."""
++    expr = expr.strip()
++    if not expr:
++        raise ValueError("empty expression")
++
++    # Macro expansion
++    if expr.startswith('@'):
++        lower_expr = expr.lower()
++        if lower_expr not in _MACROS:
++            raise ValueError(f"unknown macro {expr!r}")
++        expr = _MACROS[lower_expr]
++
++    # Split fields: one or more spaces or tabs
++    fields = re.split(r'[ \t]+', expr.strip())
++    if len(fields) != 5:
++        raise ValueError(f"expected 5 fields, got {len(fields)}")
++
++    minutes = _parse_field(fields[0], 0)
++    hours = _parse_field(fields[1], 1)
++    days = _parse_field(fields[2], 2)
++    months = _parse_field(fields[3], 3)
++    weekdays = _parse_field(fields[4], 4)
++
++    # Handle Sunday: 0 and 7 mean the same thing.
++    if 7 in weekdays:
++        weekdays.add(0)
++        weekdays.discard(7)
++
++    dom_restricted = not fields[2].startswith('*')
++    dow_restricted = not fields[4].startswith('*')
++
++    return _Matcher(minutes, hours, days, months, weekdays, dom_restricted, dow_restricted)
++
++
++def _last_day_of_month(year: int, month: int) -> int:
++    """Return the last day of the given month."""
++    return calendar.monthrange(year, month)[1]
++
++
++def _is_leap_year(year: int) -> bool:
++    """Return True if year is a leap year."""
++    return (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+ 
+ 
+ def next_run(expr: str, after: datetime) -> datetime:
+     """The earliest minute strictly after `after` that matches `expr`."""
+-    raise NotImplementedError
++    matcher = _parse(expr)
++
++    # Start from the next whole minute after `after`
++    candidate = after.replace(second=0, microsecond=0)
++    if candidate <= after:
++        candidate += timedelta(minutes=1)
++
++    # We'll iterate minute by minute up to 8 years.
++    # For efficiency, we skip large gaps by jumping to the next valid month/day/hour.
++    max_date = after + timedelta(days=8 * 366)
++
++    while candidate <= max_date:
++        # Check month
++        if candidate.month not in matcher.months:
++            # Jump to the first day of the next month
++            if candidate.month == 12:
++                candidate = candidate.replace(year=candidate.year + 1, month=1, day=1, hour=0, minute=0)
++            else:
++                candidate = candidate.replace(month=candidate.month + 1, day=1, hour=0, minute=0)
++            continue
++
++        # Check day constraints
++        last_day = _last_day_of_month(candidate.year, candidate.month)
++        if candidate.day > last_day:
++            # Shouldn't normally happen, but just in case
++            candidate = candidate.replace(day=1, hour=0, minute=0)
++            if candidate.month == 12:
++                candidate = candidate.replace(year=candidate.year + 1, month=1)
++            else:
++                candidate = candidate.replace(month=candidate.month + 1)
++            continue
++
++        # If the day doesn't match, skip to the next day
++        python_wday = candidate.weekday()
++        cron_wday = (python_wday + 1) % 7
++        dom_match = candidate.day in matcher.days
++        dow_match = cron_wday in matcher.weekdays
++
++        if matcher.dom_restricted and matcher.dow_restricted:
++            day_ok = dom_match or dow_match
++        else:
++            day_ok = dom_match and dow_match
++
++        if not day_ok:
++            candidate = candidate.replace(hour=0, minute=0) + timedelta(days=1)
++            continue
++
++        # Check hour
++        if candidate.hour not in matcher.hours:
++            # Find next valid hour in this day
++            next_hour = None
++            for h in sorted(matcher.hours):
++                if h > candidate.hour:
++                    next_hour = h
++                    break
++            if next_hour is not None:
++                candidate = candidate.replace(hour=next_hour, minute=0)
++            else:
++                candidate = candidate.replace(hour=0, minute=0) + timedelta(days=1)
++            continue
++
++        # Check minute
++        if candidate.minute not in matcher.minutes:
++            # Find next valid minute in this hour
++            next_min = None
++            for m in sorted(matcher.minutes):
++                if m > candidate.minute:
++                    next_min = m
++                    break
++            if next_min is not None:
++                candidate = candidate.replace(minute=next_min)
++            else:
++                candidate = candidate.replace(minute=0) + timedelta(hours=1)
++            continue
++
++        # All checks passed
++        return candidate
++
++    raise ValueError("no matching time within eight years")

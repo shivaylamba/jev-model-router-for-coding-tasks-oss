@@ -1,0 +1,66 @@
+[2026-10-15T13:46:56.121Z] run started {'budget_usd': 15.0, 'max_hours': 4.0}
+  1 abdul-s26                    A       PASS $0.0553    5.0s completed      
+  2 abdul-s26                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+  3 abdul-s25                    C       PASS $0.0029    7.0s completed     {'fast': 2} 
+  4 abdul-s25                    A       FAIL $0.0266    3.0s completed      
+  5 abdul-s17                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+  6 abdul-s17                    A       PASS $0.0554    5.0s completed      
+  7 abdul-s09                    A       PASS $0.0551    4.0s completed      
+  8 abdul-s09                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+  9 abdul-s18                    A       PASS $0.0560   16.1s completed      
+ 10 abdul-s18                    C       PASS $0.0044    8.0s completed     {'fast': 3} 
+ 11 abdul-s04                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 12 abdul-s04                    A       PASS $0.0562    5.0s completed      
+ 13 abdul-s23                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 14 abdul-s23                    A       PASS $0.0564   22.1s completed      
+ 15 abdul-s28                    A       PASS $0.0555    5.0s completed      
+[2026-10-15T13:51:45.038Z] provider unhealthy; waiting {'models': {'moonshotai/Kimi-K3': 'slow: 23.8s for a short reply'}, 'wait_s': 300}
+ 16 abdul-s28                    C       PASS $0.0030    8.0s completed     {'fast': 2} 
+ 17 abdul-s21                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 18 abdul-s21                    A       PASS $0.0564    5.0s completed      
+ 19 abdul-s03                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 20 abdul-s03                    A       PASS $0.0558    5.0s completed      
+ 21 abdul-s06                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 22 abdul-s06                    A       PASS $0.0554    5.0s completed      
+ 23 abdul-s02                    A       PASS $0.0555    7.0s completed      
+ 24 abdul-s02                    C       PASS $0.0044    7.0s completed     {'fast': 3} 
+ 25 abdul-s08                    A       FAIL $0.0265    3.0s completed      
+ 26 abdul-s08                    C       PASS $0.0047    9.0s completed     {'fast': 3} 
+ 27 abdul-s20                    A       PASS $0.0556    5.0s completed      
+ 28 abdul-s20                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 29 abdul-s16                    C       PASS $0.0028    7.0s completed     {'fast': 2} 
+ 30 abdul-s16                    A       PASS $0.0550    4.0s completed      
+ 31 abdul-s12                    A       PASS $0.0557    9.0s completed      
+ 32 abdul-s12                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 33 abdul-s07                    A       PASS $0.0554   27.1s completed      
+ 34 abdul-s07                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 35 abdul-s30                    C       PASS $0.0029   14.1s completed     {'fast': 2} 
+ 36 abdul-s30                    A       FAIL $0.0266    6.0s completed      
+ 37 abdul-s11                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 38 abdul-s11                    A       PASS $0.0561   14.1s completed      
+ 39 abdul-s14                    A       PASS $0.0550    9.0s completed      
+[2026-10-15T14:04:15.199Z] provider unhealthy; waiting {'models': {'moonshotai/Kimi-K3': 'slow: 9.9s for a short reply'}, 'wait_s': 300}
+[2026-10-15T14:09:51.925Z] provider unhealthy; waiting {'models': {'moonshotai/Kimi-K3': 'curl: (28) Operation timed out after 30005 milliseconds with'}, 'wait_s': 300}
+ 40 abdul-s14                    C       PASS $0.0028    6.0s completed     {'fast': 2} 
+ 41 abdul-s24                    A       PASS $0.0551    5.0s completed      
+ 42 abdul-s24                    C       FAIL $0.0030    7.0s completed     {'fast': 2} 
+ 43 abdul-s22                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 44 abdul-s22                    A       FAIL $0.0270   25.1s completed      
+ 45 abdul-s27                    A       PASS $0.0552    6.0s completed      
+ 46 abdul-s27                    C       PASS $0.0043    7.0s completed     {'fast': 3} 
+ 47 abdul-s15                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 48 abdul-s15                    A       PASS $0.0556    5.0s completed      
+ 49 abdul-s10                    C       PASS $0.0043    8.1s completed     {'fast': 3} 
+ 50 abdul-s10                    A       PASS $0.0552    5.0s completed      
+ 51 abdul-s19                    C       PASS $0.0044   10.1s completed     {'fast': 3} 
+ 52 abdul-s19                    A       FAIL $0.0265    3.0s completed      
+[2026-10-15T14:18:56.334Z] provider unhealthy; waiting {'models': {'moonshotai/Kimi-K3': 'slow: 7.0s for a short reply'}, 'wait_s': 300}
+ 53 abdul-s13                    A       PASS $0.0557    5.0s completed      
+ 54 abdul-s13                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 55 abdul-s29                    A       PASS $0.0554    4.0s completed      
+ 56 abdul-s29                    C       PASS $0.0060   10.1s completed     {'fast': 4} 
+ 57 abdul-s01                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+ 58 abdul-s01                    A       PASS $0.0557    4.0s completed      
+ 59 abdul-s05                    A       FAIL $0.0265    3.0s completed      
+ 60 abdul-s05                    C       PASS $0.0029    6.0s completed     {'fast': 2} 
+[2026-10-15T14:25:58.204Z] run complete {'spent_usd': 1.5923}

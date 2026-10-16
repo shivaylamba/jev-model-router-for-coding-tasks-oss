@@ -1,0 +1,13 @@
+
+test_contains_does_not_touch_recency (acceptance_tests.test_hidden.T.test_contains_does_not_touch_recency) ... ok
+test_expired_dropped_before_evicting (acceptance_tests.test_hidden.T.test_expired_dropped_before_evicting) ... ok
+test_expiry (acceptance_tests.test_hidden.T.test_expiry) ... ok
+test_get_set (acceptance_tests.test_hidden.T.test_get_set) ... ok
+test_len_ignores_expired (acceptance_tests.test_hidden.T.test_len_ignores_expired) ... ok
+test_lru_eviction (acceptance_tests.test_hidden.T.test_lru_eviction) ... ok
+test_set_existing_restarts_expiry_and_no_evict (acceptance_tests.test_hidden.T.test_set_existing_restarts_expiry_and_no_evict) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.000s
+
+OK

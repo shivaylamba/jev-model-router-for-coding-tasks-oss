@@ -1,0 +1,10 @@
+
+test_case_and_space (acceptance_tests.test_hidden.T.test_case_and_space) ... ok
+test_invalid (acceptance_tests.test_hidden.T.test_invalid) ... ok
+test_simple (acceptance_tests.test_hidden.T.test_simple) ... ok
+test_types (acceptance_tests.test_hidden.T.test_types) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK

@@ -1,0 +1,202 @@
+ __pycache__/ratelimit.cpython-311.pyc      | Bin 0 -> 2989 bytes
+ __pycache__/test_ratelimit.cpython-311.pyc | Bin 0 -> 6801 bytes
+ ratelimit.py                               |  42 ++++++++--
+ test_ratelimit.py                          | 128 +++++++++++++++++++++++++++++
+ 4 files changed, 161 insertions(+), 9 deletions(-)
+
+diff --git a/__pycache__/ratelimit.cpython-311.pyc b/__pycache__/ratelimit.cpython-311.pyc
+new file mode 100644
+index 0000000..1521e1a
+Binary files /dev/null and b/__pycache__/ratelimit.cpython-311.pyc differ
+diff --git a/__pycache__/test_ratelimit.cpython-311.pyc b/__pycache__/test_ratelimit.cpython-311.pyc
+new file mode 100644
+index 0000000..3b39f38
+Binary files /dev/null and b/__pycache__/test_ratelimit.cpython-311.pyc differ
+diff --git a/ratelimit.py b/ratelimit.py
+index 92d20d5..003f3c6 100644
+--- a/ratelimit.py
++++ b/ratelimit.py
+@@ -18,16 +18,40 @@ class RateLimiter:
+         self.limit = limit
+         self.window = window
+         self.clock = clock
+-        self.counts = {}
++        # key -> list of timestamps of allowed requests still inside the window,
++        # oldest first.
++        self.requests = {}
+ 
+     def allow(self, key):
+-        bucket = int(self.clock() // self.window)
+-        current = self.counts.get(key)
+-        if current is None or current[0] != bucket:
+-            current = [bucket, 0]
+-            self.counts[key] = current
+-        current[1] += 1
+-        return current[1] <= self.limit
++        now = self.clock()
++        timestamps = self._pruned(key, now)
++        if len(timestamps) >= self.limit:
++            return False
++        timestamps.append(now)
++        self.requests[key] = timestamps
++        return True
+ 
+     def tracked_keys(self):
+-        return len(self.counts)
++        now = self.clock()
++        for key in list(self.requests):
++            self._pruned(key, now)
++        return len(self.requests)
++
++    def _pruned(self, key, now):
++        # Drop requests at or before now - window: a request made at t counts
++        # over [t, t + window) and stops counting at exactly t + window.
++        # Old entries form a prefix of the list and can never re-enter the
++        # window, so once removed they stay removed.
++        cutoff = now - self.window
++        timestamps = self.requests.get(key)
++        if timestamps is None:
++            return []
++        first_live = 0
++        while first_live < len(timestamps) and timestamps[first_live] <= cutoff:
++            first_live += 1
++        if first_live == len(timestamps):
++            del self.requests[key]
++            return []
++        if first_live:
++            del timestamps[:first_live]
++        return timestamps
+diff --git a/test_ratelimit.py b/test_ratelimit.py
+new file mode 100644
+index 0000000..2885fdd
+--- /dev/null
++++ b/test_ratelimit.py
+@@ -0,0 +1,128 @@
++from ratelimit import RateLimiter
++
++
++class Clock:
++    def __init__(self):
++        self.t = 0.0
++
++    def __call__(self):
++        return self.t
++
++
++# --- Test 1: sliding window blocks the fixed-bucket boundary exploit ---
++c = Clock()
++rl = RateLimiter(limit=3, window=10.0, clock=c)
++c.t = 9.8
++r = [rl.allow('a') for _ in range(3)]
++assert r == [True, True, True], r
++c.t = 10.2  # would be a NEW fixed bucket in the old implementation
++r2 = [rl.allow('a') for _ in range(3)]
++assert r2 == [False, False, False], r2
++print('T1 sliding-window boundary exploit blocked: OK')
++
++# --- Test 2: request stops counting at exactly t + window ---
++c.t = 19.8 - 1e-9
++assert rl.allow('a') is False       # t=9.8 requests still count just before 19.8
++c.t = 19.8
++assert rl.allow('a') is True        # at exactly t+window they stop counting
++c.t = 19.8 + 1e-9
++assert rl.allow('a') is True        # and just past it (2nd of the 3 slots now used)
++print('T2 expiry at exactly t+window: OK')
++
++# --- Test 3: refused request does not count ---
++c2 = Clock()
++rl2 = RateLimiter(limit=2, window=10.0, clock=c2)
++c2.t = 0.0
++assert rl2.allow('k') is True
++c2.t = 1.0
++assert rl2.allow('k') is True
++c2.t = 2.0
++assert rl2.allow('k') is False      # refused, must not be recorded
++c2.t = 10.0 + 1e-9                  # t=0 request just expired; live = {1.0}
++assert rl2.allow('k') is True
++print('T3 refused requests do not count: OK')
++
++# --- Test 4: limit holds for EVERY window of that length ---
++import random
++random.seed(0)
++c3 = Clock()
++rl3 = RateLimiter(limit=5, window=7.0, clock=c3)
++allowed = []
++for _ in range(200):
++    c3.t = random.uniform(0, 100)
++    if rl3.allow('z'):
++        allowed.append(c3.t)
++allowed.sort()
++for i, t in enumerate(allowed):
++    n = sum(1 for t2 in allowed[i:] if t2 < t + 7.0)
++    assert n <= 5, (t, n)
++print('T4 every-window limit holds: OK')
++
++# --- Test 5: tracked_keys forgets dead keys; memory independent of clients ever seen ---
++c4 = Clock()
++rl4 = RateLimiter(limit=2, window=5.0, clock=c4)
++c4.t = 0.0
++for i in range(1000):
++    rl4.allow(f'client_{i}')
++assert rl4.tracked_keys() == 1000
++assert len(rl4.requests) == 1000
++c4.t = 5.0 + 1e-6
++assert rl4.tracked_keys() == 0, rl4.tracked_keys()
++assert len(rl4.requests) == 0
++print('T5 keys forgotten, memory bounded: OK')
++
++# --- Test 6: tracked_keys counts only keys with live requests ---
++c5 = Clock()
++rl5 = RateLimiter(limit=10, window=10.0, clock=c5)
++c5.t = 0.0
++rl5.allow('old')
++c5.t = 9.0
++rl5.allow('new')
++assert rl5.tracked_keys() == 2
++c5.t = 10.0 + 1e-9
++assert rl5.tracked_keys() == 1
++print('T6 tracked_keys semantic: OK')
++
++# --- Test 7: exact boundary semantics ---
++c7 = Clock()
++rl7 = RateLimiter(limit=1, window=4.0, clock=c7)
++c7.t = 2.0
++assert rl7.allow('b') is True
++c7.t = 6.0
++assert rl7.allow('b') is True       # exactly 2.0 + 4.0 -> no longer counts
++
++c7b = Clock()
++rl7b = RateLimiter(limit=1, window=4.0, clock=c7b)
++c7b.t = 2.0
++assert rl7b.allow('b') is True
++c7b.t = 6.0 - 1e-12
++assert rl7b.allow('b') is False     # still counts just before t+window
++print('T7 exact boundary semantics: OK')
++
++# --- Test 8: non-monotonic clock does not corrupt state ---
++c9 = Clock()
++rl9 = RateLimiter(limit=2, window=10.0, clock=c9)
++c9.t = 50.0
++assert rl9.allow('m') is True
++c9.t = 40.0
++assert rl9.allow('m') is True       # clock went backwards; recorded out of order
++c9.t = 55.0
++# cutoff 45 -> 40.0 prunable only if it were a prefix; list is [50.0, 40.0],
++# so 50.0 stays (live) and 40.0 is not a prefix -> still counted. Live = 2 -> full?
++# Actually: prune drops prefix entries <= 45. List [50.0, 40.0]: 50.0 > 45, stop. Live = 2.
++assert rl9.allow('m') is False
++c9.t = 61.0
++# cutoff 51: 50.0 <= 51 pruned, 40.0 <= 51 pruned, 55.0 stays. Live = 1.
++assert rl9.allow('m') is True
++print('T8 non-monotonic clock tolerated: OK')
++
++# --- Test 9: per-key independence ---
++cA = Clock()
++rlA = RateLimiter(limit=1, window=10.0, clock=cA)
++cA.t = 0.0
++assert rlA.allow('x') is True
++assert rlA.allow('y') is True       # different key unaffected
++assert rlA.allow('x') is False
++print('T9 per-key independence: OK')
++
++print('\nALL TESTS PASSED')

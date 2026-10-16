@@ -1,0 +1,15 @@
+
+test_calc_express_keyword (acceptance_tests.test_shipping_refactor.DeprecatedAliasTest.test_calc_express_keyword) ... ok
+test_calc_warns_and_matches (acceptance_tests.test_shipping_refactor.DeprecatedAliasTest.test_calc_warns_and_matches) ... ok
+test_shipping_cost_does_not_warn (acceptance_tests.test_shipping_refactor.DeprecatedAliasTest.test_shipping_cost_does_not_warn) ... ok
+test_orders_use_new_name (acceptance_tests.test_shipping_refactor.OrdersTest.test_orders_use_new_name) ... ok
+test_constants (acceptance_tests.test_shipping_refactor.ShippingCostTest.test_constants) ... ok
+test_constants_are_used (acceptance_tests.test_shipping_refactor.ShippingCostTest.test_constants_are_used) ... ok
+test_errors_unchanged (acceptance_tests.test_shipping_refactor.ShippingCostTest.test_errors_unchanged) ... ok
+test_keyword_express (acceptance_tests.test_shipping_refactor.ShippingCostTest.test_keyword_express) ... ok
+test_same_results_as_before (acceptance_tests.test_shipping_refactor.ShippingCostTest.test_same_results_as_before) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.000s
+
+OK

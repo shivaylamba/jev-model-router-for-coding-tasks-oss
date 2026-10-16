@@ -1,0 +1,22 @@
+ textutil.py | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/textutil.py b/textutil.py
+index 761e910..09e8c29 100644
+--- a/textutil.py
++++ b/textutil.py
+@@ -6,4 +6,13 @@ def slugify(text):
+     - no leading or trailing hyphen
+     - an input with no letters or digits gives the empty string
+     """
+-    raise NotImplementedError
++    parts = []
++    kept = False
++    for ch in text.lower():
++        if ch.isalnum():
++            parts.append(ch)
++            kept = True
++        elif kept:
++            parts.append('-')
++            kept = False
++    return ''.join(parts).strip('-')

@@ -1,0 +1,103 @@
+ reports/cli.py                |  2 +-
+ reports/exporters/__init__.py |  3 ++-
+ reports/exporters/csv.py      | 36 ++++++++++++++++++++++++++++++++++++
+ tests/test_reports.py         | 10 ++++++++++
+ 4 files changed, 49 insertions(+), 2 deletions(-)
+
+diff --git a/reports/cli.py b/reports/cli.py
+index 014f7ba..71df24f 100644
+--- a/reports/cli.py
++++ b/reports/cli.py
+@@ -10,7 +10,7 @@ from .model import load_report
+ def build_parser():
+     parser = argparse.ArgumentParser(prog="reports")
+     parser.add_argument("report", nargs="?", help="report JSON file")
+-    parser.add_argument("--format", default="text", choices=["text", "markdown"])
++    parser.add_argument("--format", default="text", choices=format_names())
+     parser.add_argument("--output", help="write to this file instead of stdout")
+     parser.add_argument("--list-formats", action="store_true", help="print the available formats and exit")
+     return parser
+diff --git a/reports/exporters/__init__.py b/reports/exporters/__init__.py
+index 43f92f2..b0df6c9 100644
+--- a/reports/exporters/__init__.py
++++ b/reports/exporters/__init__.py
+@@ -1,5 +1,6 @@
+ """Output formats."""
+ 
++from .csv import CsvExporter
+ from .markdown import MarkdownExporter
+ from .text import TextExporter
+ 
+@@ -8,7 +9,7 @@ class UnknownFormatError(LookupError):
+     """Raised by get_exporter for a format name that is not registered."""
+ 
+ 
+-EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter())}
++EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter(), CsvExporter())}
+ 
+ 
+ def get_exporter(name):
+diff --git a/reports/exporters/csv.py b/reports/exporters/csv.py
+new file mode 100644
+index 0000000..0330cae
+--- /dev/null
++++ b/reports/exporters/csv.py
+@@ -0,0 +1,36 @@
++"""Comma-separated values for spreadsheets.
++
++Machine-readable, so it does not use the display formatting in formatting.py.
++"""
++
++
++def _cell(value):
++    if value is None:
++        return ""
++    if isinstance(value, bool):
++        return "true" if value else "false"
++    if isinstance(value, int):
++        return str(value)
++    if isinstance(value, float):
++        return format(value, ".2f")
++    return value
++
++
++def _quote(field):
++    if "," in field or '"' in field or "\n" in field or "\r" in field:
++        return '"' + field.replace('"', '""') + '"'
++    return field
++
++
++def _line(cells):
++    return ",".join(_quote(cell) for cell in cells) + "\n"
++
++
++class CsvExporter:
++    name = "csv"
++    extension = ".csv"
++
++    def export(self, report):
++        out = [_line([column.label for column in report.columns])]
++        out += [_line([_cell(report.cell(row, c)) for c in report.columns]) for row in report.rows]
++        return "".join(out)
+\ No newline at end of file
+diff --git a/tests/test_reports.py b/tests/test_reports.py
+index f21c646..bcfec34 100644
+--- a/tests/test_reports.py
++++ b/tests/test_reports.py
+@@ -18,6 +18,16 @@ class ExporterTest(unittest.TestCase):
+         out = get_exporter("markdown").export(load_report(EXAMPLE))
+         self.assertIn("| West | 0 | - | - |", out)
+ 
++    def test_csv(self):
++        out = get_exporter("csv").export(load_report(EXAMPLE))
++        self.assertEqual(
++            out,
++            "Region,Orders,Revenue,Target met\n"
++            "North,1204,98213.50,true\n"
++            '"South, coastal",87,4410.00,false\n'
++            "West,0,,\n",
++        )
++
+     def test_unknown(self):
+         with self.assertRaises(UnknownFormatError):
+             get_exporter("pdf")

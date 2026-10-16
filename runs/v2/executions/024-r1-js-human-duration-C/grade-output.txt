@@ -1,0 +1,83 @@
+TAP version 13
+# Subtest: long style defaults to two units
+ok 1 - long style defaults to two units
+  ---
+  duration_ms: 0.73375
+  type: 'test'
+  ...
+# Subtest: singular and plural
+ok 2 - singular and plural
+  ---
+  duration_ms: 0.491583
+  type: 'test'
+  ...
+# Subtest: zero units are skipped, not counted
+ok 3 - zero units are skipped, not counted
+  ---
+  duration_ms: 0.09925
+  type: 'test'
+  ...
+# Subtest: the remainder is dropped, not rounded
+ok 4 - the remainder is dropped, not rounded
+  ---
+  duration_ms: 0.075625
+  type: 'test'
+  ...
+# Subtest: units option
+ok 5 - units option
+  ---
+  duration_ms: 0.074917
+  type: 'test'
+  ...
+# Subtest: compact style
+ok 6 - compact style
+  ---
+  duration_ms: 0.094625
+  type: 'test'
+  ...
+# Subtest: milliseconds hidden by default
+ok 7 - milliseconds hidden by default
+  ---
+  duration_ms: 0.07425
+  type: 'test'
+  ...
+# Subtest: smallest unit
+ok 8 - smallest unit
+  ---
+  duration_ms: 0.0605
+  type: 'test'
+  ...
+# Subtest: zero uses the smallest unit
+ok 9 - zero uses the smallest unit
+  ---
+  duration_ms: 0.088208
+  type: 'test'
+  ...
+# Subtest: fractional milliseconds are floored
+ok 10 - fractional milliseconds are floored
+  ---
+  duration_ms: 0.113917
+  type: 'test'
+  ...
+# Subtest: invalid input
+ok 11 - invalid input
+  ---
+  duration_ms: 0.278708
+  type: 'test'
+  ...
+# Subtest: invalid options
+ok 12 - invalid options
+  ---
+  duration_ms: 0.156959
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 71.659125
+

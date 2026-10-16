@@ -1,0 +1,38 @@
+[2026-10-15T10:30:07.633Z] run started {'budget_usd': 10.0, 'max_hours': 2.0}
+  1 dev-e2-flag                  A       PASS $0.1166   11.0s completed      
+  2 dev-e2-flag                  C       PASS $0.0074   11.1s completed     {'fast': 5} 
+  3 smoke-py-average-bug         A       PASS $0.1170    8.0s completed      
+  4 smoke-py-average-bug         C       PASS $0.0090   13.1s completed     {'fast': 6} 
+[2026-10-15T10:32:38.328Z] provider unhealthy; waiting {'models': {'zai-org/GLM-5.3': 'curl: (28) Operation timed out after 30006 milliseconds with'}, 'wait_s': 300}
+[2026-10-15T10:38:10.561Z] provider unhealthy; waiting {'models': {'zai-org/GLM-5.3': 'curl: (28) Operation timed out after 30003 milliseconds with'}, 'wait_s': 300}
+[2026-10-15T10:40:51.483Z] run started {'budget_usd': 10.0, 'max_hours': 2.0}
+  5 dev-m3-pagination            A       PASS $0.2653   26.1s completed      
+  6 dev-m3-pagination            C       PASS $0.0290  169.9s completed     {'fast': 12} 
+  7 smoke-ts-initials            A       PASS $0.1501   10.0s completed      
+  8 smoke-ts-initials            C       PASS $0.0070   18.1s completed     {'fast': 4} 
+  9 dev-m1-ttl-cache             A       PASS $0.2273   46.2s completed      
+ 10 dev-m1-ttl-cache             C       PASS $0.0094   23.1s completed     {'fast': 5} 
+ 11 dev-e4-slugify               A       PASS $0.1228   11.0s completed      
+ 12 dev-e4-slugify               C       PASS $0.0155   40.2s completed     {'fast': 7} 
+ 13 dev-h2-free-slots            C       PASS $0.0504   13.1s completed     {'balanced': 5} 
+ 14 dev-h2-free-slots            A       PASS $0.2971   30.2s completed      
+ 15 dev-m4-csv-jsonl             A       PASS $0.2375   19.1s completed      
+ 16 dev-m4-csv-jsonl             C       PASS $0.0099   26.1s completed     {'fast': 5} 
+[2026-10-15T10:50:12.847Z] provider unhealthy; waiting {'models': {'moonshotai/Kimi-K3': 'curl: (28) Operation timed out after 30005 milliseconds with'}, 'wait_s': 300}
+ 17 dev-h4-rate-limiter          A       PASS $1.4633   97.5s completed      
+ 18 dev-h4-rate-limiter          C       PASS $5.5905  163.8s completed     {'strong': 64} 
+ 19 dev-h1-off-by-a-cent         C       PASS $1.0084   52.3s completed     {'strong': 24} 
+ 20 dev-h1-off-by-a-cent         A       PASS $0.4862   46.2s completed      
+[2026-10-15T11:01:41.047Z] stopped: budget reached {'spent_usd': 10.2197, 'budget_usd': 10.0}
+[2026-10-15T11:01:53.605Z] run started {'budget_usd': 20.0, 'max_hours': 2.0}
+ 21 dev-m2-duration              C       PASS $0.2239   46.2s completed     {'fast': 14, 'strong': 4} 
+ 22 dev-m2-duration              A       PASS $0.2001   17.1s completed      
+ 23 dev-h3-install-order         C       FAIL $0.8446   44.2s completed     {'strong': 18} 
+ 24 dev-h3-install-order         A       PASS $0.1057   14.1s completed      
+ 25 smoke-py-word-count          C       PASS $0.0079   15.1s completed     {'fast': 5} 
+ 26 smoke-py-word-count          A       PASS $0.1171    9.1s completed      
+ 27 dev-e1-rename                C       PASS $0.0077   12.1s completed     {'fast': 5} 
+ 28 dev-e1-rename                A       PASS $0.2494   13.1s completed      
+ 29 dev-e3-nameerror             C       PASS $0.0434    8.0s completed     {'balanced': 5} 
+ 30 dev-e3-nameerror             A       PASS $0.1842   14.1s completed      
+[2026-10-15T11:06:16.304Z] run complete {'spent_usd': 12.2037}

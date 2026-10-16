@@ -1,0 +1,50 @@
+ src/names.ts      |  8 ++++++++
+ test-initials.mjs | 24 ++++++++++++++++++++++++
+ 2 files changed, 32 insertions(+)
+
+diff --git a/src/names.ts b/src/names.ts
+index 711701d..b04984c 100644
+--- a/src/names.ts
++++ b/src/names.ts
+@@ -1,3 +1,11 @@
+ export function fullName(first: string, last: string): string {
+   return `${first} ${last}`.trim();
+ }
++
++export function initials(name: string): string {
++  return name
++    .split(/[\s-]+/)
++    .filter((word) => word.length > 0)
++    .map((word) => word[0].toUpperCase())
++    .join("");
++}
+diff --git a/test-initials.mjs b/test-initials.mjs
+new file mode 100644
+index 0000000..5c962f4
+--- /dev/null
++++ b/test-initials.mjs
+@@ -0,0 +1,24 @@
++import { initials } from './src/names.ts';
++
++const cases = [
++  ["mary-jane van der berg", "MJVDB"],
++  ["  john   doe  ", "JD"],
++  ["", ""],
++  ["   ", ""],
++  [" \t  ", ""],
++  [" \t -  ", ""],
++  ["anne-marie", "AM"],
++  ["jean-luc  picard", "JP"],
++  ["a", "A"],
++  ["--x--y--", "XY"],
++  ["mary - jane", "MJ"],
++  ["  O'Brien ", "O"],
++];
++let ok = true;
++for (const [input, want] of cases) {
++  const got = initials(input);
++  const pass = got === want;
++  if (!pass) ok = false;
++  console.log(`${pass ? "PASS" : "FAIL"} initials(${JSON.stringify(input)}) = ${JSON.stringify(got)} (want ${JSON.stringify(want)})`);
++}
++process.exit(ok ? 0 : 1);

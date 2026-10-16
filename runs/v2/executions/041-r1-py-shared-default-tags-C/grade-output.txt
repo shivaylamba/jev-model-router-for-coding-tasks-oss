@@ -1,0 +1,13 @@
+
+test_caller_list_is_not_modified (acceptance_tests.test_note_tags.NoteTagsTest.test_caller_list_is_not_modified) ... ok
+test_notes_with_same_input_list_are_independent (acceptance_tests.test_note_tags.NoteTagsTest.test_notes_with_same_input_list_are_independent) ... ok
+test_pinned_not_duplicated (acceptance_tests.test_note_tags.NoteTagsTest.test_pinned_not_duplicated) ... ok
+test_pinned_tag_does_not_leak (acceptance_tests.test_note_tags.NoteTagsTest.test_pinned_tag_does_not_leak) ... ok
+test_tag_counts (acceptance_tests.test_note_tags.NoteTagsTest.test_tag_counts) ... ok
+test_tuple_tags (acceptance_tests.test_note_tags.NoteTagsTest.test_tuple_tags) ... ok
+test_untagged_notes_do_not_share_tags (acceptance_tests.test_note_tags.NoteTagsTest.test_untagged_notes_do_not_share_tags) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.000s
+
+OK

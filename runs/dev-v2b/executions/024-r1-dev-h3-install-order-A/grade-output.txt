@@ -1,0 +1,15 @@
+
+test_alphabetical_when_free (acceptance_tests.test_hidden.T.test_alphabetical_when_free) ... ok
+test_chain (acceptance_tests.test_hidden.T.test_chain) ... ok
+test_cycle (acceptance_tests.test_hidden.T.test_cycle) ... ok
+test_cycle_behind_valid_packages (acceptance_tests.test_hidden.T.test_cycle_behind_valid_packages) ... ok
+test_deep_graph (acceptance_tests.test_hidden.T.test_deep_graph) ... ok
+test_diamond (acceptance_tests.test_hidden.T.test_diamond) ... ok
+test_missing (acceptance_tests.test_hidden.T.test_missing) ... ok
+test_self_cycle (acceptance_tests.test_hidden.T.test_self_cycle) ... ok
+test_shared_dep_listed_late (acceptance_tests.test_hidden.T.test_shared_dep_listed_late) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.007s
+
+OK

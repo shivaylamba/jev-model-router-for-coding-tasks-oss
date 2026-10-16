@@ -1,0 +1,110 @@
+TAP version 13
+# Subtest: off removes a once listener before it fires
+ok 1 - off removes a once listener before it fires
+  ---
+  duration_ms: 0.615166
+  type: 'test'
+  ...
+# Subtest: the function returned by once cancels it
+ok 2 - the function returned by once cancels it
+  ---
+  duration_ms: 0.084959
+  type: 'test'
+  ...
+# Subtest: once fires exactly once, even when it re-emits
+ok 3 - once fires exactly once, even when it re-emits
+  ---
+  duration_ms: 0.088166
+  type: 'test'
+  ...
+# Subtest: consecutive once listeners all fire
+ok 4 - consecutive once listeners all fire
+  ---
+  duration_ms: 0.501042
+  type: 'test'
+  ...
+# Subtest: self-removal does not skip the next listener
+ok 5 - self-removal does not skip the next listener
+  ---
+  duration_ms: 0.115041
+  type: 'test'
+  ...
+# Subtest: a listener removed during emit before its turn is not called
+ok 6 - a listener removed during emit before its turn is not called
+  ---
+  duration_ms: 0.098375
+  type: 'test'
+  ...
+# Subtest: removing an earlier listener during emit does not affect later ones
+ok 7 - removing an earlier listener during emit does not affect later ones
+  ---
+  duration_ms: 0.078833
+  type: 'test'
+  ...
+# Subtest: listeners added during emit run from the next emit
+ok 8 - listeners added during emit run from the next emit
+  ---
+  duration_ms: 0.108333
+  type: 'test'
+  ...
+# Subtest: a once listener re-registering itself fires on the next emit
+ok 9 - a once listener re-registering itself fires on the next emit
+  ---
+  duration_ms: 0.660542
+  type: 'test'
+  ...
+# Subtest: duplicate registrations
+ok 10 - duplicate registrations
+  ---
+  duration_ms: 0.176708
+  type: 'test'
+  ...
+# Subtest: off removes the earliest registration, on or once
+not ok 11 - off removes the earliest registration, on or once
+  ---
+  duration_ms: 0.848541
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-8zpzq_c_/ws/acceptance_tests/emitter.test.ts:139:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+        't',
+    -   'u'
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 't'
+    1: 'u'
+  actual:
+    0: 't'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-8zpzq_c_/ws/acceptance_tests/emitter.test.ts:148:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: store: two subscribeOnce callbacks both run
+ok 12 - store: two subscribeOnce callbacks both run
+  ---
+  duration_ms: 0.118708
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 11
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 99.952166
+

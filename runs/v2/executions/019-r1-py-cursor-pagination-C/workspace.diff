@@ -1,0 +1,252 @@
+ articles/__pycache__/__init__.cpython-311.pyc   | Bin 0 -> 209 bytes
+ articles/__pycache__/api.cpython-311.pyc        | Bin 0 -> 4433 bytes
+ articles/__pycache__/errors.cpython-311.pyc     | Bin 0 -> 869 bytes
+ articles/__pycache__/repository.cpython-311.pyc | Bin 0 -> 3259 bytes
+ articles/__pycache__/service.cpython-311.pyc    | Bin 0 -> 5995 bytes
+ articles/__pycache__/store.cpython-311.pyc      | Bin 0 -> 2283 bytes
+ articles/api.py                                 |  55 ++++++++++++++++++----
+ articles/errors.py                              |   4 ++
+ articles/repository.py                          |  22 ++++++++-
+ articles/service.py                             |  60 +++++++++++++++++++++++-
+ 10 files changed, 128 insertions(+), 13 deletions(-)
+
+diff --git a/articles/__pycache__/__init__.cpython-311.pyc b/articles/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..0f202d1
+Binary files /dev/null and b/articles/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/articles/__pycache__/api.cpython-311.pyc b/articles/__pycache__/api.cpython-311.pyc
+new file mode 100644
+index 0000000..aded244
+Binary files /dev/null and b/articles/__pycache__/api.cpython-311.pyc differ
+diff --git a/articles/__pycache__/errors.cpython-311.pyc b/articles/__pycache__/errors.cpython-311.pyc
+new file mode 100644
+index 0000000..665252f
+Binary files /dev/null and b/articles/__pycache__/errors.cpython-311.pyc differ
+diff --git a/articles/__pycache__/repository.cpython-311.pyc b/articles/__pycache__/repository.cpython-311.pyc
+new file mode 100644
+index 0000000..6408147
+Binary files /dev/null and b/articles/__pycache__/repository.cpython-311.pyc differ
+diff --git a/articles/__pycache__/service.cpython-311.pyc b/articles/__pycache__/service.cpython-311.pyc
+new file mode 100644
+index 0000000..6c5420f
+Binary files /dev/null and b/articles/__pycache__/service.cpython-311.pyc differ
+diff --git a/articles/__pycache__/store.cpython-311.pyc b/articles/__pycache__/store.cpython-311.pyc
+new file mode 100644
+index 0000000..05ca7eb
+Binary files /dev/null and b/articles/__pycache__/store.cpython-311.pyc differ
+diff --git a/articles/api.py b/articles/api.py
+index a0e378f..999afdf 100644
+--- a/articles/api.py
++++ b/articles/api.py
+@@ -1,6 +1,6 @@
+ """GET /articles."""
+ 
+-from .errors import ValidationError
++from .errors import InvalidCursorError, ValidationError
+ 
+ 
+ def serialize(article):
+@@ -22,21 +22,56 @@ def _int_param(params, name, default):
+     return int(raw)
+ 
+ 
++def _has_any(d, *keys):
++    return any(k in d for k in keys)
++
++
+ class ArticlesApi:
+     def __init__(self, service):
+         self._service = service
+ 
+     def handle_list(self, params):
+         """`params` maps query-string names to string values. Returns (status, body)."""
++        legacy = _has_any(params, "page", "per_page")
++        modern = _has_any(params, "cursor", "limit")
++        if legacy and modern:
++            return 400, {"error": "Cannot mix page/per_page with cursor/limit"}
++
++        if legacy:
++            try:
++                result = self._service.list_page(
++                    page=_int_param(params, "page", 1),
++                    per_page=_int_param(params, "per_page", 20),
++                    author=params.get("author"),
++                    status=params.get("status"),
++                )
++            except ValidationError as err:
++                return 400, {"error": str(err)}
++            body = dict(result)
++            body["items"] = [serialize(a) for a in result["items"]]
++            return 200, body
++
++        # cursor mode (default)
++        limit_raw = params.get("limit")
++        author = params.get("author")
++        status = params.get("status") or None  # empty string treated as None
++        cursor = params.get("cursor") or None  # empty string treated as None
++        if limit_raw is None:
++            limit = 20
++        elif not limit_raw.isdigit():
++            return 400, {"error": "limit must be a positive integer"}
++        else:
++            limit = int(limit_raw)
+         try:
+-            result = self._service.list_page(
+-                page=_int_param(params, "page", 1),
+-                per_page=_int_param(params, "per_page", 20),
+-                author=params.get("author"),
+-                status=params.get("status"),
++            page = self._service.list_articles(
++                limit=limit,
++                cursor=cursor,
++                author=author or None,
++                status=status,
+             )
+-        except ValidationError as err:
++        except (ValidationError, InvalidCursorError) as err:
+             return 400, {"error": str(err)}
+-        body = dict(result)
+-        body["items"] = [serialize(a) for a in result["items"]]
+-        return 200, body
++        return 200, {
++            "items": [serialize(a) for a in page.items],
++            "next_cursor": page.next_cursor,
++        }
+diff --git a/articles/errors.py b/articles/errors.py
+index db324be..039d012 100644
+--- a/articles/errors.py
++++ b/articles/errors.py
+@@ -3,3 +3,7 @@
+ 
+ class ValidationError(ValueError):
+     """A request parameter is invalid. The API turns it into a 400 response."""
++
++
++class InvalidCursorError(ValidationError):
++    """The cursor string is not valid for this query."""
+diff --git a/articles/repository.py b/articles/repository.py
+index 3df2305..34404a2 100644
+--- a/articles/repository.py
++++ b/articles/repository.py
+@@ -5,6 +5,10 @@ class ArticleRepository:
+     def __init__(self, store):
+         self._store = store
+ 
++    @staticmethod
++    def _sort_key(a):
++        return (a.published_at, a.id)
++
+     def _filtered(self, author=None, status=None):
+         rows = self._store.scan()
+         if author is not None:
+@@ -17,6 +21,20 @@ class ArticleRepository:
+         return len(self._filtered(author, status))
+ 
+     def list_offset(self, offset, limit, author=None, status=None):
+-        """Newest first."""
+-        rows = sorted(self._filtered(author, status), key=lambda a: a.published_at, reverse=True)
++        """Newest first (published_at desc, then id desc)."""
++        rows = sorted(self._filtered(author, status), key=self._sort_key, reverse=True)
+         return rows[offset:offset + limit]
++
++    def list_cursor(self, limit, after_published_at, after_id, author=None, status=None):
++        """Articles strictly after the given position, newest first.
++
++        Returns a list of at most `limit` articles.
++        """
++        rows = self._filtered(author, status)
++        if after_published_at is not None and after_id is not None:
++            rows = [
++                a for a in rows
++                if (a.published_at, a.id) < (after_published_at, after_id)
++            ]
++        rows = sorted(rows, key=self._sort_key, reverse=True)
++        return rows[:limit]
+diff --git a/articles/service.py b/articles/service.py
+index f74ddc9..64e4b6d 100644
+--- a/articles/service.py
++++ b/articles/service.py
+@@ -1,11 +1,22 @@
+ """Listing rules for articles."""
+ 
+-from .errors import ValidationError
++import base64
++import json
++import warnings
++from dataclasses import dataclass
++
++from .errors import InvalidCursorError, ValidationError
+ from .store import STATUSES
+ 
+ MAX_PER_PAGE = 100
+ 
+ 
++@dataclass
++class Page:
++    items: list
++    next_cursor: str | None
++
++
+ class ArticleService:
+     def __init__(self, repository):
+         self._repo = repository
+@@ -14,12 +25,59 @@ class ArticleService:
+         if status is not None and status not in STATUSES:
+             raise ValidationError(f"status must be one of {', '.join(STATUSES)}")
+ 
++    def _encode_cursor(self, author, status, item):
++        payload = {"author": author, "status": status, "p": item.published_at, "i": item.id}
++        raw = base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode()
++        # strip padding to keep cursors ASCII alphanumeric + "-" and "_" only
++        return raw.rstrip("=")
++
++    def _decode_cursor(self, author, status, cursor):
++        # restore padding
++        padded = cursor + "=" * ((4 - len(cursor) % 4) % 4)
++        try:
++            raw = base64.urlsafe_b64decode(padded)
++            payload = json.loads(raw)
++        except Exception:
++            raise InvalidCursorError("Invalid cursor")
++        if payload.get("author") != author or payload.get("status") != status:
++            raise InvalidCursorError("Cursor was created with different filters")
++        return payload["p"], payload["i"]
++
++    def list_articles(self, limit=20, cursor=None, author=None, status=None):
++        """One page of articles, newest first (published_at desc, then id desc).
++
++        Returns a `Page` with `items` and `next_cursor`.
++        """
++        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= MAX_PER_PAGE:
++            raise ValidationError(f"limit must be an integer from 1 to {MAX_PER_PAGE}")
++        self._check_filters(author, status)
++
++        after_published_at = None
++        after_id = None
++        if cursor is not None:
++            if not isinstance(cursor, str):
++                raise InvalidCursorError("Invalid cursor")
++            after_published_at, after_id = self._decode_cursor(author, status, cursor)
++
++        items = self._repo.list_cursor(limit + 1, after_published_at, after_id, author, status)
++        if len(items) > limit:
++            next_cursor = self._encode_cursor(author, status, items[limit - 1])
++            items = items[:limit]
++        else:
++            next_cursor = None
++        return Page(items=items, next_cursor=next_cursor)
++
+     def list_page(self, page=1, per_page=20, author=None, status=None):
+         """One page of articles, newest first.
+ 
+         Returns {"items": [Article, ...], "page": page, "per_page": per_page, "total": total}
+         where total counts every article matching the filters.
+         """
++        warnings.warn(
++            "list_page is deprecated; use list_articles instead",
++            DeprecationWarning,
++            stacklevel=2,
++        )
+         if not isinstance(page, int) or page < 1:
+             raise ValidationError("page must be an integer >= 1")
+         if not isinstance(per_page, int) or not 1 <= per_page <= MAX_PER_PAGE:

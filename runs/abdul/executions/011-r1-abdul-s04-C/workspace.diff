@@ -1,0 +1,11 @@
+ answer.json | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/answer.json b/answer.json
+new file mode 100644
+index 0000000..07336fd
+--- /dev/null
++++ b/answer.json
+@@ -0,0 +1 @@
++{"date": "2026-11-18", "time": "14:30", "timezone": "UTC", "duration_minutes": 25}
+\ No newline at end of file

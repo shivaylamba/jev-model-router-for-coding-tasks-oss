@@ -1,0 +1,248 @@
+{
+  "run_id": "v2",
+  "seq": 32,
+  "repetition": 1,
+  "task_id": "ts-notify-many",
+  "category": "api-change",
+  "difficulty": "easy",
+  "language": "typescript",
+  "condition": "C",
+  "condition_label": "Router on: Auto v2 with Jev (DeepSeek V4 Flash 0731 / Kimi K2.6 / Kimi K3, no effort raise)",
+  "pair_position": "first",
+  "started_at": "2026-10-15T12:56:51.374Z",
+  "ended_at": "2026-10-15T12:57:24.112Z",
+  "duration_s": 31.183,
+  "termination": "completed",
+  "exit_code": 0,
+  "passed": true,
+  "tests_total": 6,
+  "tests_failed": 0,
+  "grade_timed_out": false,
+  "claude_code_version": "2.1.299",
+  "claude_session_model": "nebius-auto",
+  "claude_tools_available": 18,
+  "assistant_messages": 7,
+  "tool_calls": 11,
+  "tool_calls_by_name": {
+    "Bash": 2,
+    "Read": 7,
+    "Edit": 2
+  },
+  "tool_errors": 0,
+  "output_limit_resumes": 0,
+  "ttft_visible_s": 15.796,
+  "first_output_s": 2.919,
+  "first_assistant_text_s": 15.92,
+  "first_stream_event_s": 0.579,
+  "result_subtype": "success",
+  "result_is_error": false,
+  "num_turns": 12,
+  "claude_duration_ms": 30068,
+  "claude_api_duration_ms": 29509,
+  "claude_reported_usage": {
+    "input_tokens": 89803,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 4106,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "",
+    "iterations": [],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "claude_reported_cost_usd_not_applicable": 0.5516650000000001,
+  "has_result_event": true,
+  "upstream_requests": 9,
+  "upstream_requests_by_kind": {
+    "jev_warmup": 1,
+    "jev": 1,
+    "agent": 7
+  },
+  "upstream_status_counts": {
+    "200": 9
+  },
+  "upstream_retries": 0,
+  "upstream_errors": 0,
+  "upstream_aborted": 0,
+  "upstream_requests_without_usage": 0,
+  "unknown_price_models": [],
+  "by_model": {
+    "deepseek-ai/DeepSeek-V4-Flash-0731": {
+      "requests": 7,
+      "prompt_tokens": 89803,
+      "completion_tokens": 4106,
+      "cached_tokens": 75776,
+      "reasoning_tokens": 1835,
+      "cost_usd": 0.013722,
+      "cost_usd_cache_free": 0.003113,
+      "requests_without_usage": 0,
+      "estimated_cost_usd": 0.0
+    }
+  },
+  "tokens": {
+    "jev_input_tokens": 1062,
+    "foreground_prompt_tokens": 89803,
+    "foreground_completion_tokens": 4106,
+    "foreground_cached_tokens": 75776,
+    "foreground_reasoning_tokens": 1835
+  },
+  "cost_foreground_usd": 0.013722,
+  "cost_background_usd": 0.0,
+  "cost_jev_usd": 4.5e-05,
+  "cost_unmetered_estimate_usd": 0.0,
+  "cost_foreground_cache_free_usd": 0.003113,
+  "cost_background_cache_free_usd": 0.0,
+  "jev_calls": [
+    {
+      "kind": "jev_warmup",
+      "ms": 360,
+      "status": 200,
+      "error": null,
+      "response_model": "jev-1.13.0",
+      "choice": "routine",
+      "probabilities": {
+        "routine": 1,
+        "moderate": 0,
+        "hard": 0
+      },
+      "input_tokens": 443,
+      "usage_estimated": false,
+      "cost_usd": 1.8606e-05
+    },
+    {
+      "kind": "jev",
+      "ms": 298,
+      "status": 200,
+      "error": null,
+      "response_model": "jev-1.13.0",
+      "choice": "routine",
+      "probabilities": {
+        "routine": 0.9,
+        "moderate": 0.09,
+        "hard": 0.01
+      },
+      "input_tokens": 619,
+      "usage_estimated": false,
+      "cost_usd": 2.5998e-05
+    }
+  ],
+  "upstream_header_ms_median": 824,
+  "foreground_models": [
+    "deepseek-ai/DeepSeek-V4-Flash-0731"
+  ],
+  "auto_routes": [
+    {
+      "tier": "fast",
+      "reason": "decider_routine",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731"
+    },
+    {
+      "tier": "fast",
+      "reason": "decider_routine",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731"
+    },
+    {
+      "tier": "fast",
+      "reason": "decider_routine",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731"
+    },
+    {
+      "tier": "fast",
+      "reason": "decider_routine",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731"
+    },
+    {
+      "tier": "fast",
+      "reason": "decider_routine",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731"
+    },
+    {
+      "tier": "fast",
+      "reason": "decider_routine",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731"
+    },
+    {
+      "tier": "fast",
+      "reason": "decider_routine",
+      "model": "deepseek-ai/DeepSeek-V4-Flash-0731"
+    }
+  ],
+  "auto_tier_counts": {
+    "fast": 7
+  },
+  "auto_reason_counts": {
+    "decider_routine": 7
+  },
+  "auto_first_tier": "fast",
+  "auto_tiers_used": [
+    "fast"
+  ],
+  "auto_escalations": 0,
+  "auto_downshifts": 0,
+  "auto_stuck_routes": 0,
+  "decider_events": [
+    {
+      "decider": "jev",
+      "difficulty": 0,
+      "ms": 362
+    },
+    {
+      "decider": "jev",
+      "difficulty": 0.055,
+      "ms": 299
+    }
+  ],
+  "decider_no_answer": 0,
+  "decider_late": 0,
+  "nconnect_estimated_cost_usd": 0.013722,
+  "reasoning_effort_counts": {
+    "low": 7
+  },
+  "nebius_stream_requests_logged": 7,
+  "nconnect_session_cost_usd": 0.0137,
+  "nconnect_session_input_tokens": 89803,
+  "nconnect_session_cached_tokens": 75776,
+  "nconnect_session_output_tokens": 4106,
+  "nconnect_by_model_line": null,
+  "nconnect_session_id": "nconnect-TM0febZ0UyoLLXLQjTyF9Lq1uyhzrYyv",
+  "jev_task_decisions": 1,
+  "jev_decision_ms": 298,
+  "jev_decision_choice": "routine",
+  "jev_model_version": "jev-1.13.0",
+  "cost_total_usd": 0.013767,
+  "cost_basis": "estimated: provider-reported tokens x prices snapshotted in the manifest; cached input at the full input rate (no published cached price)",
+  "contamination_flags": [],
+  "anomalies": [],
+  "versions": {
+    "nconnect_bundle_sha256": "db122e2754730104b6dd6854ad39161018a219c09baeb53090bd1684331ef9b0",
+    "condition_bundles": {
+      "C": {
+        "path": "vendor/nconnect-0.23.0-autov2.2.js",
+        "sha256": "1e392f7eb140d747d20d891149005092483be1c5d941608b6610bec2032e2390",
+        "source_commit": "12ad392e0afb7b671fd6eb515c36711b6ef293ab"
+      }
+    },
+    "catalog_copied_from": "main",
+    "nconnect_version": "nconnect v0.23.0",
+    "nconnect_source_commit": "66bf93fd609b30f1ce40e44d748bcb1b025355a7",
+    "nconnect_provenance": "The installed bundle (~/.nconnect/bin/nconnect.js) is byte-identical to https://nconnect.sh/nconnect.js, which Vercel builds from main at 66bf93f (PR #32 merge, v0.23.0).",
+    "claude_code": "2.1.299 (Claude Code)",
+    "claude_code_binary_sha256": "ba5ab7b8c195fa03ab8d5bf3915c76153b576a2c40e79a5c46e265e7ed9744b3",
+    "node": "v24.18.1",
+    "node_binary_sha256": "f480e325ee0ca9cb9eef00b5ca6057a2a104807a1b073f1bc373a55c67facff5",
+    "python": "Python 3.11.5",
+    "bun": "1.4.2",
+    "os": "26.5.2"
+  }
+}

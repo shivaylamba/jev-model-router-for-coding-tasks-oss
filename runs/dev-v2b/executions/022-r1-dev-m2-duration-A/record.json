@@ -1,0 +1,159 @@
+{
+  "run_id": "dev-v2b",
+  "seq": 22,
+  "repetition": 1,
+  "task_id": "dev-m2-duration",
+  "category": "utility",
+  "difficulty": "medium",
+  "language": "python",
+  "condition": "A",
+  "condition_label": "Router off: fixed Kimi K3",
+  "pair_position": "second",
+  "started_at": "2026-10-15T11:02:51.867Z",
+  "ended_at": "2026-10-15T11:03:10.536Z",
+  "duration_s": 17.077,
+  "termination": "completed",
+  "exit_code": 0,
+  "passed": true,
+  "tests_total": 4,
+  "tests_failed": 0,
+  "grade_timed_out": false,
+  "claude_code_version": "2.1.299",
+  "claude_session_model": "nebius-kimi-k3[1m]",
+  "claude_tools_available": 18,
+  "assistant_messages": 6,
+  "tool_calls": 5,
+  "tool_calls_by_name": {
+    "Bash": 3,
+    "Read": 1,
+    "Edit": 1
+  },
+  "tool_errors": 1,
+  "output_limit_resumes": 0,
+  "ttft_visible_s": 10.557,
+  "first_output_s": 2.412,
+  "first_assistant_text_s": 12.7,
+  "first_stream_event_s": 0.605,
+  "result_subtype": "success",
+  "result_is_error": false,
+  "num_turns": 6,
+  "claude_duration_ms": 15775,
+  "claude_api_duration_ms": 15328,
+  "claude_reported_usage": {
+    "input_tokens": 57799,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 1781,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "",
+    "iterations": [],
+    "speed": "standard",
+    "fallback_credit": null
+  },
+  "claude_reported_cost_usd_not_applicable": 0.33352,
+  "has_result_event": true,
+  "upstream_requests": 6,
+  "upstream_requests_by_kind": {
+    "agent": 6
+  },
+  "upstream_status_counts": {
+    "200": 6
+  },
+  "upstream_retries": 0,
+  "upstream_errors": 0,
+  "upstream_aborted": 0,
+  "upstream_requests_without_usage": 0,
+  "unknown_price_models": [],
+  "by_model": {
+    "moonshotai/Kimi-K3": {
+      "requests": 6,
+      "prompt_tokens": 57799,
+      "completion_tokens": 1781,
+      "cached_tokens": 52672,
+      "reasoning_tokens": 0,
+      "cost_usd": 0.200112,
+      "cost_usd_cache_free": 0.042096,
+      "requests_without_usage": 0,
+      "estimated_cost_usd": 0.0
+    }
+  },
+  "tokens": {
+    "foreground_prompt_tokens": 57799,
+    "foreground_completion_tokens": 1781,
+    "foreground_cached_tokens": 52672,
+    "foreground_reasoning_tokens": 0
+  },
+  "cost_foreground_usd": 0.200112,
+  "cost_background_usd": 0.0,
+  "cost_jev_usd": 0.0,
+  "cost_unmetered_estimate_usd": 0.0,
+  "cost_foreground_cache_free_usd": 0.042096,
+  "cost_background_cache_free_usd": 0.0,
+  "jev_calls": [],
+  "upstream_header_ms_median": 705.5,
+  "foreground_models": [
+    "moonshotai/Kimi-K3"
+  ],
+  "auto_routes": [],
+  "auto_tier_counts": {},
+  "auto_reason_counts": {},
+  "auto_first_tier": null,
+  "auto_tiers_used": [],
+  "auto_escalations": 0,
+  "auto_downshifts": 0,
+  "auto_stuck_routes": 0,
+  "decider_events": [],
+  "decider_no_answer": 0,
+  "decider_late": 0,
+  "nconnect_estimated_cost_usd": 0.200112,
+  "reasoning_effort_counts": {
+    "none": 6
+  },
+  "nebius_stream_requests_logged": 6,
+  "nconnect_session_cost_usd": 0.2001,
+  "nconnect_session_input_tokens": 57799,
+  "nconnect_session_cached_tokens": 52672,
+  "nconnect_session_output_tokens": 1781,
+  "nconnect_by_model_line": null,
+  "nconnect_session_id": "nconnect-vty7Xd-ooiYyDxydJiltDM5LIKuPVmXH",
+  "jev_task_decisions": 0,
+  "jev_decision_ms": null,
+  "jev_decision_choice": null,
+  "jev_model_version": null,
+  "cost_total_usd": 0.200112,
+  "cost_basis": "estimated: provider-reported tokens x prices snapshotted in the manifest; cached input at the full input rate (no published cached price)",
+  "contamination_flags": [],
+  "anomalies": [],
+  "versions": {
+    "nconnect_bundle_sha256": "db122e2754730104b6dd6854ad39161018a219c09baeb53090bd1684331ef9b0",
+    "condition_bundles": {
+      "C": {
+        "path": "vendor/nconnect-0.23.0-autov2.1.js",
+        "sha256": "34e893d9e2a39c9d67cf9d6786d2e12b5547f483d34a0bbabebb7bb2e49e7aa1",
+        "source_commit": "bd812a83ce5786837c1768b11c591570b2e1e927"
+      }
+    },
+    "catalog_copied_from": "main",
+    "nconnect_version": "nconnect v0.23.0",
+    "nconnect_source_commit": "66bf93fd609b30f1ce40e44d748bcb1b025355a7",
+    "nconnect_provenance": "The installed bundle (~/.nconnect/bin/nconnect.js) is byte-identical to https://nconnect.sh/nconnect.js, which Vercel builds from main at 66bf93f (PR #32 merge, v0.23.0).",
+    "claude_code": "2.1.299 (Claude Code)",
+    "claude_code_binary_sha256": "ba5ab7b8c195fa03ab8d5bf3915c76153b576a2c40e79a5c46e265e7ed9744b3",
+    "node": "v24.18.1",
+    "node_binary_sha256": "f480e325ee0ca9cb9eef00b5ca6057a2a104807a1b073f1bc373a55c67facff5",
+    "python": "Python 3.11.5",
+    "bun": "1.4.2",
+    "os": "26.5.2"
+  }
+}

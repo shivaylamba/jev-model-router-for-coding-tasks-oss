@@ -1,0 +1,15 @@
+
+test_answer (acceptance_tests.test_answer.T.test_answer) ... FAIL
+
+======================================================================
+FAIL: test_answer (acceptance_tests.test_answer.T.test_answer)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-0nguswpf/ws/acceptance_tests/test_answer.py", line 17, in test_answer
+    self.assertTrue(equal(json.loads(text), EXPECTED), f"got {text!r}")
+AssertionError: False is not true : got '{"label": "bugs"}'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)

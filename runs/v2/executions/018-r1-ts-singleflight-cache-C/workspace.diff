@@ -1,0 +1,736 @@
+ src/asyncCache.ts       | 171 +++++++++++++++
+ test/asyncCache.test.ts | 549 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 720 insertions(+)
+
+diff --git a/src/asyncCache.ts b/src/asyncCache.ts
+new file mode 100644
+index 0000000..60893e7
+--- /dev/null
++++ b/src/asyncCache.ts
+@@ -0,0 +1,171 @@
++export type AsyncCacheOptions<V> = {
++  load: (key: string) => Promise<V>;
++  ttlMs: number; // finite, > 0
++  staleMs: number; // finite, >= 0
++  maxEntries: number; // integer, >= 1
++  now?: () => number; // current time in ms; defaults to Date.now
++  onRefreshError?: (key: string, error: unknown) => void;
++};
++
++type Entry<V> = {
++  value: V;
++  storedAt: number;
++};
++
++type LoadState<V> = "pending" | "fulfilled" | "rejected";
++
++type TrackedPromise<V> = Promise<V> & {
++  // Internal bookkeeping attached to the tracked promise so later `get`s can
++  // distinguish refresh loads from caller-visible loads and detect rejection.
++  __asyncCacheRecord?: LoadRecord<V>;
++};
++
++/**
++ * AsyncCache implements the contract described in docs/ASYNC_CACHE.md:
++ *
++ * - Values are classified by age = now() - storedAt:
++ *   fresh while age < ttlMs, stale while ttlMs <= age < ttlMs + staleMs,
++ *   expired once age >= ttlMs + staleMs.
++ * - At most one load is in flight per key (single flight).
++ * - Stale values are served immediately while a background refresh runs.
++ * - Failed loads never overwrite a stored value; failed refreshes are
++ *   reported via onRefreshError and swallowed.
++ * - invalidate(key)/clear() prevent in-flight loads from storing results.
++ * - Storing beyond maxEntries drops expired entries first, then evicts LRU.
++ */
++export class AsyncCache<V> {
++  private readonly loadFn: (key: string) => Promise<V>;
++  private readonly ttlMs: number;
++  private readonly staleMs: number;
++  private readonly maxEntries: number;
++  private readonly now: () => number;
++  private readonly onRefreshError?: (key: string, error: unknown) => void;
++
++  private entries = new Map<string, Entry<V>>();
++  private loads = new Map<string, LoadRecord<V>>();
++  private invVersion = new Map<string, number>();
++
++  constructor(options: AsyncCacheOptions<V>) {
++    if (!Number.isFinite(options.ttlMs) || options.ttlMs <= 0) {
++      throw new RangeError("ttlMs must be finite and > 0");
++    }
++    if (!Number.isFinite(options.staleMs) || options.staleMs < 0) {
++      throw new RangeError("staleMs must be finite and >= 0");
++    }
++    if (!Number.isInteger(options.maxEntries) || options.maxEntries < 1) {
++      throw new RangeError("maxEntries must be an integer >= 1");
++    }
++
++    this.#load = options.load;
++    this.#ttlMs = options.ttlMs;
++    this.#staleMs = options.staleMs;
++    this.#maxEntries = options.maxEntries;
++    this.#now = options.now ?? Date.now;
++    this.#onRefreshError = options.onRefreshError;
++  }
++
++  get size(): number {
++    const now = this.#now();
++    const totalLifetime = this.#ttlMs + this.#staleMs;
++    let count = 0;
++    for (const [, entry] of this.#entries) {
++      if (now - entry.storedAt < totalLifetime) count++;
++    }
++    return count;
++  }
++
++  get(key: string): Promise<V> {
++    const now = this.#now();
++    const entry = this.#entries.get(key);
++
++    if (entry !== undefined) {
++      const age = now - entry.storedAt;
++      if (age < this.#ttlMs) {
++        this.#touch(key);
++        return Promise.resolve(entry.value);
++      }
++      if (age < this.#ttlMs + this.#staleMs) {
++        this.#touch(key);
++        if (!this.#loads.has(key)) {
++          this.#startLoad(key, true);
++        }
++        return Promise.resolve(entry.value);
++      }
++    }
++
++    this.#entries.delete(key);
++
++    const inFlight = this.#loads.get(key);
++    if (inFlight !== undefined) {
++      return inFlight.promise;
++    }
++    return this.#startLoad(key, false);
++  }
++
++  peek(key: string): V | undefined {
++    const entry = this.#entries.get(key);
++    if (entry === undefined) return undefined;
++    const age = this.#now() - entry.storedAt;
++    if (age >= this.#ttlMs + this.#staleMs) return undefined;
++    return entry.value;
++  }
++
++  invalidate(key: string): boolean {
++    this.#invVersion.set(key, this.#versionOf(key) + 1);
++    this.#loads.delete(key);
++    return this.#entries.delete(key);
++  }
++
++  clear(): void {
++    for (const key of this.#loads.keys()) {
++      this.#invVersion.set(key, this.#versionOf(key) + 1);
++    }
++    this.#loads.clear();
++    this.#entries.clear();
++  }
++
++  #touch(key: string): void {
++    const entry = this.#entries.get(key);
++    if (entry !== undefined) {
++      this.#entries.delete(key);
++      this.#entries.set(key, entry);
++    }
++  }
++
++  #startLoad(key: string, isRefresh: boolean): Promise<V> {
++    const versionAtStart = this.#versionOf(key);
++    const record: LoadRecord<V> = {
++      promise: undefined as unknown as Promise<V>,
++      isRefresh,
++    };
++
++    const run = async (): Promise<V> => {
++      try {
++        const value = await this.#load(key);
++        if (this.#loads.get(key) === record) this.#loads.delete(key);
++        if (this.#versionOf(key) === versionAtStart) {
++          this.#store(key, value);
++        }
++        return value;
++      } catch (error) {
++        if (this.#loads.get(key) === record) this.#loads.delete(key);
++        if (isRefresh && this.#onRefreshError) {
++          try {
++            this.#onRefreshError(key, error);
++          } catch {
++            // onRefreshError must never throw; ignore.
++          }
++        }
++        throw error;
++      }
++    };
++
++    record.promise = judged;
++    this.#loads.set(key, record);
++
++    if (isRefresh) {
++      judged.catch(() => {});
++    }
++    return judged;
++  }
++}
+diff --git a/test/asyncCache.test.ts b/test/asyncCache.test.ts
+new file mode 100644
+index 0000000..f8dfce4
+--- /dev/null
++++ b/test/asyncCache.test.ts
+@@ -0,0 +1,549 @@
++import { describe, it } from "node:test";
++import assert from "node:assert/strict";
++import { AsyncCache } from "../src/asyncCache.ts";
++
++let clock = 0;
++const now = () => clock;
++
++function makeCache<V>(opts: Partial<ConstructorParameters<typeof AsyncCache<V>>[0]> = {}): AsyncCache<V> {
++  return new AsyncCache<V>({
++    load: opts.load ?? (() => Promise.resolve(undefined as unknown as V)),
++    ttlMs: opts.ttlMs ?? 1000,
++    staleMs: opts.staleMs ?? 500,
++    maxEntries: opts.maxEntries ?? 10,
++    now,
++    ...opts,
++  } as ConstructorParameters<typeof AsyncCache<V>>[0]);
++}
++
++describe("constructor validation", () => {
++  it("throws RangeError for non-positive ttlMs", () => {
++    assert.throws(() => makeCache({ ttlMs: 0 }), RangeError);
++    assert.throws(() => makeCache({ ttlMs: -1 }), RangeError);
++    assert.throws(() => makeCache({ ttlMs: Infinity }), RangeError);
++    assert.throws(() => makeCache({ ttlMs: NaN }), RangeError);
++  });
++
++  it("throws RangeError for negative staleMs", () => {
++    assert.throws(() => makeCache({ staleMs: -1 }), RangeError);
++    assert.throws(() => makeCache({ staleMs: Infinity }), RangeError);
++    assert.throws(() => makeCache({ staleMs: NaN }), RangeError);
++  });
++
++  it("throws RangeError for invalid maxEntries", () => {
++    assert.throws(() => makeCache({ maxEntries: 0 }), RangeError);
++    assert.throws(() => makeCache({ maxEntries: -1 }), RangeError);
++    assert.throws(() => makeCache({ maxEntries: 1.5 }), RangeError);
++  });
++
++  it("accepts valid staleMs of 0", () => {
++    assert.doesNotThrow(() => makeCache({ staleMs: 0 }));
++  });
++});
++
++describe("get - basic caching", () => {
++  it("loads and caches a value", async () => {
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async (key) => {
++        calls++;
++        return `v-${key}`;
++      },
++    });
++
++    const result1 = await cache.get("a");
++    assert.equal(result1, "v-a");
++    assert.equal(calls, 1);
++
++    clock = 500; // still fresh
++    const result2 = await cache.get("a");
++    assert.equal(result2, "v-a");
++    assert.equal(calls, 1);
++  });
++
++  it("does not call load again for a fresh entry", async () => {
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        return "x";
++      },
++    });
++
++    await cache.get("k");
++    await cache.get("k");
++    assert.equal(calls, 1);
++  });
++});
++
++describe("get - single flight (request coalescing)", () => {
++  it("shares one load between concurrent requests", async () => {
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        await new Promise((r) => setTimeout(r, 10));
++        return "x";
++      },
++    });
++
++    const [r1, r2, r3] = await Promise.all([cache.get("k"), cache.get("k"), cache.get("k")]);
++    assert.equal(r1, "x");
++    assert.equal(r2, "x");
++    assert.equal(r3, "x");
++    assert.equal(calls, 1);
++  });
++
++  it("waits on an in-flight load when value is expired", async () => {
++    let resolveLoad!: (v: string) => void;
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        if (calls === 1) return "first";
++        return new Promise((r) => {
++          resolveLoad = r;
++        });
++      },
++      ttlMs: 100,
++      staleMs: 0,
++    });
++
++    // populate
++    await cache.get("k");
++    assert.equal(calls, 1);
++
++    // expired
++    clock = 200;
++
++    const p1 = cache.get("k");
++    const p2 = cache.get("k");
++    // both gets must coalesce onto a single new load
++    assert.equal(calls, 2);
++    resolveLoad("new");
++    const [r1, r2] = await Promise.all([p1, p2]);
++    assert.equal(r1, "new");
++    assert.equal(r2, "new");
++    assert.equal(calls, 2);
++  });
++});
++
++describe("get - stale-while-revalidate", () => {
++  it("returns stale value immediately and refreshes in background", async () => {
++    let resolveRefresh!: (v: string) => void;
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        if (calls === 1) return "first";
++        return new Promise((r) => {
++          resolveRefresh = r;
++        });
++      },
++      ttlMs: 100,
++      staleMs: 200,
++    });
++
++    await cache.get("k"); // load 1
++    assert.equal(calls, 1);
++
++    clock = 150; // stale
++    const result = await cache.get("k");
++    assert.equal(result, "first"); // stale value returned immediately
++    assert.equal(calls, 2); // refresh started
++
++    // resolve refresh
++    resolveRefresh("refreshed");
++    // give microtask time to settle
++    await new Promise((r) => setTimeout(r, 0));
++
++    clock = 160; // fresh after refresh
++    const result2 = await cache.get("k");
++    assert.equal(result2, "refreshed");
++  });
++
++  it("calls onRefreshError when refresh fails", async () => {
++    const errors: Array<{ key: string; err: unknown }> = [];
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        if (calls === 1) return "ok";
++        throw new Error("refresh-fail");
++      },
++      ttlMs: 100,
++      staleMs: 200,
++      onRefreshError: (key, error) => {
++        errors.push({ key, err: error });
++      },
++    });
++
++    await cache.get("k");
++    clock = 150;
++    await cache.get("k"); // triggers refresh, returns stale immediately
++
++    // wait for async refresh to settle
++    await new Promise((r) => setTimeout(r, 0));
++    await new Promise((r) => setTimeout(r, 0));
++
++    assert.equal(errors.length, 1);
++    assert.equal(errors[0].key, "k");
++    assert.ok(errors[0].err instanceof Error);
++    assert.equal((errors[0].err as Error).message, "refresh-fail");
++  });
++
++  it("does not call onRefreshError for initial-load rejection", async () => {
++    const errors: Array<{ key: string; err: unknown }> = [];
++    const cache = makeCache<string>({
++      load: async () => {
++        throw new Error("load-fail");
++      },
++      onRefreshError: (key, error) => {
++        errors.push({ key, err: error });
++      },
++    });
++
++    await assert.rejects(cache.get("k"), /load-fail/);
++    assert.equal(errors.length, 0);
++  });
++
++  it("does not start a new refresh while one is already in flight", async () => {
++    let resolveRefresh!: (v: string) => void;
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        if (calls === 1) return "first";
++        return new Promise((r) => {
++          resolveRefresh = r;
++        });
++      },
++      ttlMs: 100,
++      staleMs: 200,
++    });
++
++    await cache.get("k");
++    assert.equal(calls, 1);
++
++    clock = 150; // stale
++    await cache.get("k"); // starts refresh
++    assert.equal(calls, 2);
++
++    clock = 160; // still stale, refresh still in flight
++    await cache.get("k"); // should NOT start another refresh
++    assert.equal(calls, 2); // no new refresh started
++
++    resolveRefresh("refreshed");
++    await new Promise((r) => setTimeout(r, 0));
++  });
++});
++
++describe("get - expired values", () => {
++  it("drops expired values and re-loads", async () => {
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        return `v${calls}`;
++      },
++      ttlMs: 100,
++      staleMs: 50,
++    });
++
++    await cache.get("k"); // v1
++    clock = 151; // expired (ttlMs + staleMs = 150)
++    const result = await cache.get("k");
++    assert.equal(result, "v2");
++    assert.equal(calls, 2);
++  });
++});
++
++describe("get - rejected loads", () => {
++  it("rejects all waiting gets with the same error", async () => {
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        throw new Error("boom");
++      },
++    });
++
++    await assert.rejects(cache.get("k"), /boom/);
++    assert.equal(calls, 1);
++  });
++
++  it("leaves existing stored value on refresh rejection", async () => {
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        if (calls === 1) return "first";
++        throw new Error("refresh-boom");
++      },
++      ttlMs: 100,
++      staleMs: 200,
++      onRefreshError: () => {},
++    });
++
++    await cache.get("k"); // first
++    clock = 150; // stale
++    await cache.get("k"); // triggers refresh, returns stale immediately
++
++    // wait for async refresh to settle
++    await new Promise((r) => setTimeout(r, 0));
++
++    clock = 160;
++    const result = await cache.get("k");
++    assert.equal(result, "first"); // stale value still there
++    assert.equal(calls, 2);
++  });
++});
++
++describe("peek", () => {
++  it("returns fresh value without changing recency or starting load", async () => {
++    let calls = 0;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        return "x";
++      },
++    });
++
++    await cache.get("k");
++    const result = cache.peek("k");
++    assert.equal(result, "x");
++    assert.equal(calls, 1);
++  });
++
++  it("returns stale value", async () => {
++    const cache = makeCache<string>({
++      load: async () => "x",
++      ttlMs: 100,
++      staleMs: 50,
++    });
++
++    await cache.get("k");
++    clock = 120; // stale
++    assert.equal(cache.peek("k"), "x");
++  });
++
++  it("returns undefined for expired value", async () => {
++    const cache = makeCache<string>({
++      load: async () => "x",
++      ttlMs: 100,
++      staleMs: 50,
++    });
++
++    await cache.get("k");
++    clock = 151; // expired (age >= ttlMs + staleMs)
++    assert.equal(cache.peek("k"), undefined);
++  });
++
++  it("returns undefined for missing key", () => {
++    const cache = makeCache<string>();
++    assert.equal(cache.peek("missing"), undefined);
++  });
++});
++
++describe("invalidate", () => {
++  it("removes stored value and returns true", async () => {
++    const cache = makeCache<string>({
++      load: async () => "x",
++    });
++    await cache.get("k");
++    assert.equal(cache.invalidate("k"), true);
++    assert.equal(cache.peek("k"), undefined);
++  });
++
++  it("returns false for missing key", () => {
++    const cache = makeCache<string>();
++    assert.equal(cache.invalidate("missing"), false);
++  });
++
++  it("prevents in-flight load from storing its result", async () => {
++    let resolveLoad!: (v: string) => void;
++    const cache = makeCache<string>({
++      load: async () =>
++        new Promise((r) => {
++          resolveLoad = r;
++        }),
++    });
++
++    const p = cache.get("k");
++    cache.invalidate("k");
++    resolveLoad("should-not-store");
++    await p;
++
++    clock = 0;
++    assert.equal(cache.peek("k"), undefined);
++  });
++
++  it("makes next get start a new load instead of waiting on invalidated one", async () => {
++    let calls = 0;
++    let resolveFirst!: (v: string) => void;
++    const cache = makeCache<string>({
++      load: async () => {
++        calls++;
++        if (calls === 1) {
++          return new Promise((r) => {
++            resolveFirst = r;
++          });
++        }
++        return "second";
++      },
++    });
++
++    const p1 = cache.get("k");
++    cache.invalidate("k");
++
++    const p2 = cache.get("k");
++    const result2 = await p2;
++    assert.equal(result2, "second");
++    assert.equal(calls, 2);
++
++    resolveFirst("first");
++    const result1 = await p1;
++    assert.equal(result1, "first"); // waiter still gets the value
++  });
++});
++
++describe("clear", () => {
++  it("removes all stored values", async () => {
++    const cache = makeCache<string>({
++      load: async (key) => key,
++    });
++    await cache.get("a");
++    await cache.get("b");
++    cache.clear();
++    assert.equal(cache.peek("a"), undefined);
++    assert.equal(cache.peek("b"), undefined);
++  });
++
++  it("prevents in-flight loads from storing", async () => {
++    let resolveLoad!: (v: string) => void;
++    const cache = makeCache<string>({
++      load: async () =>
++        new Promise((r) => {
++          resolveLoad = r;
++        }),
++    });
++
++    const p = cache.get("k");
++    cache.clear();
++    resolveLoad("should-not-store");
++    await p;
++
++    assert.equal(cache.peek("k"), undefined);
++  });
++});
++
++describe("size", () => {
++  it("counts fresh and stale entries, ignoring expired", async () => {
++    const cache = makeCache<string>({
++      load: async (key) => key,
++      ttlMs: 100,
++      staleMs: 50,
++    });
++
++    await cache.get("a");
++    await cache.get("b");
++    assert.equal(cache.size, 2);
++
++    clock = 120; // stale (120 < 150)
++    assert.equal(cache.size, 2);
++
++    clock = 151; // expired (151 >= 150)
++    assert.equal(cache.size, 0);
++  });
++});
++
++describe("size limit / LRU eviction", () => {
++  it("evicts least recently used entries when over maxEntries", async () => {
++    const cache = makeCache<string>({
++      load: async (key) => key,
++      ttlMs: 1000,
++      staleMs: 500,
++      maxEntries: 2,
++    });
++
++    await cache.get("a");
++    await cache.get("b");
++    // Access a to make it more recent than b
++    clock = 10;
++    await cache.get("a");
++
++    // Add c; evicts b (LRU)
++    clock = 20;
++    await cache.get("c");
++
++    assert.equal(cache.peek("a"), "a");
++    assert.equal(cache.peek("b"), undefined);
++    assert.equal(cache.peek("c"), "c");
++    assert.equal(cache.size, 2);
++  });
++
++  it("drops expired entries before evicting LRU", async () => {
++    const cache = makeCache<string>({
++      load: async (key) => key,
++      ttlMs: 100,
++      staleMs: 50,
++      maxEntries: 2,
++    });
++
++    await cache.get("a");
++    await cache.get("b");
++    clock = 151; // a and b expired (ttlMs + staleMs = 150)
++    await cache.get("c"); // should drop a,b (expired) and keep c
++
++    assert.equal(cache.peek("a"), undefined);
++    assert.equal(cache.peek("b"), undefined);
++    assert.equal(cache.peek("c"), "c");
++    assert.equal(cache.size, 1);
++  });
++});
++
++describe("storedAt timing", () => {
++  it("uses now() reading when load settles, not when it starts", async () => {
++    let resolveLoad!: (v: string) => void;
++    const cache = makeCache<string>({
++      load: async () =>
++        new Promise((r) => {
++          resolveLoad = r;
++        }),
++      ttlMs: 100,
++      staleMs: 50,
++    });
++
++    const p = cache.get("k");
++    clock = 50; // load still in flight
++    resolveLoad("x");
++    await p;
++
++    // storedAt should be 50.
++    // ttlMs=100, staleMs=50. fresh until 150, stale until 200.
++    clock = 99;
++    assert.equal(cache.peek("k"), "x"); // fresh (age=49 < 100)
++    clock = 149;
++    assert.equal(cache.peek("k"), "x"); // still fresh (age=99 < 100)
++    clock = 150;
++    assert.equal(cache.peek("k"), "x"); // now stale (age=100 >= ttlMs but < 150)
++    clock = 199;
++    assert.equal(cache.peek("k"), "x"); // still stale (age=149 < 150)
++    // storedAt=50. age = now - storedAt. totalLifetime = ttlMs + staleMs = 150.
++    // expired when age >= totalLifetime, i.e. now - storedAt >= 150, so now >= 200.
++    clock = 200;
++    assert.equal(cache.peek("k"), undefined); // expired (age=150 >= 150)
++  });
++});
++
++describe("synchronous load throws", () => {
++  it("get handles synchronous throw as rejected promise", async () => {
++    const cache = makeCache<string>({
++      load: (key) => {
++        throw new Error(`sync-${key}`);
++      },
++    });
++
++    await assert.rejects(cache.get("k"), /sync-k/);
++  });
++});

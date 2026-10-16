@@ -1,0 +1,69 @@
+ src/color.ts       | 24 ++++++++++++++++++++++++
+ test/color.test.ts | 21 ++++++++++++++++++++-
+ 2 files changed, 44 insertions(+), 1 deletion(-)
+
+diff --git a/src/color.ts b/src/color.ts
+index 39f1ad2..19f70d0 100644
+--- a/src/color.ts
++++ b/src/color.ts
+@@ -9,3 +9,27 @@ function channel(value: number): string {
+ export function rgbToHex(r: number, g: number, b: number): string {
+   return `#${channel(r)}${channel(g)}${channel(b)}`;
+ }
++
++/**
++ * Normalize a user-supplied hex colour into the canonical lowercase "#rrggbb"
++ * (or "#rrggbbaa") form. Accepts "#" plus exactly 3, 4, 6 or 8 hex digits in
++ * any case, ignoring surrounding whitespace; 3/4-digit forms are expanded by
++ * doubling each digit. Returns null for any non-hex or malformed input.
++ */
++export function normalizeHexColor(input: string): string | null {
++  const trimmed = input.trim();
++  const matched = /^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec(trimmed);
++  if (!matched) {
++    return null;
++  }
++  const digits = matched[1];
++  return `#${digits.length < 6 ? doubleDigits(digits) : digits}`.toLowerCase();
++}
++
++function doubleDigits(digits: string): string {
++  let out = "";
++  for (const d of digits) {
++    out += d + d;
++  }
++  return out;
++}
+diff --git a/test/color.test.ts b/test/color.test.ts
+index 8107290..3723bb6 100644
+--- a/test/color.test.ts
++++ b/test/color.test.ts
+@@ -1,8 +1,27 @@
+ import { test } from "node:test";
+ import assert from "node:assert/strict";
+-import { rgbToHex } from "../src/color.ts";
++import { normalizeHexColor, rgbToHex } from "../src/color.ts";
+ 
+ test("rgbToHex", () => {
+   assert.equal(rgbToHex(255, 136, 0), "#ff8800");
+   assert.throws(() => rgbToHex(256, 0, 0), RangeError);
+ });
++
++test("normalizeHexColor", () => {
++  assert.equal(normalizeHexColor("#FF8800"), "#ff8800");
++  assert.equal(normalizeHexColor("#11223344"), "#11223344");
++  assert.equal(normalizeHexColor("#AbC"), "#aabbcc");
++  assert.equal(normalizeHexColor("#abcd"), "#aabbccdd");
++  assert.equal(normalizeHexColor("#ff8800ff"), "#ff8800ff");
++  assert.equal(normalizeHexColor("  #AABBCC  "), "#aabbcc");
++
++  assert.equal(normalizeHexColor("ff8800"), null);
++  assert.equal(normalizeHexColor("#"), null);
++  assert.equal(normalizeHexColor("##aabbcc"), null);
++  assert.equal(normalizeHexColor("#aabbccc"), null);
++  assert.equal(normalizeHexColor("#12"), null);
++  assert.equal(normalizeHexColor("#gg"), null);
++  assert.equal(normalizeHexColor("#aa bb cc"), null);
++  assert.equal(normalizeHexColor("red"), null);
++  assert.equal(normalizeHexColor(""), null);
++});

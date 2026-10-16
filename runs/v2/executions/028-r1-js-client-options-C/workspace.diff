@@ -1,0 +1,274 @@
+ src/billing.js      |  2 +-
+ src/client.js       | 92 ++++++++++++++++++++++++++++++++++++++++++++---------
+ src/reports.js      |  2 +-
+ src/users.js        |  2 +-
+ test/client.test.js | 75 ++++++++++++++++++++++++++++++++++++++++---
+ 5 files changed, 151 insertions(+), 22 deletions(-)
+
+diff --git a/src/billing.js b/src/billing.js
+index 7407260..e5317c7 100644
+--- a/src/billing.js
++++ b/src/billing.js
+@@ -2,7 +2,7 @@ import { createClient } from "./client.js";
+ 
+ // Billing calls are slow and idempotent, so allow a longer timeout and retry.
+ export function createBillingApi(config) {
+-  const client = createClient(config.billingUrl, config.token, 15000, 3);
++  const client = createClient({ baseUrl: config.billingUrl, token: config.token, timeoutMs: 15000, retries: 3 });
+   return {
+     client,
+     charge: (transport, customerId, cents) =>
+diff --git a/src/client.js b/src/client.js
+index 96c8db3..1f78131 100644
+--- a/src/client.js
++++ b/src/client.js
+@@ -1,39 +1,101 @@
++import { deprecate } from "./deprecate.js";
++
++const DEFAULTS = Object.freeze({
++  timeoutMs: 5000,
++  retries: 0,
++  headers: {},
++});
++
++const KNOWN_OPTIONS = new Set(["baseUrl", "token", "timeoutMs", "retries", "headers"]);
++
++function isPlainObject(value) {
++  if (typeof value !== "object" || value === null) return false;
++  const proto = Object.getPrototypeOf(value);
++  return proto === Object.prototype || proto === null;
++}
++
+ /**
+- * Create an API client.
+- *
+- * @param {string} baseUrl   e.g. "https://api.internal.example"; a trailing slash is ignored
+- * @param {string} [token]   bearer token; no Authorization header when omitted
+- * @param {number} [timeoutMs=5000]
+- * @param {number} [retries=0]
++ * Validate a set of already-defaulted options and return the frozen,
++ * normalized options object shared as `client.options`.
+  */
+-export function createClient(baseUrl, token, timeoutMs = 5000, retries = 0) {
++function normalize(options) {
++  for (const key of Object.keys(options)) {
++    if (!KNOWN_OPTIONS.has(key)) {
++      throw new TypeError(`unknown createClient option "${key}"`);
++    }
++  }
++
++  const baseUrl = options.baseUrl;
++  const token = options.token;
++  const timeoutMs = options.timeoutMs === undefined ? DEFAULTS.timeoutMs : options.timeoutMs;
++  const retries = options.retries === undefined ? DEFAULTS.retries : options.retries;
++  const headers = options.headers === undefined ? DEFAULTS.headers : options.headers;
++
+   if (typeof baseUrl !== "string" || baseUrl === "") {
+     throw new TypeError("baseUrl must be a non-empty string");
+   }
+-  const options = Object.freeze({
++  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
++    throw new RangeError("timeoutMs must be a finite number greater than 0");
++  }
++  if (!Number.isInteger(retries) || retries < 0) {
++    throw new RangeError("retries must be an integer >= 0");
++  }
++
++  return Object.freeze({
+     baseUrl: baseUrl.replace(/\/+$/, ""),
+     token,
+     timeoutMs,
+     retries,
++    headers: Object.freeze({ ...headers }),
+   });
++}
++
++/**
++ * Create an API client.
++ *
++ * Prefer the options form:
++ * @param {{ baseUrl: string, token?: string, timeoutMs?: number, retries?: number, headers?: object }} arg
++ *        e.g. { baseUrl: "https://api.internal.example/", timeoutMs: 5000 }. Any option whose value is
++ *        undefined counts as not given and falls back to its default. Unknown option names are rejected.
++ *
++ * For backwards compatibility the legacy positional form `createClient(baseUrl, token, timeoutMs, retries)`
++ * is still accepted (with the same defaults and validation) but reports a one-time deprecation warning.
++ */
++export function createClient(baseUrl, token, timeoutMs, retries) {
++  if (typeof baseUrl === "string") {
++    deprecate(
++      "CLIENT_POSITIONAL_ARGS",
++      "createClient(baseUrl, token, timeoutMs, retries) is deprecated; pass a single options object instead",
++    );
++    return makeClient({ baseUrl, token, timeoutMs, retries });
++  }
++  if (baseUrl === undefined || !isPlainObject(baseUrl)) {
++    throw new TypeError("createClient() expects a string baseUrl or an options object");
++  }
++  return makeClient(baseUrl);
++}
++
++function makeClient(options) {
++  const normalized = normalize(options);
+ 
+   return {
+-    options,
++    options: normalized,
+     /**
+      * Describe a request and pass it to `transport`, returning whatever the transport returns.
+      */
+     request(transport, method, path, body) {
+-      const headers = { accept: "application/json" };
+-      if (options.token) headers.authorization = `Bearer ${options.token}`;
++      const headers = { ...normalized.headers };
++      headers.accept = "application/json";
++      if (normalized.token) headers.authorization = `Bearer ${normalized.token}`;
+       if (body !== undefined) headers["content-type"] = "application/json";
+       return transport({
+         method,
+-        url: options.baseUrl + (path.startsWith("/") ? path : `/${path}`),
++        url: normalized.baseUrl + (path.startsWith("/") ? path : `/${path}`),
+         headers,
+         body: body === undefined ? undefined : JSON.stringify(body),
+-        timeoutMs: options.timeoutMs,
+-        retries: options.retries,
++        timeoutMs: normalized.timeoutMs,
++        retries: normalized.retries,
+       });
+     },
+   };
+-}
++}
+\ No newline at end of file
+diff --git a/src/reports.js b/src/reports.js
+index d400d3d..f522515 100644
+--- a/src/reports.js
++++ b/src/reports.js
+@@ -2,7 +2,7 @@ import { createClient } from "./client.js";
+ 
+ // Reports are public and generated on demand: no token, long timeout.
+ export function createReportsApi(config) {
+-  const client = createClient(config.reportsUrl, undefined, 60000);
++  const client = createClient({ baseUrl: config.reportsUrl, timeoutMs: 60000 });
+   return {
+     client,
+     monthly: (transport, month) => client.request(transport, "GET", `/reports/${month}`),
+diff --git a/src/users.js b/src/users.js
+index b2ab32c..6c9ca3f 100644
+--- a/src/users.js
++++ b/src/users.js
+@@ -1,7 +1,7 @@
+ import { createClient } from "./client.js";
+ 
+ export function createUsersApi(config) {
+-  const client = createClient(config.apiUrl, config.token);
++  const client = createClient({ baseUrl: config.apiUrl, token: config.token });
+   return {
+     client,
+     getUser: (transport, id) => client.request(transport, "GET", `/users/${encodeURIComponent(id)}`),
+diff --git a/test/client.test.js b/test/client.test.js
+index 485d5e7..4714e05 100644
+--- a/test/client.test.js
++++ b/test/client.test.js
+@@ -11,11 +11,22 @@ setDeprecationHandler(() => {});
+ 
+ test("request description", () => {
+   resetDeprecations();
+-  const client = createClient("https://api.example/", "t0k", 1000, 1);
++  const client = createClient({
++    baseUrl: "https://api.example/",
++    token: "t0k",
++    timeoutMs: 1000,
++    retries: 1,
++    headers: { "x-trace": "abc" },
++  });
+   assert.deepEqual(client.request(echo, "POST", "items", { a: 1 }), {
+     method: "POST",
+     url: "https://api.example/items",
+-    headers: { accept: "application/json", authorization: "Bearer t0k", "content-type": "application/json" },
++    headers: {
++      "x-trace": "abc",
++      accept: "application/json",
++      authorization: "Bearer t0k",
++      "content-type": "application/json",
++    },
+     body: '{"a":1}',
+     timeoutMs: 1000,
+     retries: 1,
+@@ -23,12 +34,68 @@ test("request description", () => {
+ });
+ 
+ test("defaults", () => {
+-  const client = createClient("https://api.example");
++  const client = createClient({ baseUrl: "https://api.example" });
+   assert.equal(client.options.timeoutMs, 5000);
+   assert.equal(client.options.retries, 0);
++  assert.deepEqual(client.options.headers, {});
+   assert.equal(client.request(echo, "GET", "/x").headers.authorization, undefined);
+ });
+ 
++test("normalized options", () => {
++  const client = createClient({ baseUrl: "https://api.example//", headers: { "x-a": "1" } });
++  assert.equal(client.options.baseUrl, "https://api.example");
++  assert.equal(client.options.token, undefined);
++  assert.equal(Object.isFrozen(client.options), true);
++  assert.equal(Object.isFrozen(client.options.headers), true);
++});
++
++test("unknown option is rejected", () => {
++  assert.throws(() => createClient({ baseUrl: "https://x", bogus: 1 }), /bogus/);
++});
++
++test("invalid inputs are rejected", () => {
++  assert.throws(() => createClient(), TypeError);
++  assert.throws(() => createClient(42), TypeError);
++  assert.throws(() => createClient(["https://x"]), TypeError);
++  assert.throws(() => createClient({ baseUrl: "" }), TypeError);
++  assert.throws(() => createClient({ baseUrl: 42 }), TypeError);
++  assert.throws(() => createClient({ baseUrl: "https://x", timeoutMs: 0 }), RangeError);
++  assert.throws(() => createClient({ baseUrl: "https://x", timeoutMs: NaN }), RangeError);
++  assert.throws(() => createClient({ baseUrl: "https://x", timeoutMs: Infinity }), RangeError);
++  assert.throws(() => createClient({ baseUrl: "https://x", retries: 1.5 }), RangeError);
++  assert.throws(() => createClient({ baseUrl: "https://x", retries: -1 }), RangeError);
++});
++
++test("undefined options fall back to defaults", () => {
++  const client = createClient({ baseUrl: "https://x", timeoutMs: undefined, retries: undefined, headers: undefined });
++  assert.equal(client.options.timeoutMs, 5000);
++  assert.equal(client.options.retries, 0);
++  assert.deepEqual(client.options.headers, {});
++});
++
++test("positional call is deprecated once; options form never warns", () => {
++  resetDeprecations();
++  const codes = [];
++  setDeprecationHandler((code) => codes.push(code));
++
++  createClient("https://api.example", "t", 1000, 1);
++  createClient("https://api.example/"); // same code, reported only once
++  createClient({ baseUrl: "https://api.example" });
++  createClient({ baseUrl: "https://api.example" });
++
++  assert.deepEqual(codes, ["CLIENT_POSITIONAL_ARGS"]);
++});
++
++test("positional form keeps defaults and validation", () => {
++  resetDeprecations();
++  const client = createClient("https://api.example/");
++  assert.equal(client.options.timeoutMs, 5000);
++  assert.equal(client.options.retries, 0);
++  assert.equal(client.options.baseUrl, "https://api.example");
++  assert.throws(() => createClient("", "t"), TypeError);
++  assert.throws(() => createClient("https://x", null, 0), RangeError);
++});
++
+ test("services", () => {
+   const config = { apiUrl: "https://u.example", billingUrl: "https://b.example", reportsUrl: "https://r.example", token: "s3cret" };
+   assert.equal(createUsersApi(config).getUser(echo, "a b").url, "https://u.example/users/a%20b");
+@@ -38,4 +105,4 @@ test("services", () => {
+   const report = createReportsApi(config).monthly(echo, "2026-01");
+   assert.equal(report.timeoutMs, 60000);
+   assert.equal(report.headers.authorization, undefined);
+-});
++});
+\ No newline at end of file

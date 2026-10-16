@@ -1,0 +1,97 @@
+ __pycache__/iban_countries.cpython-311.pyc | Bin 0 -> 858 bytes
+ __pycache__/payment_checks.cpython-311.pyc | Bin 0 -> 5651 bytes
+ payment_checks.py                          |  76 +++++++++++++++++++++++++++++
+ 3 files changed, 76 insertions(+)
+
+diff --git a/__pycache__/iban_countries.cpython-311.pyc b/__pycache__/iban_countries.cpython-311.pyc
+new file mode 100644
+index 0000000..a882bb1
+Binary files /dev/null and b/__pycache__/iban_countries.cpython-311.pyc differ
+diff --git a/__pycache__/payment_checks.cpython-311.pyc b/__pycache__/payment_checks.cpython-311.pyc
+new file mode 100644
+index 0000000..56c0ad3
+Binary files /dev/null and b/__pycache__/payment_checks.cpython-311.pyc differ
+diff --git a/payment_checks.py b/payment_checks.py
+index 8cf49c1..e5874ee 100644
+--- a/payment_checks.py
++++ b/payment_checks.py
+@@ -17,3 +17,79 @@ def mask_card(number):
+     if len(digits) < 4 or not digits.isdigit():
+         raise ValueError("not a card number")
+     return "*" * (len(digits) - 4) + digits[-4:]
++
++
++def _luhn_valid(digits):
++    """Return True if `digits` (a string of digits) passes the Luhn checksum."""
++    total = 0
++    for i, ch in enumerate(reversed(digits)):
++        n = int(ch)
++        if i % 2 == 1:
++            n *= 2
++            if n > 9:
++                n -= 9
++        total += n
++    return total % 10 == 0
++
++
++def card_brand(number):
++    """Return the brand of card `number`: "visa", "mastercard", "amex" or "discover".
++
++    Spaces and hyphens are separators and are ignored; any other non-digit
++    character makes the number invalid. The digits must pass the Luhn checksum
++    and match a brand's prefix and length. Returns None for empty, invalid, or
++    Luhn-valid numbers that match no brand.
++    """
++    if not isinstance(number, str):
++        raise TypeError("number must be a string")
++    digits = strip_separators(number)
++    if not digits or not digits.isdigit() or not _luhn_valid(digits):
++        return None
++
++    length = len(digits)
++    if length == 15 and digits[:2] in ("34", "37"):
++        return "amex"
++    if length in (13, 16, 19) and digits.startswith("4"):
++        return "visa"
++    if length == 16 and (
++        digits[:2] in ("51", "52", "53", "54", "55")
++        or 2221 <= int(digits[:4]) <= 2720
++    ):
++        return "mastercard"
++    if length in (16, 19) and (
++        digits.startswith("6011")
++        or digits.startswith("65")
++        or digits[:3] in ("644", "645", "646", "647", "648", "649")
++    ):
++        return "discover"
++    return None
++
++
++def is_valid_iban(iban):
++    """Return True if `iban` is a structurally valid IBAN with a passing mod-97 check.
++
++    Spaces are ignored and letters may be in either case; any other separator is
++    invalid. The country must be in IBAN_LENGTHS and the total length must match
++    exactly.
++    """
++    if not isinstance(iban, str):
++        raise TypeError("iban must be a string")
++    compact = iban.replace(" ", "")
++    if len(compact) < 4 or not compact.isalnum():
++        return False
++    if not compact[:2].isalpha() or not compact[2:4].isdigit():
++        return False
++
++    country = compact[:2].upper()
++    expected = IBAN_LENGTHS.get(country)
++    if expected is None or len(compact) != expected:
++        return False
++
++    # Move the first four characters to the end and expand letters to two digits
++    # (A=10 ... Z=35); the resulting integer must be congruent to 1 (mod 97).
++    rearranged = compact[4:] + compact[:4]
++    expanded = "".join(
++        str(ord(ch.upper()) - ord("A") + 10) if ch.isalpha() else ch
++        for ch in rearranged
++    )
++    return int(expanded) % 97 == 1

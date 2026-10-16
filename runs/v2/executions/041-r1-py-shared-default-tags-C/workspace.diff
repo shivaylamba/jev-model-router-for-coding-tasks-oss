@@ -1,0 +1,38 @@
+ notes.py | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/notes.py b/notes.py
+index 9bcdb53..0ca8486 100644
+--- a/notes.py
++++ b/notes.py
+@@ -10,7 +10,7 @@ def normalize_tag(tag):
+     return tag.strip().lower()
+ 
+ 
+-def create_note(title, body="", tags=[], pinned=False):
++def create_note(title, body="", tags=None, pinned=False):
+     """Create a new note.
+ 
+     title: the note title; surrounding whitespace is removed.
+@@ -24,15 +24,16 @@ def create_note(title, body="", tags=[], pinned=False):
+     Every note gets its own tags list, and the sequence passed in as `tags` is
+     never modified.
+     """
+-    for index, tag in enumerate(tags):
+-        tags[index] = normalize_tag(tag)
+-    if pinned and "pinned" not in tags:
+-        tags.append("pinned")
++    if tags is None:
++        tags = []
++    normalized_tags = [normalize_tag(tag) for tag in tags]
++    if pinned and "pinned" not in normalized_tags:
++        normalized_tags.append("pinned")
+     return {
+         "id": next(_ids),
+         "title": title.strip(),
+         "body": body,
+-        "tags": tags,
++        "tags": normalized_tags,
+         "pinned": pinned,
+     }
+ 

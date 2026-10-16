@@ -1,0 +1,103 @@
+ calendar_util.py | 18 +++++++++++-----
+ test_calendar.py | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 75 insertions(+), 5 deletions(-)
+
+diff --git a/calendar_util.py b/calendar_util.py
+index d98133a..457b2c0 100644
+--- a/calendar_util.py
++++ b/calendar_util.py
+@@ -10,13 +10,21 @@ def free_slots(meetings, day_start, day_end, min_minutes=1):
+     that touch (one ends when the next starts) leave no free time between them.
+     """
+ 
++    # Clip each meeting to the working day and drop anything with no overlap.
++    clipped = []
++    for start, end in meetings:
++        start = max(start, day_start)
++        end = min(end, day_end)
++        if start < end:
++            clipped.append((start, end))
++    clipped.sort()
++
+     slots = []
+-    ordered = sorted(meetings)
+     cursor = day_start
+-    for start, end in ordered:
+-        if start - cursor > min_minutes:
++    for start, end in clipped:
++        if start - cursor >= min_minutes:
+             slots.append((cursor, start))
+-        cursor = end
+-    if day_end - cursor > min_minutes:
++        cursor = max(cursor, end)
++    if day_end - cursor >= min_minutes:
+         slots.append((cursor, day_end))
+     return slots
+diff --git a/test_calendar.py b/test_calendar.py
+new file mode 100644
+index 0000000..095d15d
+--- /dev/null
++++ b/test_calendar.py
+@@ -0,0 +1,62 @@
++from calendar_util import free_slots
++
++def check(name, got, want):
++    ok = got == want
++    print(f"{'PASS' if ok else 'FAIL'} {name}: got {got}" + ("" if ok else f" want {want}"))
++    return ok
++
++D = (540, 1020)  # 9:00-17:00
++allok = True
++
++# 1. no meetings
++allok &= check("empty", free_slots([], *D), [(540, 1020)])
++
++# 2. simple middle meeting
++allok &= check("simple", free_slots([(600, 660)], *D), [(540, 600), (660, 1020)])
++
++# 3. overlapping meetings
++allok &= check("overlap", free_slots([(600, 700), (650, 720)], *D), [(540, 600), (720, 1020)])
++
++# 4. short meeting inside a longer one (nested)
++allok &= check("nested", free_slots([(600, 900), (650, 700)], *D), [(540, 600), (900, 1020)])
++
++# 5. touching meetings -> no gap between them
++allok &= check("touching", free_slots([(600, 660), (660, 720)], *D), [(540, 600), (720, 1020)])
++
++# 6. meeting starting before day start
++allok &= check("before-day", free_slots([(0, 600)], *D), [(600, 1020)])
++
++# 7. meeting ending after day end
++allok &= check("after-day", free_slots([(900, 2000)], *D), [(540, 900)])
++
++# 8. meeting spanning the whole day
++allok &= check("whole-day", free_slots([(0, 1439)], *D), [])
++
++# 9. meeting entirely outside (before) the day
++allok &= check("outside-before", free_slots([(60, 120)], *D), [(540, 1020)])
++
++# 10. meeting entirely outside (after) the day
++allok &= check("outside-after", free_slots([(1200, 1300)], *D), [(540, 1020)])
++
++# 11. reversed / zero-length meeting ignored
++allok &= check("reversed", free_slots([(700, 600)], *D), [(540, 1020)])
++allok &= check("zero-len", free_slots([(600, 600)], *D), [(540, 1020)])
++
++# 12. min_minutes filtering: slot exactly min -> kept, below -> dropped
++allok &= check("exact-min", free_slots([(600, 660)], *D, 60), [(540, 600), (660, 1020)])
++allok &= check("below-min", free_slots([(600, 630)], *D, 45), [(540, 600), (630, 1020)])
++allok &= check("small-slot-dropped", free_slots([(560, 1020)], *D, 30), [])
++
++# 13. unsorted input
++allok &= check("unsorted", free_slots([(800, 850), (600, 660)], *D), [(540, 600), (660, 800), (850, 1020)])
++
++# 14. busy whole day piecewise
++allok &= check("cover-everything", free_slots([(540, 700), (700, 850), (850, 1020)], *D), [])
++
++# 15. meeting ending exactly at day_end
++allok &= check("ends-at-dayend", free_slots([(900, 1020)], *D), [(540, 900)])
++
++# 16. meeting starting exactly at day_start
++allok &= check("starts-at-daystart", free_slots([(540, 600)], *D), [(600, 1020)])
++
++print("ALL PASS" if allok else "SOME FAILED")

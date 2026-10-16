@@ -1,0 +1,44 @@
+ convert.py | 36 +++++++++++++++++++++++++++++++++++-
+ 1 file changed, 35 insertions(+), 1 deletion(-)
+
+diff --git a/convert.py b/convert.py
+index b4b48d0..c816aff 100644
+--- a/convert.py
++++ b/convert.py
+@@ -1 +1,35 @@
+-# convert(csv_text) goes here
++import csv
++import io
++import json
++
++
++def _to_value(s):
++    if s is None:
++        return None
++    if s == "":
++        return None
++    try:
++        return int(s)
++    except ValueError:
++        pass
++    try:
++        return float(s)
++    except ValueError:
++        pass
++    return s
++
++
++def convert(csv_text):
++    reader = csv.reader(io.StringIO(csv_text))
++    rows = [row for row in reader if any(field.strip() != "" for field in row)]
++    if not rows:
++        return ""
++    header = [h.strip() for h in rows[0]]
++    lines = []
++    for row in rows[1:]:
++        record = {}
++        for i, key in enumerate(header):
++            value = row[i] if i < len(row) else None
++            record[key] = _to_value(value)
++        lines.append(json.dumps(record))
++    return "\n".join(lines)

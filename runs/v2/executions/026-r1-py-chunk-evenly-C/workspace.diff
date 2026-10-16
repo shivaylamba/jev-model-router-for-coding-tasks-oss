@@ -1,0 +1,27 @@
+ listutil.py | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/listutil.py b/listutil.py
+index a345f6f..1dc0e64 100644
+--- a/listutil.py
++++ b/listutil.py
+@@ -4,3 +4,19 @@
+ def flatten(nested):
+     """Flatten one level of nesting: [[1, 2], [3]] -> [1, 2, 3]."""
+     return [item for group in nested for item in group]
++
++
++def chunk_evenly(items, n):
++    """Split items into exactly n consecutive chunks: lengths differ by at
++    most one, longer chunks first. Empty chunks when n exceeds the length.
++    Raises ValueError if n < 1. Does not modify the input list."""
++    if n < 1:
++        raise ValueError("n must be at least 1")
++    base, extra = divmod(len(items), n)
++    chunks = []
++    start = 0
++    for i in range(n):
++        size = base + (1 if i < extra else 0)
++        chunks.append(items[start:start + size])
++        start += size
++    return chunks

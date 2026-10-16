@@ -1,0 +1,44 @@
+
+test_fetch_json_does_not_retry_permanent_errors (acceptance_tests.test_retry.FetchJsonTest.test_fetch_json_does_not_retry_permanent_errors) ... ok
+test_fetch_json_gives_up_after_four_calls (acceptance_tests.test_retry.FetchJsonTest.test_fetch_json_gives_up_after_four_calls) ... FAIL
+test_fetch_json_uses_backoff (acceptance_tests.test_retry.FetchJsonTest.test_fetch_json_uses_backoff) ... ERROR
+test_delay_is_capped (acceptance_tests.test_retry.RetryTest.test_delay_is_capped) ... ok
+test_exponential_delays (acceptance_tests.test_retry.RetryTest.test_exponential_delays) ... ok
+test_invalid_arguments (acceptance_tests.test_retry.RetryTest.test_invalid_arguments) ... ok
+test_non_matching_exception_is_not_retried (acceptance_tests.test_retry.RetryTest.test_non_matching_exception_is_not_retried) ... ok
+test_on_retry_callback (acceptance_tests.test_retry.RetryTest.test_on_retry_callback) ... ok
+test_on_retry_not_called_after_final_failure (acceptance_tests.test_retry.RetryTest.test_on_retry_not_called_after_final_failure) ... ok
+test_reraises_last_error_without_final_sleep (acceptance_tests.test_retry.RetryTest.test_reraises_last_error_without_final_sleep) ... ok
+test_retry_on_accepts_a_tuple (acceptance_tests.test_retry.RetryTest.test_retry_on_accepts_a_tuple) ... ok
+test_single_attempt (acceptance_tests.test_retry.RetryTest.test_single_attempt) ... ok
+test_success_first_try_does_not_sleep (acceptance_tests.test_retry.RetryTest.test_success_first_try_does_not_sleep) ... ok
+test_passes_arguments_and_retries (acceptance_tests.test_retry.RetryingDecoratorTest.test_passes_arguments_and_retries) ... ok
+
+======================================================================
+ERROR: test_fetch_json_uses_backoff (acceptance_tests.test_retry.FetchJsonTest.test_fetch_json_uses_backoff)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-bn2r4d7_/ws/acceptance_tests/test_retry.py", line 141, in test_fetch_json_uses_backoff
+    self.assertEqual(fetch_json(transport, "u", sleep=sleep), {"n": 1})
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-bn2r4d7_/ws/httpclient.py", line 22, in fetch_json
+    raise last
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-bn2r4d7_/ws/httpclient.py", line 18, in fetch_json
+    return json.loads(transport.get(url))
+                      ^^^^^^^^^^^^^^^^^^
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-bn2r4d7_/ws/acceptance_tests/test_retry.py", line 133, in get
+    raise item
+errors.TransientError
+
+======================================================================
+FAIL: test_fetch_json_gives_up_after_four_calls (acceptance_tests.test_retry.FetchJsonTest.test_fetch_json_gives_up_after_four_calls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-bn2r4d7_/ws/acceptance_tests/test_retry.py", line 150, in test_fetch_json_gives_up_after_four_calls
+    self.assertIs(ctx.exception, failures[3])
+AssertionError: TransientError('2') is not TransientError('3')
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.001s
+
+FAILED (failures=1, errors=1)

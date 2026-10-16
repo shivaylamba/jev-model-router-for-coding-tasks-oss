@@ -1,0 +1,70 @@
+ _tmp_mat.txt          |  2 ++
+ _tmp_ut.txt           |  5 +++++
+ accounts/usernames.py | 30 ++++++++++++++++++++++++++++++
+ 3 files changed, 37 insertions(+)
+
+diff --git a/_tmp_mat.txt b/_tmp_mat.txt
+new file mode 100644
+index 0000000..df34d11
+--- /dev/null
++++ b/_tmp_mat.txt
+@@ -0,0 +1,2 @@
++FAILED: none
++non-str: False False False
+diff --git a/_tmp_ut.txt b/_tmp_ut.txt
+new file mode 100644
+index 0000000..c81d30b
+--- /dev/null
++++ b/_tmp_ut.txt
+@@ -0,0 +1,5 @@
++..
++----------------------------------------------------------------------
++Ran 2 tests in 0.000s
++
++OK
+diff --git a/accounts/usernames.py b/accounts/usernames.py
+index 772d755..af1ea66 100644
+--- a/accounts/usernames.py
++++ b/accounts/usernames.py
+@@ -1,7 +1,16 @@
+ """Username helpers."""
+ 
++import re
++
+ RESERVED = frozenset({"admin", "root", "support", "moderator"})
+ 
++# Lowercase ASCII letter/digit/separator. A valid name must be built only from
++# these classes and start with a letter.
++_SEPARATORS = frozenset({".", "_", "-"})
++_LEADING_RULE = re.compile(r"[a-z]")
++_ALLOWED_RULE = re.compile(r"[a-z0-9._-]+\Z")
++_ADJACENT_SEPARATORS = re.compile(r"[._-][._-]")
++
+ 
+ def normalize_username(raw):
+     """Trim surrounding whitespace and lowercase a username as typed at signup."""
+@@ -11,3 +20,24 @@ def normalize_username(raw):
+ def is_reserved(name):
+     """Whether a (normalized) username is reserved for staff accounts."""
+     return name in RESERVED
++
++
++def is_valid_username(name):
++    """Whether a (normalized) username satisfies the signup character rules.
++
++    Never raises: anything that isn't a str (including empty, oversized, or
++    wrongly-typed inputs) yields False.
++    """
++    if not isinstance(name, str):
++        return False
++    if not 3 <= len(name) <= 20:
++        return False
++    if not _LEADING_RULE.fullmatch(name[0]):
++        return False
++    if _ALLOWED_RULE.fullmatch(name) is None:
++        return False
++    if _ADJACENT_SEPARATORS.search(name):
++        return False
++    if name[-1] in _SEPARATORS:
++        return False
++    return True

@@ -1,0 +1,62 @@
+ __pycache__/durations.cpython-311.pyc | Bin 0 -> 3003 bytes
+ durations.py                          |  46 +++++++++++++++++++++++++++++++++-
+ 2 files changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/__pycache__/durations.cpython-311.pyc b/__pycache__/durations.cpython-311.pyc
+new file mode 100644
+index 0000000..2fd989e
+Binary files /dev/null and b/__pycache__/durations.cpython-311.pyc differ
+diff --git a/durations.py b/durations.py
+index dd7e38e..b04e48d 100644
+--- a/durations.py
++++ b/durations.py
+@@ -9,4 +9,48 @@ def parse_duration(text):
+     Raise ValueError for anything else: an empty string, a number with no unit,
+     an unknown unit, a repeated unit, or units out of order.
+     """
+-    raise NotImplementedError
++    units = {"d": 86400, "h": 3600, "m": 60, "s": 1}
++    order = {"d": 0, "h": 1, "m": 2, "s": 3}
++
++    # Spaces are optional everywhere, so strip them all: "2d 4h" -> "2d4h",
++    # "1 h" -> "1h". An empty string yields '' and fails below.
++    text = "".join(text.split())
++    if not text:
++        raise ValueError("empty duration")
++
++    total = 0.0
++    seen = set()
++    previous_order = -1
++
++    i = 0
++    while i < len(text):
++        # Read a number (may be a decimal).
++        start = i
++        while i < len(text) and (text[i].isdigit() or text[i] == "."):
++            i += 1
++        raw_number = text[start:i]
++        if not raw_number or raw_number == ".":
++            raise ValueError(f"invalid number in {text!r}")
++        try:
++            number = float(raw_number)
++        except ValueError:
++            raise ValueError(f"invalid number {raw_number!r}")
++
++        # Read the following unit character.
++        if i >= len(text) or text[i].lower() not in units:
++            raise ValueError(f"number without unit in {text!r}")
++        unit = text[i].lower()
++        i += 1
++
++        if unit in seen:
++            raise ValueError(f"repeated unit {unit!r}")
++        if order[unit] < previous_order:
++            raise ValueError(f"units out of order in {text!r}")
++        seen.add(unit)
++        previous_order = order[unit]
++
++        total += number * units[unit]
++
++    if total == int(total):
++        return int(total)
++    return total

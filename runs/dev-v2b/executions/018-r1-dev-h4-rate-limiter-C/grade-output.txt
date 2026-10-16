@@ -1,0 +1,12 @@
+
+test_basic (acceptance_tests.test_hidden.T.test_basic) ... ok
+test_boundary_burst (acceptance_tests.test_hidden.T.test_boundary_burst) ... ok
+test_forgets_idle_keys (acceptance_tests.test_hidden.T.test_forgets_idle_keys) ... ok
+test_refused_requests_do_not_count (acceptance_tests.test_hidden.T.test_refused_requests_do_not_count) ... ok
+test_slides (acceptance_tests.test_hidden.T.test_slides) ... ok
+test_storage_does_not_grow (acceptance_tests.test_hidden.T.test_storage_does_not_grow) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.003s
+
+OK

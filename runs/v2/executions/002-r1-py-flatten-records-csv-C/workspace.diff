@@ -1,0 +1,166 @@
+ __pycache__/csvexport.cpython-311.pyc | Bin 0 -> 5623 bytes
+ csvexport.py                          |  76 ++++++++++++++++++++++++++++++++++
+ tests/test_export.py                  |  57 ++++++++++++++++++++++++-
+ 3 files changed, 132 insertions(+), 1 deletion(-)
+
+diff --git a/__pycache__/csvexport.cpython-311.pyc b/__pycache__/csvexport.cpython-311.pyc
+new file mode 100644
+index 0000000..02ecec7
+Binary files /dev/null and b/__pycache__/csvexport.cpython-311.pyc differ
+diff --git a/csvexport.py b/csvexport.py
+index 948f361..b032428 100644
+--- a/csvexport.py
++++ b/csvexport.py
+@@ -11,3 +11,79 @@ def rows_to_csv(header, rows):
+     writer.writerow(header)
+     writer.writerows(rows)
+     return buffer.getvalue()
++
++
++def records_to_csv(records):
++    """Render a list of dicts (as parsed by loader.parse_ndjson) as CSV text.
++
++    Nested dicts are flattened into dot-separated column names at any depth; a
++    nested empty dict contributes no column. Columns appear in first-seen order.
++    Raises ValueError if two keys in the same record flatten to the same column
++    name, and TypeError if a record is not a dict. The input is not modified.
++    """
++    if not records:
++        return ""
++
++    # Flatten each record once into a (column -> value) lookup; this also
++    # raises on a same-record name collision.
++    lookups = [dict(_flatten(record)) for record in records]
++
++    # Gather columns in first-seen order across all records.
++    columns = []
++    seen = set()
++    for lookup in lookups:
++        for column in lookup:
++            if column not in seen:
++                seen.add(column)
++                columns.append(column)
++
++    rows = [[_cell(lookup.get(column)) for column in columns] for lookup in lookups]
++    return rows_to_csv(columns, rows)
++
++
++def _flatten(record):
++    """Return the record's flattened leaves as a list of ``(column, value)`` pairs.
++
++    A leaf is a non-dict value; a nested empty dict contributes nothing. Raises
++    TypeError for non-dict records and ValueError if two keys in the same record
++    flatten to the same column name.
++    """
++    if not isinstance(record, dict):
++        raise TypeError(f"record must be a dict, got {type(record).__name__}")
++
++    leaves = []
++    _walk(record, "", leaves)
++
++    columns = [column for column, _ in leaves]
++    if len(columns) != len(set(columns)):
++        duplicates = sorted({c for c in columns if columns.count(c) > 1})
++        raise ValueError("duplicate column name(s): " + ", ".join(duplicates))
++    return leaves
++
++
++def _walk(value, prefix, leaves):
++    for key, sub in value.items():
++        column = f"{prefix}.{key}" if prefix else key
++        if isinstance(sub, dict):
++            if sub:
++                _walk(sub, column, leaves)
++        else:
++            leaves.append((column, sub))
++
++
++def _cell(value):
++    """Render a leaf value as a CSV cell: None as empty, lists/tuples joined
++    with ';' (each item using scalar rules), bools and other scalars as text."""
++    if isinstance(value, (list, tuple)):
++        return ";".join(_scalar(item) for item in value)
++    return _scalar(value)
++
++
++def _scalar(value):
++    if value is None:
++        return ""
++    if value is True:
++        return "true"
++    if value is False:
++        return "false"
++    return str(value)
+diff --git a/tests/test_export.py b/tests/test_export.py
+index 224b61a..e5da35f 100644
+--- a/tests/test_export.py
++++ b/tests/test_export.py
+@@ -1,6 +1,6 @@
+ import unittest
+ 
+-from csvexport import rows_to_csv
++from csvexport import records_to_csv, rows_to_csv
+ from loader import parse_ndjson
+ 
+ 
+@@ -18,5 +18,60 @@ class RowsToCsvTest(unittest.TestCase):
+         self.assertEqual(rows_to_csv(["a", "b"], [["1", "x,y"]]), 'a,b\r\n1,"x,y"\r\n')
+ 
+ 
++class RecordsToCsvTest(unittest.TestCase):
++    def test_empty_records(self):
++        self.assertEqual(records_to_csv([]), "")
++
++    def test_flatten_nested_dicts(self):
++        records = [
++            {"user": {"name": "ada", "id": 1}, "action": "login"},
++            {"user": {"name": "bob"}},
++        ]
++        self.assertEqual(
++            records_to_csv(records),
++            'user.name,user.id,action\r\nada,1,login\r\nbob,,\r\n',
++        )
++
++    def test_scalar_cells(self):
++        records = [{"flags": [True, None, 2], "empty": [], "n": None, "b": False}]
++        self.assertEqual(
++            records_to_csv(records),
++            'flags,empty,n,b\r\ntrue;;2,,,false\r\n',
++        )
++
++    def test_value_and_dict_for_same_key(self):
++        records = [{"a": 5}, {"a": {"b": 1}}]
++        self.assertEqual(records_to_csv(records), 'a,a.b\r\n5,\r\n,1\r\n')
++
++    def test_nested_empty_dict_contributes_no_column(self):
++        records = [{"a": {"b": {}}, "c": 1}]
++        self.assertEqual(records_to_csv(records), 'c\r\n1\r\n')
++
++    def test_quoting(self):
++        records = [{"a": "x,y"}, {"a": 'say "hi"'}]
++        self.assertEqual(
++            records_to_csv(records),
++            'a\r\n"x,y"\r\n"say ""hi"""\r\n',
++        )
++
++    def test_same_record_collision(self):
++        with self.assertRaises(ValueError):
++            records_to_csv([{"a.b": 1, "a": {"b": 2}}])
++
++    def test_cross_record_collision_merges(self):
++        records = [{"a.b": 1}, {"a": {"b": 2}}]
++        self.assertEqual(records_to_csv(records), 'a.b\r\n1\r\n2\r\n')
++
++    def test_non_dict_record(self):
++        with self.assertRaises(TypeError):
++            records_to_csv([42])
++
++    def test_input_not_modified(self):
++        records = [{"user": {"name": "ada"}, "tags": [True, None]}]
++        snapshot = [{"user": {"name": "ada"}, "tags": [True, None]}]
++        records_to_csv(records)
++        self.assertEqual(records, snapshot)
++
++
+ if __name__ == "__main__":
+     unittest.main()

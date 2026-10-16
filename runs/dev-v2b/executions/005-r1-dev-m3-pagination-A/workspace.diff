@@ -1,0 +1,66 @@
+ __pycache__/users.cpython-311.pyc | Bin 0 -> 3340 bytes
+ users.py                          |  52 +++++++++++++++++++++++++++++++++++---
+ 2 files changed, 49 insertions(+), 3 deletions(-)
+
+diff --git a/__pycache__/users.cpython-311.pyc b/__pycache__/users.cpython-311.pyc
+new file mode 100644
+index 0000000..6479768
+Binary files /dev/null and b/__pycache__/users.cpython-311.pyc differ
+diff --git a/users.py b/users.py
+index 3792cc3..17e5eeb 100644
+--- a/users.py
++++ b/users.py
+@@ -1,4 +1,50 @@
+-USERS = [{"id": i, "name": f"user{i}"} for i in (7, 3, 12, 1, 9, 4, 15, 2, 20, 6, 11)]
++import base64
+ 
+-def list_users():
+-    return USERS
++USERS = [{"id": i, "name": f"user{i}"} for i in (7, 3, 12, 1, 9, 4, 15, 2, 20, 6, 11,)]
++
++DEFAULT_LIMIT = 20
++MAX_LIMIT = 100
++
++_CURSOR_PREFIX = "cursor:"
++
++
++def _encode_cursor(last_id):
++    raw = f"{_CURSOR_PREFIX}{last_id}".encode("utf-8")
++    return base64.urlsafe_b64encode(raw).decode("ascii")
++
++
++def _decode_cursor(cursor):
++    if not isinstance(cursor, str):
++        raise ValueError("cursor must be a string")
++    try:
++        raw = base64.urlsafe_b64decode(cursor.encode("ascii")).decode("utf-8")
++    except Exception:
++        raise ValueError("invalid cursor") from None
++    if not raw.startswith(_CURSOR_PREFIX):
++        raise ValueError("invalid cursor")
++    try:
++        return int(raw[len(_CURSOR_PREFIX):])
++    except ValueError:
++        raise ValueError("invalid cursor") from None
++
++
++def list_users(limit=DEFAULT_LIMIT, cursor=None):
++    if not isinstance(limit, int) or isinstance(limit, bool):
++        raise ValueError("limit must be an integer")
++    if not 1 <= limit <= MAX_LIMIT:
++        raise ValueError("limit must be between 1 and 100")
++
++    after_id = None
++    if cursor is not None:
++        after_id = _decode_cursor(cursor)
++
++    ordered = sorted(USERS, key=lambda u: u["id"])
++    if after_id is not None:
++        ordered = [u for u in ordered if u["id"] > after_id]
++
++    items = ordered[:limit]
++    next_cursor = None
++    if len(ordered) > limit and items:
++        next_cursor = _encode_cursor(items[-1]["id"])
++
++    return {"items": items, "next_cursor": next_cursor}

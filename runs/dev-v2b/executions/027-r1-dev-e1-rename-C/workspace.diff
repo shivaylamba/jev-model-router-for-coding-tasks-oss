@@ -1,0 +1,23 @@
+ report.py | 4 ++--
+ shapes.py | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/report.py b/report.py
+index 444ab30..480413f 100644
+--- a/report.py
++++ b/report.py
+@@ -1,4 +1,4 @@
+-from shapes import calc_area
++from shapes import rectangle_area
+ 
+ def total_area(rooms):
+-    return sum(calc_area(w, h) for w, h in rooms)
++    return sum(rectangle_area(w, h) for w, h in rooms)
+diff --git a/shapes.py b/shapes.py
+index d85bd38..b525796 100644
+--- a/shapes.py
++++ b/shapes.py
+@@ -1,2 +1,2 @@
+-def calc_area(width, height):
++def rectangle_area(width, height):
+     return width * height

@@ -1,0 +1,7 @@
+{"at": "2026-10-15T13:46:55.536Z", "event": "prepared", "tasks": 30, "executions": 60, "conditions": ["A", "C"]}
+{"at": "2026-10-15T13:46:56.121Z", "event": "run started", "budget_usd": 15.0, "max_hours": 4.0}
+{"at": "2026-10-15T13:51:45.038Z", "event": "provider unhealthy; waiting", "models": {"moonshotai/Kimi-K3": "slow: 23.8s for a short reply"}, "wait_s": 300}
+{"at": "2026-10-15T14:04:15.199Z", "event": "provider unhealthy; waiting", "models": {"moonshotai/Kimi-K3": "slow: 9.9s for a short reply"}, "wait_s": 300}
+{"at": "2026-10-15T14:09:51.925Z", "event": "provider unhealthy; waiting", "models": {"moonshotai/Kimi-K3": "curl: (28) Operation timed out after 30005 milliseconds with"}, "wait_s": 300}
+{"at": "2026-10-15T14:18:56.334Z", "event": "provider unhealthy; waiting", "models": {"moonshotai/Kimi-K3": "slow: 7.0s for a short reply"}, "wait_s": 300}
+{"at": "2026-10-15T14:25:58.204Z", "event": "run complete", "spent_usd": 1.5923}

@@ -1,0 +1,16 @@
+ src/leaderboard.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/leaderboard.js b/src/leaderboard.js
+index c573cfa..eb62e97 100644
+--- a/src/leaderboard.js
++++ b/src/leaderboard.js
+@@ -18,7 +18,7 @@
+  */
+ export function rankPlayers(players) {
+   const sorted = [...players].sort(
+-    (a, b) => String(b.score).localeCompare(String(a.score)) || a.name.localeCompare(b.name),
++    (a, b) => b.score - a.score || a.name.localeCompare(b.name),
+   );
+   const ranked = [];
+   sorted.forEach((player, index) => {

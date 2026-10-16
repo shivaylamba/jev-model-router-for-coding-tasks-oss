@@ -1,0 +1,34 @@
+ calendar_util.py | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/calendar_util.py b/calendar_util.py
+index d98133a..d921ac5 100644
+--- a/calendar_util.py
++++ b/calendar_util.py
+@@ -11,12 +11,22 @@ def free_slots(meetings, day_start, day_end, min_minutes=1):
+     """
+ 
+     slots = []
+-    ordered = sorted(meetings)
++    # Filter out invalid meetings and clamp to working day
++    valid = []
++    for start, end in meetings:
++        if end <= start:
++            continue
++        s = max(start, day_start)
++        e = min(end, day_end)
++        if s < e:
++            valid.append((s, e))
++    ordered = sorted(valid)
+     cursor = day_start
+     for start, end in ordered:
+-        if start - cursor > min_minutes:
++        if start > cursor and start - cursor >= min_minutes:
+             slots.append((cursor, start))
+-        cursor = end
+-    if day_end - cursor > min_minutes:
++        if end > cursor:
++            cursor = end
++    if day_end - cursor >= min_minutes:
+         slots.append((cursor, day_end))
+     return slots

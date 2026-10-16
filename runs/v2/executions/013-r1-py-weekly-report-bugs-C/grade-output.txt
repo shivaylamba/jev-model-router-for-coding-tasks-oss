@@ -1,0 +1,19 @@
+
+test_every_week_is_on_a_page (acceptance_tests.test_weekly_report.BuildReportTest.test_every_week_is_on_a_page) ... ok
+test_exact_multiple (acceptance_tests.test_weekly_report.PaginateRowsTest.test_exact_multiple) ... ok
+test_fewer_rows_than_a_page (acceptance_tests.test_weekly_report.PaginateRowsTest.test_fewer_rows_than_a_page) ... ok
+test_invalid_page_size (acceptance_tests.test_weekly_report.PaginateRowsTest.test_invalid_page_size) ... ok
+test_no_rows (acceptance_tests.test_weekly_report.PaginateRowsTest.test_no_rows) ... ok
+test_page_size_one (acceptance_tests.test_weekly_report.PaginateRowsTest.test_page_size_one) ... ok
+test_partial_last_page (acceptance_tests.test_weekly_report.PaginateRowsTest.test_partial_last_page) ... ok
+test_days_belonging_to_next_iso_year (acceptance_tests.test_weekly_report.WeekKeyTest.test_days_belonging_to_next_iso_year) ... ok
+test_days_belonging_to_previous_iso_year (acceptance_tests.test_weekly_report.WeekKeyTest.test_days_belonging_to_previous_iso_year) ... ok
+test_mid_year_numbering (acceptance_tests.test_weekly_report.WeekKeyTest.test_mid_year_numbering) ... ok
+test_no_week_zero (acceptance_tests.test_weekly_report.WeekKeyTest.test_no_week_zero) ... ok
+test_new_year_week_is_one_row (acceptance_tests.test_weekly_report.WeeklyTotalsTest.test_new_year_week_is_one_row) ... ok
+test_sorted_across_years (acceptance_tests.test_weekly_report.WeeklyTotalsTest.test_sorted_across_years) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.002s
+
+OK

@@ -1,0 +1,56 @@
+ cache.py | 41 ++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 40 insertions(+), 1 deletion(-)
+
+diff --git a/cache.py b/cache.py
+index d715e78..e6b37b2 100644
+--- a/cache.py
++++ b/cache.py
+@@ -1,3 +1,6 @@
++from collections import OrderedDict
++
++
+ class TTLCache:
+     """A small cache with a size limit and per-entry expiry.
+ 
+@@ -15,4 +18,40 @@ class TTLCache:
+     """
+ 
+     def __init__(self, max_size, ttl, clock):
+-        raise NotImplementedError
++        self._max_size = max_size
++        self._ttl = ttl
++        self._clock = clock
++        # Maps key -> (value, expiry_time); iteration order is LRU -> MRU.
++        self._entries = OrderedDict()
++
++    def _expired(self, expiry, now):
++        return now >= expiry
++
++    def _drop_expired(self, now):
++        for key in [k for k, (_, exp) in self._entries.items() if self._expired(exp, now)]:
++            del self._entries[key]
++
++    def set(self, key, value):
++        now = self._clock()
++        self._drop_expired(now)
++        if key in self._entries:
++            del self._entries[key]
++        elif len(self._entries) >= self._max_size:
++            self._entries.popitem(last=False)  # evict least recently used
++        self._entries[key] = (value, now + self._ttl)
++
++    def get(self, key, default=None):
++        now = self._clock()
++        entry = self._entries.get(key)
++        if entry is None or self._expired(entry[1], now):
++            return default
++        self._entries.move_to_end(key)
++        return entry[0]
++
++    def __len__(self):
++        now = self._clock()
++        return sum(1 for _, exp in self._entries.values() if not self._expired(exp, now))
++
++    def __contains__(self, key):
++        entry = self._entries.get(key)
++        return entry is not None and not self._expired(entry[1], self._clock())

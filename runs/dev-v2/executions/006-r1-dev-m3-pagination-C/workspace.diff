@@ -1,0 +1,102 @@
+ test_pagination.py | 46 ++++++++++++++++++++++++++++++++++++++++++++++
+ users.py           | 37 +++++++++++++++++++++++++++++++++++--
+ 2 files changed, 81 insertions(+), 2 deletions(-)
+
+diff --git a/test_pagination.py b/test_pagination.py
+new file mode 100644
+index 0000000..ea57073
+--- /dev/null
++++ b/test_pagination.py
+@@ -0,0 +1,46 @@
++import users
++
++# Paginacao com limit=4
++r1 = users.list_users(limit=4)
++print('page1 ids:', [u['id'] for u in r1['items']], 'next:', r1['next_cursor'])
++r2 = users.list_users(limit=4, cursor=r1['next_cursor'])
++print('page2 ids:', [u['id'] for u in r2['items']], 'next:', r2['next_cursor'])
++r3 = users.list_users(limit=4, cursor=r2['next_cursor'])
++print('page3 ids:', [u['id'] for u in r3['items']], 'next:', r3['next_cursor'])
++r4 = users.list_users(limit=4, cursor=r3['next_cursor'])
++print('page4 ids:', [u['id'] for u in r4['items']], 'next:', r4['next_cursor'])
++
++# Default retorna todos, next_cursor None
++d = users.list_users()
++assert len(d['items']) == 11, 'default should return all'
++assert d['next_cursor'] is None
++print('default ok:', len(d['items']), [u['id'] for u in d['items']])
++
++# Ordenacao por id
++allids = [u['id'] for u in r1['items'] + r2['items'] + r3['items'] + r4['items']]
++assert allids == sorted(allids), 'not sorted by id'
++print('sorted ok:', allids)
++
++# Bad cursors -> ValueError
++for bad in ['not-a-cursor', '', 123, '!!!', 45.0, None]:
++    try:
++        users.list_users(cursor=bad)
++        print('NO RAISE for cursor', repr(bad))
++    except ValueError:
++        pass
++print('bad cursor ValueError ok')
++
++# Bad limits -> ValueError
++for L in [0, -1, 101, '5', 1.5, 200]:
++    try:
++        users.list_users(limit=L)
++        print('NO RAISE for limit', repr(L))
++    except ValueError:
++        pass
++print('bad limit ValueError ok')
++
++# Inclusive bounds OK
++users.list_users(limit=1)
++users.list_users(limit=100)
++print('bounds 1..100 ok')
++print('ALL TESTS PASSED')
+\ No newline at end of file
+diff --git a/users.py b/users.py
+index 3792cc3..8cfff0b 100644
+--- a/users.py
++++ b/users.py
+@@ -1,4 +1,37 @@
++import base64
++import binascii
++
+ USERS = [{"id": i, "name": f"user{i}"} for i in (7, 3, 12, 1, 9, 4, 15, 2, 20, 6, 11)]
+ 
+-def list_users():
+-    return USERS
++
++def _encode_cursor(user_id):
++    """Encode a user id into an opaque, stable cursor string."""
++    return base64.urlsafe_b64encode(str(user_id).encode()).decode().rstrip("=")
++
++
++def _decode_cursor(cursor):
++    """Decode an opaque cursor back to a user id; malformed cursors raise ValueError."""
++    if not isinstance(cursor, str):
++        raise ValueError("invalid cursor")
++    try:
++        padded = cursor + "=" * (-len(cursor) % 4)
++        user_id = int(base64.urlsafe_b64decode(padded.encode()).decode())
++    except (ValueError, UnicodeDecodeError, binascii.Error):
++        raise ValueError("invalid cursor")
++    return user_id
++
++
++def list_users(limit=20, cursor=None):
++    if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
++        raise ValueError("limit must be an integer between 1 and 100")
++
++    by_id = sorted(USERS, key=lambda u: u["id"])
++    start_id = _decode_cursor(cursor) if cursor is not None else 0
++    filtered = [u for u in by_id if u["id"] > start_id]
++    page = filtered[:limit]
++
++    next_cursor = None
++    if len(filtered) > limit:
++        next_cursor = _encode_cursor(page[-1]["id"])
++
++    return {"items": page, "next_cursor": next_cursor}
+\ No newline at end of file

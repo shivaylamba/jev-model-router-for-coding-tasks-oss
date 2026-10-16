@@ -1,0 +1,53 @@
+TAP version 13
+# Subtest: pick keeps the listed keys
+ok 1 - pick keeps the listed keys
+  ---
+  duration_ms: 0.8805
+  type: 'test'
+  ...
+# Subtest: pick follows the order of keys
+ok 2 - pick follows the order of keys
+  ---
+  duration_ms: 0.093125
+  type: 'test'
+  ...
+# Subtest: pick ignores missing keys and keeps undefined values that exist
+ok 3 - pick ignores missing keys and keeps undefined values that exist
+  ---
+  duration_ms: 0.094458
+  type: 'test'
+  ...
+# Subtest: pick ignores inherited and non-enumerable properties
+ok 4 - pick ignores inherited and non-enumerable properties
+  ---
+  duration_ms: 0.085792
+  type: 'test'
+  ...
+# Subtest: omit drops the listed keys and keeps the rest in order
+ok 5 - omit drops the listed keys and keeps the rest in order
+  ---
+  duration_ms: 0.135209
+  type: 'test'
+  ...
+# Subtest: omit only copies own enumerable properties
+ok 6 - omit only copies own enumerable properties
+  ---
+  duration_ms: 0.087708
+  type: 'test'
+  ...
+# Subtest: inputs are not mutated and results are new objects
+ok 7 - inputs are not mutated and results are new objects
+  ---
+  duration_ms: 0.111875
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 75.195541
+

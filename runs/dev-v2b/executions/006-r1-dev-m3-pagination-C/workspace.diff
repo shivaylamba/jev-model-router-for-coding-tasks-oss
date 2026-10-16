@@ -1,0 +1,48 @@
+ users.py | 37 +++++++++++++++++++++++++++++++++++--
+ 1 file changed, 35 insertions(+), 2 deletions(-)
+
+diff --git a/users.py b/users.py
+index 3792cc3..9a702f6 100644
+--- a/users.py
++++ b/users.py
+@@ -1,4 +1,37 @@
++import base64
++
+ USERS = [{"id": i, "name": f"user{i}"} for i in (7, 3, 12, 1, 9, 4, 15, 2, 20, 6, 11)]
+ 
+-def list_users():
+-    return USERS
++
++def _encode_cursor(user_id):
++    """Encode a user id into an opaque cursor string."""
++    return base64.urlsafe_b64encode(str(user_id).encode()).decode()
++
++
++def _decode_cursor(cursor):
++    """Decode an opaque cursor back into a user id, or None for no cursor."""
++    if cursor is None:
++        return None
++    try:
++        user_id = int(base64.urlsafe_b64decode(cursor.encode()).decode())
++    except Exception:
++        raise ValueError("bad cursor")
++    return user_id
++
++
++def list_users(limit=20, cursor=None):
++    if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
++        raise ValueError("limit must be between 1 and 100")
++
++    last_id = _decode_cursor(cursor)
++    ordered = sorted(USERS, key=lambda u: u["id"])
++    if last_id is not None:
++        ordered = [u for u in ordered if u["id"] > last_id]
++
++    page = ordered[:limit]
++
++    next_cursor = None
++    if len(page) == limit and len(ordered) > limit:
++        next_cursor = _encode_cursor(page[-1]["id"])
++
++    return {"items": page, "next_cursor": next_cursor}
+\ No newline at end of file

@@ -1,0 +1,68 @@
+[2026-10-15T11:07:42.882Z] run started {'budget_usd': 40.0, 'max_hours': 6.0}
+  1 js-debounce-bugs             C       PASS $1.8370  393.0s completed     {'strong': 25} 
+  2 py-flatten-records-csv       C       PASS $0.0438   61.3s completed     {'fast': 17} 
+  3 ts-deep-merge                C       FAIL $0.0032    9.0s completed     {'fast': 2} 
+  4 ts-todo-query                C       PASS $0.0813   95.5s completed     {'fast': 20} 
+  5 py-memoize                   C       PASS $0.1501   41.2s completed     {'fast': 7, 'strong': 3} 
+  6 py-parse-query               C       PASS $0.7110  109.5s completed     {'fast': 13, 'strong': 12} 
+  7 ts-signup-validate           C       PASS $0.0990  100.4s completed     {'fast': 24} 
+  8 js-score-sort                C       PASS $0.3783   50.2s completed     {'fast': 7, 'strong': 9} 
+  9 ts-semver-range              C       PASS $1.0306  146.7s completed     {'balanced': 25} 
+ 10 ts-paginate-off-by-one       C       PASS $0.0174   22.1s completed     {'fast': 10} 
+ 11 ts-config-promise            C       PASS $0.1100   18.1s completed     {'balanced': 10} 
+ 12 js-parse-ini                 C       FAIL $5.6303 1200.9s wall_limit    {'fast': 13, 'strong': 61} 
+ 13 py-weekly-report-bugs        C       PASS $0.1391   34.2s completed     {'balanced': 11} 
+Traceback (most recent call last):
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 873, in <module>
+    main()
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 861, in main
+    run(args)
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 804, in run
+    record = execute(run_dir, manifest, item, keys)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 558, in execute
+    time.sleep(1)
+KeyboardInterrupt
+[2026-10-15T11:58:28.638Z] run started {'budget_usd': 45.0, 'max_hours': 8.0}
+[2026-10-15T11:58:48.746Z] provider unhealthy; waiting {'models': {'moonshotai/Kimi-K3': 'slow: 14.1s for a short reply'}, 'wait_s': 300}
+[2026-10-15T12:04:01.777Z] provider unhealthy; waiting {'models': {'moonshotai/Kimi-K3': 'slow: 7.3s for a short reply'}, 'wait_s': 300}
+ 12 js-parse-ini                 C       PASS $0.0560  225.1s completed     {'fast': 15} 
+[2026-10-15T12:13:05.375Z] kept interrupted attempt {'execution': '014-r1-py-async-rate-limiter-C', 'attempt': 1}
+ 14 py-async-rate-limiter        C       PASS $1.3170  406.0s completed     {'strong': 19, 'fast': 8} 
+ 15 py-card-iban                 C       PASS $0.0325   78.3s completed     {'fast': 13} 
+ 16 js-pluralize                 C       PASS $0.0132   16.1s completed     {'fast': 8} 
+ 17 py-expr-eval                 C       PASS $4.0740  279.3s completed     {'balanced': 15, 'strong': 34} 
+ 18 ts-singleflight-cache        C       FAIL $8.2083 1032.8s request_limit {'balanced': 48, 'strong': 34} 
+ 19 py-cursor-pagination         C       FAIL $0.2383   41.2s completed     {'balanced': 14} 
+ 20 py-format-phone              C       PASS $0.3051   35.2s completed     {'fast': 6, 'strong': 7} 
+ 21 py-validate-username         C       PASS $0.0270   42.2s completed     {'fast': 10} 
+ 22 ts-schema-validator          C       PASS $0.5938   96.4s completed     {'balanced': 24} 
+ 23 ts-parse-clock               C       PASS $0.0221   28.1s completed     {'fast': 11} 
+ 24 js-human-duration            C       PASS $0.0363   52.3s completed     {'fast': 13} 
+ 25 py-extract-validators        C       PASS $0.1524   25.1s completed     {'balanced': 11} 
+ 26 py-chunk-evenly              C       PASS $0.0207   26.2s completed     {'fast': 12} 
+ 27 py-shipping-constants        C       PASS $0.0206   27.1s completed     {'fast': 10} 
+ 28 js-client-options            C       PASS $0.0310   52.3s completed     {'fast': 12} 
+ 29 py-retry-backoff             C       FAIL $0.0284  139.7s completed     {'fast': 11} 
+ 30 ts-clamp-range               C       PASS $0.0256   29.2s completed     {'fast': 14} 
+ 31 js-email-list                C       FAIL $0.0140   28.1s completed     {'fast': 8} 
+ 32 ts-notify-many               C       PASS $0.0138   31.2s completed     {'fast': 7} 
+ 33 ts-emitter-bugs              C       FAIL $1.4939  155.8s completed     {'strong': 24} 
+ 34 js-pick-omit                 C       PASS $0.0240   34.2s completed     {'fast': 13} 
+ 35 ts-pricing-rules             C       PASS $0.5011   78.4s completed     {'balanced': 23} 
+ 36 py-parse-kv                  C       PASS $0.0201   32.2s completed     {'fast': 11} 
+ 37 py-cron-next                 C       PASS $1.6626  131.7s completed     {'balanced': 9, 'strong': 19} 
+ 38 ts-weighted-lru              C       PASS $0.6460   88.5s completed     {'fast': 11, 'strong': 9} 
+ 39 ts-hex-color                 C       PASS $0.0255  109.7s completed     {'fast': 10} 
+ 40 py-order-state-machine       C       PASS $1.1913   75.4s completed     {'balanced': 14, 'strong': 16} 
+ 41 py-shared-default-tags       C       PASS $0.0305   13.1s completed     {'balanced': 3} 
+ 42 py-user-stats-dataclass      C       PASS $0.0350   44.2s completed     {'fast': 16} 
+ 43 ts-table-wrap                C       PASS $0.2441   96.5s completed     {'fast': 14, 'strong': 3} 
+ 44 py-top-n-reverse             C       FAIL $0.0232  156.9s completed     {'fast': 5} 
+ 45 py-inventory-reservations    C       FAIL $1.3346   94.5s completed     {'strong': 23} 
+ 46 ts-format-money              C       FAIL $0.0019   10.1s completed     {'fast': 1} 
+ 47 py-report-csv-export         C       PASS $0.0574   57.3s completed     {'fast': 22} 
+ 48 ts-undo-redo                 C       FAIL $0.3282   69.4s completed     {'balanced': 17} 
+ 49 js-cli-json-flag             C       PASS $0.3161   47.2s completed     {'fast': 12, 'strong': 5} 
+ 50 js-site-plugins              C       PASS $0.1611   47.3s completed     {'balanced': 11} 
+[2026-10-15T13:22:58.251Z] run complete {'spent_usd': 27.9275}

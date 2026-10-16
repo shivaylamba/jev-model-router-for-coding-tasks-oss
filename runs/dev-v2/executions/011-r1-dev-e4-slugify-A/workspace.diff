@@ -1,0 +1,28 @@
+ __pycache__/textutil.cpython-311.pyc | Bin 0 -> 1121 bytes
+ textutil.py                          |  12 +++++++++++-
+ 2 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/__pycache__/textutil.cpython-311.pyc b/__pycache__/textutil.cpython-311.pyc
+new file mode 100644
+index 0000000..1b27452
+Binary files /dev/null and b/__pycache__/textutil.cpython-311.pyc differ
+diff --git a/textutil.py b/textutil.py
+index 761e910..1b46fbc 100644
+--- a/textutil.py
++++ b/textutil.py
+@@ -6,4 +6,14 @@ def slugify(text):
+     - no leading or trailing hyphen
+     - an input with no letters or digits gives the empty string
+     """
+-    raise NotImplementedError
++    parts = []
++    current = []
++    for ch in text.lower():
++        if ch.isalnum():
++            current.append(ch)
++        elif current:
++            parts.append("".join(current))
++            current = []
++    if current:
++        parts.append("".join(current))
++    return "-".join(parts)

@@ -1,0 +1,24 @@
+[2026-10-15T10:18:02.286Z] run started {'budget_usd': 10.0, 'max_hours': 2.0}
+  1 dev-e2-flag                  A       PASS $0.1173    9.1s completed      
+  2 dev-e2-flag                  C       PASS $0.0088   15.2s completed     {'fast': 6} 
+  3 smoke-py-average-bug         A       PASS $0.1892   14.1s completed      
+  4 smoke-py-average-bug         C       FAIL $0.0090  117.1s completed     {'fast': 3} 
+  5 dev-m3-pagination            A       PASS $0.1721   18.1s completed      
+  6 dev-m3-pagination            C       PASS $0.0397  194.0s completed     {'fast': 8} 
+  7 smoke-ts-initials            A       PASS $0.2610   22.1s completed      
+  8 smoke-ts-initials            C       PASS $0.0043    7.0s completed     {'fast': 3} 
+  9 dev-m1-ttl-cache             A       PASS $0.2603   41.2s completed      
+ 10 dev-m1-ttl-cache             C       PASS $0.0378   76.4s completed     {'fast': 15} 
+ 11 dev-e4-slugify               A       PASS $0.3280   21.1s completed      
+ 12 dev-e4-slugify               C       PASS $0.0490   77.4s completed     {'fast': 7} 
+Traceback (most recent call last):
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 863, in <module>
+    main()
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 851, in main
+    run(args)
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 795, in run
+    record = execute(run_dir, manifest, item, keys)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/shivaylamba/Desktop/grok/nconnect-jev-benchmark/bench/run.py", line 558, in execute
+    time.sleep(1)
+KeyboardInterrupt
