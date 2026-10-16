@@ -1,6 +1,6 @@
-# Jev + nconnect router benchmark
+# Open Source Models via Nebius Token Factory
 
-Jev picks a model tier for each coding task, and [nconnect](https://nconnect.sh) routes Claude Code to DeepSeek V4 Flash 0731, Kimi K2.6 or Kimi K3 on Nebius Token Factory. The benchmark compares that with running every request on Kimi K3.
+A Jev-routed coding benchmark. Jev picks a model tier for each coding task, and [nconnect](https://nconnect.sh) routes Claude Code to DeepSeek V4 Flash 0731, Kimi K2.6 or Kimi K3 on Nebius Token Factory. The benchmark compares that with running every request on Kimi K3.
 
 Inspired by Abdul's [Jev router experiment](https://github.com/amrrs/jev-router-experiment), which routes one-shot prompts. This one tests the same idea inside a coding agent, where one task is dozens of model calls, tool use and file edits.
 
