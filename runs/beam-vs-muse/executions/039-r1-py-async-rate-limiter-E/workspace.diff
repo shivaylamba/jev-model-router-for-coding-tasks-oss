@@ -1,0 +1,213 @@
+ ratelimit/__pycache__/__init__.cpython-311.pyc     | Bin 0 -> 380 bytes
+ ratelimit/__pycache__/bucket.cpython-311.pyc       | Bin 0 -> 2633 bytes
+ ratelimit/__pycache__/limiter.cpython-311.pyc      | Bin 0 -> 10413 bytes
+ ratelimit/limiter.py                               | 164 +++++++++++++++++++--
+ tests/__pycache__/__init__.cpython-311.pyc         | Bin 0 -> 206 bytes
+ .../test_bucket.cpython-311-pytest-8.2.2.pyc       | Bin 0 -> 2715 bytes
+ 6 files changed, 149 insertions(+), 15 deletions(-)
+
+diff --git a/ratelimit/__pycache__/__init__.cpython-311.pyc b/ratelimit/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..d3bd855
+Binary files /dev/null and b/ratelimit/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/ratelimit/__pycache__/bucket.cpython-311.pyc b/ratelimit/__pycache__/bucket.cpython-311.pyc
+new file mode 100644
+index 0000000..48decda
+Binary files /dev/null and b/ratelimit/__pycache__/bucket.cpython-311.pyc differ
+diff --git a/ratelimit/__pycache__/limiter.cpython-311.pyc b/ratelimit/__pycache__/limiter.cpython-311.pyc
+new file mode 100644
+index 0000000..6fe0e39
+Binary files /dev/null and b/ratelimit/__pycache__/limiter.cpython-311.pyc differ
+diff --git a/ratelimit/limiter.py b/ratelimit/limiter.py
+index 98e52f3..438a528 100644
+--- a/ratelimit/limiter.py
++++ b/ratelimit/limiter.py
+@@ -1,31 +1,165 @@
+-"""Asyncio rate limiter: per-key token buckets plus a global concurrency cap.
+-
+-See SPEC.md for the full behaviour.
+-"""
+-
++"""Asyncio rate limiter: per-key token buckets plus a global concurrency cap."""
++import asyncio
++import collections
++from ratelimit.bucket import TokenBucket
+ 
+ class RateLimiter:
+     def __init__(self, rate, burst, max_concurrent, *, clock, sleep):
+-        raise NotImplementedError
++        if not isinstance(rate, (int, float)) or rate <= 0:
++            raise ValueError("rate must be positive")
++        if not isinstance(burst, int) or burst < 1:
++            raise ValueError("burst must be at least 1")
++        if not isinstance(max_concurrent, int) or max_concurrent < 1:
++            raise ValueError("max_concurrent must be at least 1")
++        self._rate = rate
++        self._burst = burst
++        self._max_concurrent = max_concurrent
++        self._clock = clock
++        self._sleep = sleep
++        self._in_use = 0
++        self._seq = 0
++        self._buckets = {}
++        self._queues = {}
++
++    def _bucket(self, key):
++        if key not in self._buckets:
++            self._buckets[key] = TokenBucket(self._rate, self._burst, self._clock)
++        return self._buckets[key]
++
++    def _get_queue(self, key):
++        if key not in self._queues:
++            self._queues[key] = collections.deque()
++        return self._queues[key]
++
++    def _is_head(self, req):
++        q = self._queues.get(req["key"])
++        return q is not None and len(q) > 0 and q[0] is req
++
++    def _grant_pass(self):
++        while True:
++            best = None
++            best_bucket = None
++            for key, q in self._queues.items():
++                if not q:
++                    continue
++                head = q[0]
++                bucket = self._bucket(key)
++                if bucket.available() < 1:
++                    continue
++                if self._in_use >= self._max_concurrent:
++                    continue
++                if best is None or head["seq"] < best["seq"]:
++                    best = head
++                    best_bucket = bucket
++            if best is None:
++                return
++            taken = best_bucket.try_take()
++            assert taken
++            self._in_use += 1
++            q = self._queues[best["key"]]
++            assert q[0] is best
++            q.popleft()
++            best["granted"] = True
++            fut = best["future"]
++            if fut is not None and not fut.done():
++                fut.set_result(None)
++
++    def _wake_token_heads(self):
++        for key, q in list(self._queues.items()):
++            if not q:
++                continue
++            head = q[0]
++            if head["granted"]:
++                continue
++            b = self._bucket(key)
++            if b.available() < 1:
++                f = head["future"]
++                if f is not None and not f.done():
++                    f.set_result(None)
++
++    async def _handle_cancel(self, req, bucket):
++        was_granted = req["granted"]
++        if was_granted:
++            self._in_use -= 1
++            bucket._refill()
++            bucket._tokens = min(float(bucket.burst), bucket._tokens + 1)
++            if req["future"] is not None and not req["future"].done():
++                req["future"].cancel()
++        else:
++            q = self._queues.get(req["key"])
++            if q is not None and req in q:
++                q.remove(req)
++            if req["future"] is not None and not req["future"].done():
++                req["future"].cancel()
++        self._grant_pass()
++        self._wake_token_heads()
+ 
+     async def acquire(self, key):
+-        """Wait until a request for `key` is granted (one token and one slot)."""
+-        raise NotImplementedError
++        bucket = self._bucket(key)
++        q = self._get_queue(key)
++        loop = asyncio.get_running_loop()
++        req = {"key": key, "seq": self._seq, "granted": False, "future": loop.create_future()}
++        self._seq += 1
++        q.append(req)
++        self._grant_pass()
++        if req["granted"]:
++            return
++        while not req["granted"]:
++            if self._is_head(req):
++                d = bucket.time_until_available()
++                if d > 0:
++                    try:
++                        await self._sleep(d)
++                    except asyncio.CancelledError:
++                        await self._handle_cancel(req, bucket)
++                        raise
++                    self._grant_pass()
++                    if req["granted"]:
++                        return
++                    if self._is_head(req) and bucket.available() < 1:
++                        continue
++            if req["future"].done():
++                if req["granted"]:
++                    return
++                req["future"] = loop.create_future()
++            try:
++                await req["future"]
++            except asyncio.CancelledError:
++                await self._handle_cancel(req, bucket)
++                raise
++            if req["granted"]:
++                return
+ 
+     def release(self):
+-        """Free one slot."""
+-        raise NotImplementedError
++        if self._in_use <= 0:
++            raise RuntimeError("release() with nothing held")
++        self._in_use -= 1
++        self._grant_pass()
++        self._wake_token_heads()
+ 
+     def limit(self, key):
+-        """Async context manager: acquire on entry, release on exit."""
+-        raise NotImplementedError
++        limiter = self
++        class _CM:
++            async def __aenter__(self_):
++                await limiter.acquire(key)
++                return None
++            async def __aexit__(self_, *exc):
++                limiter.release()
++                return False
++        return _CM()
+ 
+     @property
+     def in_use(self):
+-        raise NotImplementedError
++        return self._in_use
+ 
+     def tokens(self, key):
+-        raise NotImplementedError
++        b = self._buckets.get(key)
++        if b is None:
++            return float(self._burst)
++        return b.available()
+ 
+     def waiting(self, key=None):
+-        raise NotImplementedError
++        if key is None:
++            return sum(len(q) for q in self._queues.values())
++        q = self._queues.get(key)
++        return len(q) if q else 0
+diff --git a/tests/__pycache__/__init__.cpython-311.pyc b/tests/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..9dd6222
+Binary files /dev/null and b/tests/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/tests/__pycache__/test_bucket.cpython-311-pytest-8.2.2.pyc b/tests/__pycache__/test_bucket.cpython-311-pytest-8.2.2.pyc
+new file mode 100644
+index 0000000..bac2c21
+Binary files /dev/null and b/tests/__pycache__/test_bucket.cpython-311-pytest-8.2.2.pyc differ

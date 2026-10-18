@@ -1,0 +1,241 @@
+ cron.py | 228 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 225 insertions(+), 3 deletions(-)
+
+diff --git a/cron.py b/cron.py
+index a26cda8..2191013 100644
+--- a/cron.py
++++ b/cron.py
+@@ -1,8 +1,230 @@
+ """Cron expression evaluation. The supported syntax is described in SPEC.md."""
+ 
+-from datetime import datetime
++from datetime import datetime, timedelta
++
++_MONTH_NAMES = {
++    "JAN": 1, "FEB": 2, "MAR": 3, "APR": 4, "MAY": 5, "JUN": 6,
++    "JUL": 7, "AUG": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12,
++}
++
++_DOW_NAMES = {
++    "SUN": 0, "MON": 1, "TUE": 2, "WED": 3, "THU": 4, "FRI": 5, "SAT": 6,
++}
++
++_MACROS = {
++    "@yearly": "0 0 1 1 *",
++    "@annually": "0 0 1 1 *",
++    "@monthly": "0 0 1 * *",
++    "@weekly": "0 0 * * 0",
++    "@daily": "0 0 * * *",
++    "@midnight": "0 0 * * *",
++    "@hourly": "0 * * * *",
++}
++
++_FIELDS = [
++    # (name, min, max, names dict)
++    ("minute", 0, 59, None),
++    ("hour", 0, 23, None),
++    ("day of month", 1, 31, None),
++    ("month", 1, 12, _MONTH_NAMES),
++    ("day of week", 0, 7, _DOW_NAMES),
++]
++
++
++def _parse_value(tok, names, lo, hi):
++    tok = tok.strip()
++    if not tok:
++        raise ValueError("empty value")
++    if names is not None:
++        key = tok.upper()
++        if key in names:
++            v = names[key]
++            if v < lo or v > hi:
++                raise ValueError("value out of range")
++            return v
++    # number?
++    try:
++        v = int(tok, 10)
++    except (TypeError, ValueError):
++        raise ValueError(f"invalid value {tok!r}")
++    if v < lo or v > hi:
++        raise ValueError(f"value out of range {v}")
++    return v
++
++
++def _parse_step(tok):
++    if not tok:
++        raise ValueError("empty step")
++    try:
++        s = int(tok, 10)
++    except (TypeError, ValueError):
++        raise ValueError(f"invalid step {tok!r}")
++    if s <= 0:
++        raise ValueError("step must be positive")
++    return s
++
++
++def _parse_field(text, lo, hi, names):
++    unrestricted = text.startswith("*")
++    items = text.split(",")
++    if any(i == "" for i in items):
++        raise ValueError("empty item")
++    result = set()
++    for item in items:
++        if "/" in item:
++            base, step_str = item.split("/", 1)
++            # disallow extra slashes
++            if "/" in step_str:
++                raise ValueError("invalid item")
++            step = _parse_step(step_str)
++        else:
++            base = item
++            step = None
++
++        if base == "*":
++            start = lo
++            end = hi
++        elif "-" in base:
++            a_str, b_str = base.split("-", 1)
++            if "-" in b_str:
++                raise ValueError("invalid range")
++            a = _parse_value(a_str, names, lo, hi)
++            b = _parse_value(b_str, names, lo, hi)
++            if a > b:
++                raise ValueError("range start greater than end")
++            start = a
++            end = b
++        else:
++            v = _parse_value(base, names, lo, hi)
++            start = v
++            if step is None:
++                # normalize dow 7->0 happens after; just add
++                result.add(v)
++                continue
++            end = hi
++
++        s = step if step is not None else 1
++        if s <= 0:
++            raise ValueError("step must be positive")
++        v = start
++        while v <= end:
++            result.add(v)
++            v += s
++
++    # normalize dow: 7 -> 0
++    if hi == 7:
++        normalized = set()
++        for v in result:
++            normalized.add(0 if v == 7 else v)
++        result = normalized
++
++    if not result:
++        raise ValueError("empty field")
++    return unrestricted, result
++
++
++def _parse_expr(expr):
++    if not isinstance(expr, str):
++        raise ValueError("expr must be str")
++    s = expr.strip()
++    if not s:
++        raise ValueError("empty expression")
++    if s.startswith("@"):
++        # macro: entire expression must be single token
++        parts = s.split()
++        if len(parts) != 1:
++            raise ValueError("unknown macro")
++        key = parts[0].lower()
++        if key not in _MACROS:
++            raise ValueError("unknown macro")
++        s = _MACROS[key]
++    parts = s.split()
++    if len(parts) != 5:
++        raise ValueError("wrong number of fields")
++    # fields may not contain spaces inside; split already.
++
++    minute_u, minute_set = _parse_field(parts[0], 0, 59, None)
++    hour_u, hour_set = _parse_field(parts[1], 0, 23, None)
++    dom_u, dom_set = _parse_field(parts[2], 1, 31, None)
++    month_u, month_set = _parse_field(parts[3], 1, 12, _MONTH_NAMES)
++    dow_u, dow_set = _parse_field(parts[4], 0, 7, _DOW_NAMES)
++
++    return {
++        "minute": (minute_u, minute_set),
++        "hour": (hour_u, hour_set),
++        "dom": (dom_u, dom_set),
++        "month": (None, month_set),
++        "dow": (dow_u, dow_set),
++    }
++
++
++def _cron_dow(d):
++    # d is a date; cron dow: Sun=0..Sat=6
++    iso = d.isoweekday()  # Mon=1..Sun=7
++    return 0 if iso == 7 else iso
+ 
+ 
+ def next_run(expr: str, after: datetime) -> datetime:
+-    """The earliest minute strictly after `after` that matches `expr`."""
+-    raise NotImplementedError
++    parsed = _parse_expr(expr)
++
++    minute_u, minute_set = parsed["minute"]
++    hour_u, hour_set = parsed["hour"]
++    dom_u, dom_set = parsed["dom"]
++    _mu, month_set = parsed["month"]
++    dow_u, dow_set = parsed["dow"]
++
++    # bound: eight years after `after`
++    y = after.year + 8
++    try:
++        end = after.replace(year=y)
++    except ValueError:
++        end = after.replace(year=y, month=2, day=28)
++
++    cur = after.replace(second=0, microsecond=0) + timedelta(minutes=1)
++    if cur.tzinfo != after.tzinfo:
++        cur = cur.replace(tzinfo=after.tzinfo)
++
++    first_day = True
++    d = cur.date()
++    while d <= end.date():
++        if d.month in month_set:
++            # day match
++            dom_match = d.day in dom_set
++            dow_match = _cron_dow(d) in dow_set
++            both_restricted = (not dom_u) and (not dow_u)
++            if both_restricted:
++                day_ok = dom_match or dow_match
++            else:
++                day_ok = dom_match and dow_match
++
++            if day_ok:
++                if first_day:
++                    min_minute_of_day = cur.hour * 60 + cur.minute
++                else:
++                    min_minute_of_day = 0
++
++                found_time = None
++                for h in sorted(hour_set):
++                    for m in sorted(minute_set):
++                        tm = h * 60 + m
++                        if tm >= min_minute_of_day:
++                            found_time = (h, m)
++                            break
++                    if found_time:
++                        break
++                if found_time:
++                    h, m = found_time
++                    result = datetime(d.year, d.month, d.day, h, m,
++                                     tzinfo=after.tzinfo)
++                    if result <= end:
++                        return result
++                    raise ValueError("no matching time within eight years")
++
++        d = d + timedelta(days=1)
++        first_day = False
++
++    raise ValueError("no matching time within eight years")
++
++
++if __name__ == "__main__":
++    pass

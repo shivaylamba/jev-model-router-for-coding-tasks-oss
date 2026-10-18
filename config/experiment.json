@@ -128,5 +128,87 @@
       ],
       "decider_through_recorder": true
     }
+  },
+  "model_conditions": {
+    "D": {
+      "label": "Fixed: Reflection Beam (reflection/beam)",
+      "nconnect_model": "reflection/beam",
+      "env": {},
+      "nconnect_bundle": "vendor/nconnect-0.26.0.js",
+      "nconnect_bundle_sha256": "f99ed86e109c18a32d561c33262a35fcd8b68cc3314b5f07b324cf97f5bb842e",
+      "nconnect_source_commit": "9f7a6b7",
+      "nconnect_source_note": "Studio1-OSS/nconnect v0.26.0 (merged to main as e296a51; no tree difference), built with bun build --target=bun --production. Includes Muse Spark open's effort bounds (low..xhigh). nconnect maps provider reasoning_content to Claude thinking blocks and back, which Beam requires on multi-turn tool calls."
+    },
+    "E": {
+      "label": "Fixed: Muse Spark open (meta-models/muse-spark-open)",
+      "nconnect_model": "meta-models/muse-spark-open",
+      "env": {},
+      "nconnect_bundle": "vendor/nconnect-0.26.0.js",
+      "nconnect_bundle_sha256": "f99ed86e109c18a32d561c33262a35fcd8b68cc3314b5f07b324cf97f5bb842e",
+      "nconnect_source_commit": "9f7a6b7",
+      "nconnect_source_note": "Studio1-OSS/nconnect v0.26.0 (merged to main as e296a51; no tree difference), built with bun build --target=bun --production. Includes Muse Spark open's effort bounds (low..xhigh). nconnect maps provider reasoning_content to Claude thinking blocks and back, which Beam requires on multi-turn tool calls."
+    },
+    "F": {
+      "label": "Router on: Auto with Jev, Beam as the strong tier (DeepSeek V4 Flash 0731 / Kimi K2.6 / Reflection Beam, no effort raise)",
+      "nconnect_model": "auto",
+      "nconnect_bundle": "vendor/nconnect-0.26.0.js",
+      "nconnect_bundle_sha256": "f99ed86e109c18a32d561c33262a35fcd8b68cc3314b5f07b324cf97f5bb842e",
+      "nconnect_source_commit": "9f7a6b7",
+      "nconnect_source_note": "Studio1-OSS/nconnect v0.26.0 (merged to main as e296a51; no tree difference), built with bun build --target=bun --production. Includes Muse Spark open's effort bounds (low..xhigh). nconnect maps provider reasoning_content to Claude thinking blocks and back, which Beam requires on multi-turn tool calls.",
+      "env": {
+        "NCONNECT_AUTO_DECIDER": "jev",
+        "NCONNECT_AUTO_DECIDER_MODEL": "jev-1.13.0",
+        "NCONNECT_AUTO_FAST_MODEL": "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "NCONNECT_AUTO_BALANCED_MODEL": "moonshotai/Kimi-K2.6",
+        "NCONNECT_AUTO_STRONG_MODEL": "reflection/beam",
+        "NCONNECT_AUTO_EFFORT": "off"
+      },
+      "pools": {
+        "fast": [
+          "deepseek-ai/DeepSeek-V4-Flash-0731"
+        ],
+        "balanced": [
+          "moonshotai/Kimi-K2.6"
+        ],
+        "strong": [
+          "reflection/beam"
+        ]
+      },
+      "secrets": [
+        "TYPESAFE_API_KEY"
+      ],
+      "decider_through_recorder": true
+    },
+    "F2": {
+      "label": "Router on: Auto with Jev, Beam as the strong tier (DeepSeek V4 Flash 0731 / Kimi K2.6 / Reflection Beam, no effort raise); nconnect with the Beam mixed-model reasoning fix",
+      "nconnect_model": "auto",
+      "nconnect_bundle": "vendor/nconnect-0.26.0-beamfix.js",
+      "nconnect_bundle_sha256": "501e3206c08c7322f7a54917df3babc91df10dd0e0c59139087f965406a81cd4",
+      "nconnect_source_commit": "1b2d03a",
+      "nconnect_source_note": "nconnect v0.26.0 plus branch fix/beam-mixed-model-reasoning: assistant turns with no reasoning get an explicit label when the target model is reflection/beam, so Auto can escalate to Beam mid-task. Condition F ran the same setup without the fix; 4 of its tasks ended on Beam's 400.",
+      "env": {
+        "NCONNECT_AUTO_DECIDER": "jev",
+        "NCONNECT_AUTO_DECIDER_MODEL": "jev-1.13.0",
+        "NCONNECT_AUTO_FAST_MODEL": "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "NCONNECT_AUTO_BALANCED_MODEL": "moonshotai/Kimi-K2.6",
+        "NCONNECT_AUTO_STRONG_MODEL": "reflection/beam",
+        "NCONNECT_AUTO_EFFORT": "off"
+      },
+      "pools": {
+        "fast": [
+          "deepseek-ai/DeepSeek-V4-Flash-0731"
+        ],
+        "balanced": [
+          "moonshotai/Kimi-K2.6"
+        ],
+        "strong": [
+          "reflection/beam"
+        ]
+      },
+      "secrets": [
+        "TYPESAFE_API_KEY"
+      ],
+      "decider_through_recorder": true
+    }
   }
 }

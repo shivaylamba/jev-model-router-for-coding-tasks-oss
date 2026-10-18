@@ -1,0 +1,141 @@
+ adhoc2.mjs     |  0
+ src/billing.js |  2 +-
+ src/client.js  | 70 ++++++++++++++++++++++++++++++++++++++++++++++++----------
+ src/reports.js |  2 +-
+ src/users.js   |  2 +-
+ 5 files changed, 61 insertions(+), 15 deletions(-)
+
+diff --git a/adhoc2.mjs b/adhoc2.mjs
+new file mode 100644
+index 0000000..e69de29
+diff --git a/src/billing.js b/src/billing.js
+index 7407260..e5317c7 100644
+--- a/src/billing.js
++++ b/src/billing.js
+@@ -2,7 +2,7 @@ import { createClient } from "./client.js";
+ 
+ // Billing calls are slow and idempotent, so allow a longer timeout and retry.
+ export function createBillingApi(config) {
+-  const client = createClient(config.billingUrl, config.token, 15000, 3);
++  const client = createClient({ baseUrl: config.billingUrl, token: config.token, timeoutMs: 15000, retries: 3 });
+   return {
+     client,
+     charge: (transport, customerId, cents) =>
+diff --git a/src/client.js b/src/client.js
+index 96c8db3..76df205 100644
+--- a/src/client.js
++++ b/src/client.js
+@@ -1,29 +1,75 @@
++import { deprecate } from "./deprecate.js";
++
+ /**
+  * Create an API client.
+  *
+- * @param {string} baseUrl   e.g. "https://api.internal.example"; a trailing slash is ignored
+- * @param {string} [token]   bearer token; no Authorization header when omitted
+- * @param {number} [timeoutMs=5000]
+- * @param {number} [retries=0]
++ * @param {string|object} options Either a baseUrl string (deprecated positional
++ *   form) or an options object: { baseUrl, token, timeoutMs, retries, headers }.
+  */
+-export function createClient(baseUrl, token, timeoutMs = 5000, retries = 0) {
++
++const ALLOWED_OPTIONS = new Set(["baseUrl", "token", "timeoutMs", "retries", "headers"]);
++
++function isPlainObject(value) {
++  if (value === null || typeof value !== "object") return false;
++  const proto = Object.getPrototypeOf(value);
++  return proto === Object.prototype || proto === null;
++}
++
++export function createClient(first, token, timeoutMs, retries) {
++  // Positional compatibility: first argument is a baseUrl string.
++  let positional = false;
++  let raw;
++  if (typeof first === "string") {
++    positional = true;
++    deprecate(
++      "CLIENT_POSITIONAL_ARGS",
++      "createClient positional arguments are deprecated; use an options object instead"
++    );
++    raw = { baseUrl: first, token, timeoutMs, retries };
++  } else if (isPlainObject(first)) {
++    raw = first;
++  } else {
++    throw new TypeError("createClient expects a baseUrl string or an options object");
++  }
++
++  // Reject unknown option names.
++  for (const key of Object.keys(raw)) {
++    if (!ALLOWED_OPTIONS.has(key)) {
++      throw new TypeError(`Unknown option: ${key}`);
++    }
++  }
++
++  // Defaults: an explicit undefined counts as "not given".
++  const baseUrl = raw.baseUrl;
++  const tok = raw.token === undefined ? undefined : raw.token;
++  const ms = raw.timeoutMs === undefined ? 5000 : raw.timeoutMs;
++  const ret = raw.retries === undefined ? 0 : raw.retries;
++  const headersIn = raw.headers === undefined ? {} : raw.headers;
++
+   if (typeof baseUrl !== "string" || baseUrl === "") {
+     throw new TypeError("baseUrl must be a non-empty string");
+   }
++  if (typeof ms !== "number" || !Number.isFinite(ms) || ms <= 0) {
++    throw new RangeError("timeoutMs must be a finite number greater than 0");
++  }
++  if (!Number.isInteger(ret) || ret < 0) {
++    throw new RangeError("retries must be an integer >= 0");
++  }
++
++  const headers = Object.freeze({ ...headersIn });
+   const options = Object.freeze({
+     baseUrl: baseUrl.replace(/\/+$/, ""),
+-    token,
+-    timeoutMs,
+-    retries,
++    token: tok,
++    timeoutMs: ms,
++    retries: ret,
++    headers,
+   });
+ 
+   return {
+     options,
+-    /**
+-     * Describe a request and pass it to `transport`, returning whatever the transport returns.
+-     */
+     request(transport, method, path, body) {
+-      const headers = { accept: "application/json" };
++      const headers = { ...options.headers };
++      headers.accept = "application/json";
+       if (options.token) headers.authorization = `Bearer ${options.token}`;
+       if (body !== undefined) headers["content-type"] = "application/json";
+       return transport({
+diff --git a/src/reports.js b/src/reports.js
+index d400d3d..f522515 100644
+--- a/src/reports.js
++++ b/src/reports.js
+@@ -2,7 +2,7 @@ import { createClient } from "./client.js";
+ 
+ // Reports are public and generated on demand: no token, long timeout.
+ export function createReportsApi(config) {
+-  const client = createClient(config.reportsUrl, undefined, 60000);
++  const client = createClient({ baseUrl: config.reportsUrl, timeoutMs: 60000 });
+   return {
+     client,
+     monthly: (transport, month) => client.request(transport, "GET", `/reports/${month}`),
+diff --git a/src/users.js b/src/users.js
+index b2ab32c..6c9ca3f 100644
+--- a/src/users.js
++++ b/src/users.js
+@@ -1,7 +1,7 @@
+ import { createClient } from "./client.js";
+ 
+ export function createUsersApi(config) {
+-  const client = createClient(config.apiUrl, config.token);
++  const client = createClient({ baseUrl: config.apiUrl, token: config.token });
+   return {
+     client,
+     getUser: (transport, id) => client.request(transport, "GET", `/users/${encodeURIComponent(id)}`),

@@ -1,0 +1,28 @@
+{
+  "purpose": "Beam vs Muse Spark same-harness comparison: tasks fixed before any result was collected",
+  "created": "2026-10-18T02:35:38",
+  "rule": "20 of the 50 tasks; >=2 per category (9 categories); difficulty exactly 8 easy / 8 medium / 4 hard; first seed from 20261018 upward whose random.sample(tasks, 20) satisfies the rule",
+  "seed": 20262599,
+  "task_ids": [
+    "js-client-options",
+    "js-human-duration",
+    "js-pick-omit",
+    "js-site-plugins",
+    "py-async-rate-limiter",
+    "py-card-iban",
+    "py-cron-next",
+    "py-format-phone",
+    "py-inventory-reservations",
+    "py-memoize",
+    "py-order-state-machine",
+    "py-parse-query",
+    "py-report-csv-export",
+    "py-shared-default-tags",
+    "ts-clamp-range",
+    "ts-config-promise",
+    "ts-notify-many",
+    "ts-parse-clock",
+    "ts-pricing-rules",
+    "ts-signup-validate"
+  ]
+}

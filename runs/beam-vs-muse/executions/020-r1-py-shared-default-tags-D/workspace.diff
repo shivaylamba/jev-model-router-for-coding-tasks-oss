@@ -1,0 +1,27 @@
+ notes.py | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/notes.py b/notes.py
+index 9bcdb53..2ceb1ea 100644
+--- a/notes.py
++++ b/notes.py
+@@ -24,15 +24,14 @@ def create_note(title, body="", tags=[], pinned=False):
+     Every note gets its own tags list, and the sequence passed in as `tags` is
+     never modified.
+     """
+-    for index, tag in enumerate(tags):
+-        tags[index] = normalize_tag(tag)
+-    if pinned and "pinned" not in tags:
+-        tags.append("pinned")
++    note_tags = [normalize_tag(tag) for tag in tags]
++    if pinned and "pinned" not in note_tags:
++        note_tags.append("pinned")
+     return {
+         "id": next(_ids),
+         "title": title.strip(),
+         "body": body,
+-        "tags": tags,
++        "tags": note_tags,
+         "pinned": pinned,
+     }
+ 

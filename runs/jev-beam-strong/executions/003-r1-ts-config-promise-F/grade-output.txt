@@ -1,0 +1,53 @@
+TAP version 13
+# Subtest: returns a promise when no callback is given
+ok 1 - returns a promise when no callback is given
+  ---
+  duration_ms: 3.890458
+  type: 'test'
+  ...
+# Subtest: promise resolves with all fields from the file
+ok 2 - promise resolves with all fields from the file
+  ---
+  duration_ms: 0.712291
+  type: 'test'
+  ...
+# Subtest: promise rejects with the file-system error for a missing file
+ok 3 - promise rejects with the file-system error for a missing file
+  ---
+  duration_ms: 0.469292
+  type: 'test'
+  ...
+# Subtest: promise rejects with SyntaxError for malformed JSON
+ok 4 - promise rejects with SyntaxError for malformed JSON
+  ---
+  duration_ms: 0.524666
+  type: 'test'
+  ...
+# Subtest: promise rejects with ConfigError for bad values
+ok 5 - promise rejects with ConfigError for bad values
+  ---
+  duration_ms: 0.944334
+  type: 'test'
+  ...
+# Subtest: callback style still works and returns nothing
+ok 6 - callback style still works and returns nothing
+  ---
+  duration_ms: 0.728416
+  type: 'test'
+  ...
+# Subtest: callback receives errors exactly once and nothing is returned
+ok 7 - callback receives errors exactly once and nothing is returned
+  ---
+  duration_ms: 0.855875
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 106.201625
+

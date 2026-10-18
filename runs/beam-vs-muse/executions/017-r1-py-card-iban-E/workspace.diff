@@ -1,0 +1,108 @@
+ payment_checks.py | 94 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 94 insertions(+)
+
+diff --git a/payment_checks.py b/payment_checks.py
+index 8cf49c1..16d2ac2 100644
+--- a/payment_checks.py
++++ b/payment_checks.py
+@@ -8,6 +8,100 @@ def strip_separators(text, separators=" -"):
+     return "".join(ch for ch in text if ch not in separators)
+ 
+ 
++def _luhn_valid(digits: str) -> bool:
++    total = 0
++    parity = len(digits) % 2
++    for i, ch in enumerate(digits):
++        d = ord(ch) - 48
++        if i % 2 == parity:
++            d *= 2
++            if d > 9:
++                d -= 9
++        total += d
++    return total % 10 == 0
++
++
++def card_brand(number):
++    if not isinstance(number, str):
++        raise TypeError("card number must be str")
++    if number == "":
++        return None
++    # Validate characters: only digits, space, hyphen allowed
++    for ch in number:
++        if ch not in "0123456789 -":
++            return None
++    digits = strip_separators(number)
++    if digits == "" or not digits.isdigit():
++        return None
++    if not _luhn_valid(digits):
++        return None
++    n = len(digits)
++    # amex: 34/37, 15 digits
++    if n == 15 and digits[:2] in ("34", "37"):
++        return "amex"
++    # visa: starts with 4, 13/16/19 digits
++    if digits[0] == "4" and n in (13, 16, 19):
++        return "visa"
++    # mastercard: 51-55 or 2221-2720, 16 digits
++    if n == 16:
++        first2 = int(digits[:2])
++        first4 = int(digits[:4])
++        if (51 <= first2 <= 55) or (2221 <= first4 <= 2720):
++            return "mastercard"
++    # discover: 6011, 65, 644-649, 16 or 19 digits
++    if n in (16, 19):
++        if digits.startswith("6011") or digits.startswith("65"):
++            return "discover"
++        if len(digits) >= 3:
++            p3 = int(digits[:3])
++            if 644 <= p3 <= 649:
++                return "discover"
++    return None
++
++
++def is_valid_iban(iban):
++    if not isinstance(iban, str):
++        raise TypeError("IBAN must be str")
++    # Any separator other than space makes invalid (check original string)
++    # Spaces are ignored; letters may be any case.
++    # If any character other than alnum or space, invalid.
++    for ch in iban:
++        if ch == " ":
++            continue
++        if not ch.isalnum():
++            return False
++    compact = iban.replace(" ", "")
++    if len(compact) < 4:
++        return False
++    # Must be CC + DD + alnum
++    if not (compact[0].isalpha() and compact[1].isalpha()):
++        return False
++    if not (compact[2].isdigit() and compact[3].isdigit()):
++        return False
++    # Rest must be alnum (already ensured no non-alnum except spaces removed, but check)
++    if not compact.isalnum():
++        return False
++    country = compact[:2].upper()
++    if country not in IBAN_LENGTHS:
++        return False
++    if len(compact) != IBAN_LENGTHS[country]:
++        return False
++    # mod-97 check
++    rearranged = compact[4:] + compact[:4]
++    rearranged = rearranged.upper()
++    numeric_str = ""
++    for ch in rearranged:
++        if ch.isdigit():
++            numeric_str += ch
++        else:
++            numeric_str += str(ord(ch) - 55)  # A=10
++    # Iterative mod to avoid huge int (though Python handles it)
++    remainder = 0
++    for ch in numeric_str:
++        remainder = (remainder * 10 + (ord(ch) - 48)) % 97
++    return remainder == 1
++
++
+ def mask_card(number):
+     """Mask all but the last four digits: '4111 1111 1111 1111' -> '************1111'.
+ 

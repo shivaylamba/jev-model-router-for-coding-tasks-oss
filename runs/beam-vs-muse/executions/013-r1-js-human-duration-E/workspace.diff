@@ -1,0 +1,64 @@
+ src/duration.js | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 55 insertions(+)
+
+diff --git a/src/duration.js b/src/duration.js
+new file mode 100644
+index 0000000..43808f1
+--- /dev/null
++++ b/src/duration.js
+@@ -0,0 +1,55 @@
++const UNITS = [
++  { abbr: "d", ms: 86400000, longSingular: "day", longPlural: "days" },
++  { abbr: "h", ms: 3600000, longSingular: "hour", longPlural: "hours" },
++  { abbr: "m", ms: 60000, longSingular: "minute", longPlural: "minutes" },
++  { abbr: "s", ms: 1000, longSingular: "second", longPlural: "seconds" },
++  { abbr: "ms", ms: 1, longSingular: "millisecond", longPlural: "milliseconds" },
++];
++
++const VALID_ABBRS = new Set(UNITS.map((u) => u.abbr));
++
++export function formatDuration(ms, options = {}) {
++  if (typeof ms !== "number") throw new TypeError("ms must be a number");
++  if (!Number.isFinite(ms) || Number.isNaN(ms) || ms < 0) throw new RangeError("ms must be a finite non-negative number");
++
++  const { units = 2, style = "long", smallest = "s" } = options;
++
++  if (!Number.isInteger(units) || units < 1) throw new RangeError("units must be a positive integer");
++  if (style !== "long" && style !== "compact") throw new RangeError("style must be \"long\" or \"compact\"");
++  if (!VALID_ABBRS.has(smallest)) throw new RangeError("smallest must be one of d, h, m, s, ms");
++
++  const floored = Math.floor(ms);
++
++  const smallestIdx = UNITS.findIndex((u) => u.abbr === smallest);
++
++  // Compute values for each unit up to smallest
++  let remaining = floored;
++  const values = [];
++  for (let i = 0; i <= smallestIdx; i++) {
++    const v = Math.floor(remaining / UNITS[i].ms);
++    values.push(v);
++    remaining -= v * UNITS[i].ms;
++  }
++
++  // Collect non-zero entries
++  const nonZero = [];
++  for (let i = 0; i < values.length; i++) {
++    if (values[i] !== 0) nonZero.push({ idx: i, value: values[i], unit: UNITS[i] });
++  }
++
++  if (nonZero.length === 0) {
++    const unit = UNITS[smallestIdx];
++    if (style === "compact") return `0${unit.abbr}`;
++    return `0 ${unit.longPlural}`;
++  }
++
++  const selected = nonZero.slice(0, units);
++
++  const parts = selected.map(({ value, unit }) => {
++    if (style === "compact") return `${value}${unit.abbr}`;
++    const name = value === 1 ? unit.longSingular : unit.longPlural;
++    return `${value} ${name}`;
++  });
++
++  return style === "compact" ? parts.join(" ") : parts.join(", ");
++}

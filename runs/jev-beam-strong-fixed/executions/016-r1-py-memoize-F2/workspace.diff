@@ -1,0 +1,70 @@
+ funcutil.py | 54 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 54 insertions(+)
+
+diff --git a/funcutil.py b/funcutil.py
+index f1ca4e7..775a50e 100644
+--- a/funcutil.py
++++ b/funcutil.py
+@@ -1,8 +1,62 @@
+ """Function decorators."""
+ 
++import collections
+ import functools
+ 
+ 
++CacheInfo = collections.namedtuple("CacheInfo", ["hits", "misses", "size"])
++
++
++def memoize(func):
++    """Cache `func`'s return value per distinct set of arguments.
++
++    The wrapped function runs only on the first call with a given set of
++    arguments; later calls with the same arguments return the cached value.
++    Keyword arguments are matched regardless of order, but positional and
++    keyword forms are distinct entries. ``None`` is cached like any other
++    result; unhashable arguments raise ``TypeError`` without calling the
++    function, and exceptions propagate without caching anything.
++
++    The wrapper exposes ``cache_info()`` returning a :class:`CacheInfo` with
++    ``hits``, ``misses`` and ``size``, and ``cache_clear()`` which empties the
++    cache and resets hits and misses to zero.
++    """
++    cache = {}
++    hits = 0
++    misses = 0
++
++    def make_key(args, kwargs):
++        return args, tuple(sorted(kwargs.items()))
++
++    @functools.wraps(func)
++    def wrapper(*args, **kwargs):
++        nonlocal hits, misses
++        key = make_key(args, kwargs)
++        try:
++            value = cache[key]
++        except KeyError:
++            misses += 1
++            value = func(*args, **kwargs)
++            cache[key] = value
++            return value
++        else:
++            hits += 1
++            return value
++
++    def cache_info():
++        return CacheInfo(hits, misses, len(cache))
++
++    def cache_clear():
++        nonlocal hits, misses
++        cache.clear()
++        hits = 0
++        misses = 0
++
++    wrapper.cache_info = cache_info
++    wrapper.cache_clear = cache_clear
++    return wrapper
++
++
+ def once(func):
+     """Call `func` the first time only; later calls return the first result."""
+     result = []

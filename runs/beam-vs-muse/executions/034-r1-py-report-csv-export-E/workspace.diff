@@ -1,0 +1,99 @@
+ reports/cli.py                |  6 +++---
+ reports/exporters/__init__.py |  3 ++-
+ reports/exporters/csv.py      | 38 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 43 insertions(+), 4 deletions(-)
+
+diff --git a/reports/cli.py b/reports/cli.py
+index 014f7ba..f8b59a5 100644
+--- a/reports/cli.py
++++ b/reports/cli.py
+@@ -3,14 +3,14 @@
+ import argparse
+ import sys
+ 
+-from .exporters import format_names, get_exporter
++from .exporters import EXPORTERS, format_names, get_exporter
+ from .model import load_report
+ 
+ 
+ def build_parser():
+     parser = argparse.ArgumentParser(prog="reports")
+     parser.add_argument("report", nargs="?", help="report JSON file")
+-    parser.add_argument("--format", default="text", choices=["text", "markdown"])
++    parser.add_argument("--format", default="text", choices=sorted(EXPORTERS))
+     parser.add_argument("--output", help="write to this file instead of stdout")
+     parser.add_argument("--list-formats", action="store_true", help="print the available formats and exit")
+     return parser
+@@ -32,7 +32,7 @@ def main(argv=None, stdout=None):
+         return 2
+     output = get_exporter(args.format).export(load_report(args.report))
+     if args.output:
+-        with open(args.output, "w", encoding="utf-8") as handle:
++        with open(args.output, "w", encoding="utf-8", newline="\n") as handle:
+             handle.write(output)
+     else:
+         stdout.write(output)
+diff --git a/reports/exporters/__init__.py b/reports/exporters/__init__.py
+index 43f92f2..b0df6c9 100644
+--- a/reports/exporters/__init__.py
++++ b/reports/exporters/__init__.py
+@@ -1,5 +1,6 @@
+ """Output formats."""
+ 
++from .csv import CsvExporter
+ from .markdown import MarkdownExporter
+ from .text import TextExporter
+ 
+@@ -8,7 +9,7 @@ class UnknownFormatError(LookupError):
+     """Raised by get_exporter for a format name that is not registered."""
+ 
+ 
+-EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter())}
++EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter(), CsvExporter())}
+ 
+ 
+ def get_exporter(name):
+diff --git a/reports/exporters/csv.py b/reports/exporters/csv.py
+new file mode 100644
+index 0000000..c10b7b4
+--- /dev/null
++++ b/reports/exporters/csv.py
+@@ -0,0 +1,38 @@
++"""CSV output."""
++
++class CsvExporter:
++    name = "csv"
++    extension = ".csv"
++
++    def export(self, report):
++        lines = []
++        lines.append(_join([c.label for c in report.columns]))
++        for row in report.rows:
++            cells = []
++            for col in report.columns:
++                v = report.cell(row, col)
++                cells.append(_format_value(v))
++            lines.append(_join(cells))
++        return "\n".join(lines) + "\n" if lines else ""
++
++
++def _format_value(v):
++    if v is None:
++        return ""
++    if isinstance(v, bool):
++        return "true" if v else "false"
++    if isinstance(v, int):
++        return str(v)
++    if isinstance(v, float):
++        return format(v, ".2f")
++    return str(v)
++
++
++def _escape_field(s):
++    if any(c in s for c in (",", '"', "\n")):
++        return '"' + s.replace('"', '""') + '"'
++    return s
++
++
++def _join(fields):
++    return ",".join(_escape_field(f) for f in fields)

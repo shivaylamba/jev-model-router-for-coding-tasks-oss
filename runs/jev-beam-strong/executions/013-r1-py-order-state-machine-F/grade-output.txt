@@ -1,0 +1,31 @@
+
+test_reason_required (acceptance_tests.test_order_lifecycle.GuardTest.test_reason_required) ... ok
+test_refund_window_is_thirty_days_inclusive (acceptance_tests.test_order_lifecycle.GuardTest.test_refund_window_is_thirty_days_inclusive) ... FAIL
+test_refund_within_window (acceptance_tests.test_order_lifecycle.GuardTest.test_refund_within_window) ... ok
+test_state_checked_before_arguments (acceptance_tests.test_order_lifecycle.GuardTest.test_state_checked_before_arguments) ... ok
+test_tracking_number_required (acceptance_tests.test_order_lifecycle.GuardTest.test_tracking_number_required) ... ok
+test_tracking_number_stripped (acceptance_tests.test_order_lifecycle.GuardTest.test_tracking_number_stripped) ... ok
+test_default_clock_is_aware_utc (acceptance_tests.test_order_lifecycle.HistoryTest.test_default_clock_is_aware_utc) ... ok
+test_failed_transition_not_recorded (acceptance_tests.test_order_lifecycle.HistoryTest.test_failed_transition_not_recorded) ... ok
+test_history_records_each_transition_with_clock_time (acceptance_tests.test_order_lifecycle.HistoryTest.test_history_records_each_transition_with_clock_time) ... ok
+test_new_order_has_empty_history (acceptance_tests.test_order_lifecycle.HistoryTest.test_new_order_has_empty_history) ... ok
+test_can_and_allowed_events (acceptance_tests.test_order_lifecycle.QueryTest.test_can_and_allowed_events) ... ok
+test_cancel_from_each_allowed_state (acceptance_tests.test_order_lifecycle.TransitionTableTest.test_cancel_from_each_allowed_state) ... ok
+test_invalid_transitions_raise_with_state_and_event (acceptance_tests.test_order_lifecycle.TransitionTableTest.test_invalid_transitions_raise_with_state_and_event) ... ok
+test_pay_twice (acceptance_tests.test_order_lifecycle.TransitionTableTest.test_pay_twice) ... ok
+test_refund_before_shipping (acceptance_tests.test_order_lifecycle.TransitionTableTest.test_refund_before_shipping) ... ok
+test_shipped_cannot_be_cancelled_or_refunded (acceptance_tests.test_order_lifecycle.TransitionTableTest.test_shipped_cannot_be_cancelled_or_refunded) ... ok
+test_terminal_states (acceptance_tests.test_order_lifecycle.TransitionTableTest.test_terminal_states) ... ok
+
+======================================================================
+FAIL: test_refund_window_is_thirty_days_inclusive (acceptance_tests.test_order_lifecycle.GuardTest.test_refund_window_is_thirty_days_inclusive)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-jot1qwi2/ws/acceptance_tests/test_order_lifecycle.py", line 139, in test_refund_window_is_thirty_days_inclusive
+    self.assertFalse(order.can("refund"))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.001s
+
+FAILED (failures=1)

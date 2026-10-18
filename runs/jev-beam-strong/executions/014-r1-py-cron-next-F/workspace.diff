@@ -1,0 +1,505 @@
+ cron.py       | 302 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ test_cron.py  |  18 ++++
+ test_cron2.py |  63 ++++++++++++
+ test_cron3.py |  22 +++++
+ test_cron4.py |  58 +++++++++++
+ 5 files changed, 461 insertions(+), 2 deletions(-)
+
+diff --git a/cron.py b/cron.py
+index a26cda8..2257111 100644
+--- a/cron.py
++++ b/cron.py
+@@ -1,8 +1,306 @@
+ """Cron expression evaluation. The supported syntax is described in SPEC.md."""
+ 
+-from datetime import datetime
++import calendar
++import re
++from datetime import datetime, timedelta
++
++
++# Map macros to their five-field equivalents
++_MACROS = {
++    "@yearly": "0 0 1 1 *",
++    "@annually": "0 0 1 1 *",
++    "@monthly": "0 0 1 * *",
++    "@weekly": "0 0 * * 0",
++    "@daily": "0 0 * * *",
++    "@midnight": "0 0 * * *",
++    "@hourly": "0 * * * *",
++}
++
++_MONTH_NAMES = {
++    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
++    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
++}
++
++_DAY_NAMES = {
++    "sun": 0, "mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6,
++}
++
++
++class _FieldSet:
++    """Represents the set of allowed values for a cron field."""
++
++    def __init__(self, values: set, min_val: int, max_val: int, unrestricted: bool):
++        self.values = values
++        self.min_val = min_val
++        self.max_val = max_val
++        self.unrestricted = unrestricted
++
++    def matches(self, value: int) -> bool:
++        return value in self.values
++
++
++class _CronSpec:
++    """Parsed cron expression."""
++
++    def __init__(self, minute: _FieldSet, hour: _FieldSet,
++                 day_of_month: _FieldSet, month: _FieldSet, day_of_week: _FieldSet):
++        self.minute = minute
++        self.hour = hour
++        self.day_of_month = day_of_month
++        self.month = month
++        self.day_of_week = day_of_week
++
++
++def _parse_int(text: str, what: str) -> int:
++    try:
++        return int(text)
++    except ValueError:
++        raise ValueError(f"invalid {what}: {text!r}")
++
++
++def _parse_name(text: str, field_idx: int) -> int:
++    lowered = text.lower()
++    if field_idx == 3:  # month
++        if lowered in _MONTH_NAMES:
++            return _MONTH_NAMES[lowered]
++    elif field_idx == 4:  # day of week
++        if lowered in _DAY_NAMES:
++            return _DAY_NAMES[lowered]
++    raise ValueError(f"unknown name: {text!r}")
++
++
++def _parse_value(text: str, field_idx: int) -> int:
++    """Parse a single value (number or name)."""
++    if re.fullmatch(r"[A-Za-z]+", text):
++        return _parse_name(text, field_idx)
++    return _parse_int(text, "value")
++
++
++def _parse_range(text: str, field_idx: int, min_val: int, max_val: int) -> tuple:
++    """Return (start, end) for a range text like '5-7'."""
++    parts = text.split("-")
++    if len(parts) != 2:
++        raise ValueError(f"invalid range: {text!r}")
++    start = _parse_value(parts[0], field_idx)
++    end = _parse_value(parts[1], field_idx)
++    if start < min_val or end > max_val:
++        raise ValueError(f"value out of range in {text!r}")
++    if start > end:
++        raise ValueError(f"range start greater than end: {text!r}")
++    return start, end
++
++
++def _parse_item(item: str, field_idx: int, min_val: int, max_val: int) -> set:
++    """Parse a single item (no commas) into a set of values."""
++    if "/" in item:
++        base, step_text = item.split("/", 1)
++        if step_text == "":
++            raise ValueError("empty step")
++        step_match = re.fullmatch(r"[0-9]+", step_text)
++        if step_match is None:
++            raise ValueError(f"step must be a positive integer: {step_text!r}")
++        step = int(step_text)
++        if step <= 0:
++            raise ValueError(f"step must be positive: {step}")
++
++        if base == "*":
++            start = min_val
++            end = max_val
++            unrestricted = True
++        elif "-" in base:
++            start, end = _parse_range(base, field_idx, min_val, max_val)
++            unrestricted = False
++        else:
++            # N/S
++            start = _parse_value(base, field_idx)
++            if start < min_val or start > max_val:
++                raise ValueError(f"value out of range: {base!r}")
++            end = max_val
++            unrestricted = False
++
++        return {v for v in range(start, end + 1, step)}, unrestricted
++    else:
++        if item == "*":
++            return set(range(min_val, max_val + 1)), True
++        elif "-" in item:
++            start, end = _parse_range(item, field_idx, min_val, max_val)
++            return set(range(start, end + 1)), False
++        else:
++            val = _parse_value(item, field_idx)
++            if val < min_val or val > max_val:
++                raise ValueError(f"value out of range: {item!r}")
++            return {val}, False
++
++
++def _parse_field(field_text: str, field_idx: int, min_val: int, max_val: int) -> _FieldSet:
++    """Parse a cron field string into a _FieldSet."""
++    if field_text == "":
++        raise ValueError("empty field")
++
++    values = set()
++    unrestricted = False
++
++    # Check for unrestricted: starts with * or */
++    if field_text.startswith("*"):
++        unrestricted = True
++
++    items = field_text.split(",")
++    for item in items:
++        if item == "":
++            raise ValueError("empty item in field")
++        vals, u = _parse_item(item, field_idx, min_val, max_val)
++        values.update(vals)
++
++    return _FieldSet(values, min_val, max_val, unrestricted)
++
++
++def _parse(expr: str) -> _CronSpec:
++    """Parse a cron expression string into a _CronSpec."""
++    trimmed = expr.strip()
++
++    if trimmed.startswith("@"):
++        lowered = trimmed.lower()
++        if lowered not in _MACROS:
++            raise ValueError(f"unknown macro: {trimmed!r}")
++        fields = _MACROS[lowered].split()
++    else:
++        fields = re.split(r"[ \t]+", trimmed)
++        if len(fields) != 5:
++            raise ValueError(f"expected 5 fields, got {len(fields)}: {trimmed!r}")
++
++    # field indices: 0=minute, 1=hour, 2=day_of_month, 3=month, 4=day_of_week
++    minute = _parse_field(fields[0], 0, 0, 59)
++    hour = _parse_field(fields[1], 1, 0, 23)
++    day_of_month = _parse_field(fields[2], 2, 1, 31)
++    month = _parse_field(fields[3], 3, 1, 12)
++    day_of_week = _parse_field(fields[4], 4, 0, 7)
++    # Normalize 7 (Sunday) to 0 (Sunday) for consistent matching
++    if 7 in day_of_week.values:
++        day_of_week.values.discard(7)
++        day_of_week.values.add(0)
++
++    return _CronSpec(minute, hour, day_of_month, month, day_of_week)
++
++
++def _is_leap_year(year: int) -> bool:
++    return (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
++
++
++def _days_in_month(year: int, month: int) -> int:
++    """Return the number of days in month/year."""
++    if month == 2:
++        return 29 if _is_leap_year(year) else 28
++    if month in [4, 6, 9, 11]:
++        return 30
++    return 31
++
++
++def _day_matches(spec: _CronSpec, year: int, month: int, day: int) -> bool:
++    """Check if a day matches the cron expression."""
++    if not spec.month.matches(month):
++        return False
++    if not spec.day_of_month.matches(day):
++        return False
++    # Python weekday: Monday=0 ... Sunday=6
++    # Cron weekday: Sunday=0 or 7, Monday=1 ... Saturday=6
++    dt = datetime(year, month, day)
++    # Convert Python weekday to cron weekday
++    py_weekday = dt.weekday()  # Mon=0, Tue=1, ..., Sat=5, Sun=6
++    cron_weekday = py_weekday + 1  # Mon=1, ..., Sat=6, Sun=7
++    if cron_weekday == 7:
++        cron_weekday = 0  # Sun=0
++
++    dom_restricted = not spec.day_of_month.unrestricted
++    dow_restricted = not spec.day_of_week.unrestricted
++
++    if dom_restricted and dow_restricted:
++        # Either field matching suffices
++        return spec.day_of_month.matches(day) or spec.day_of_week.matches(cron_weekday)
++    else:
++        # Both must match (or unrestricted fields always match)
++        if dom_restricted:
++            if not spec.day_of_month.matches(day):
++                return False
++        if dow_restricted:
++            if not spec.day_of_week.matches(cron_weekday):
++                return False
++        return True
++
++
++def _time_matches(spec: _CronSpec, year: int, month: int, day: int,
++                  hour: int, minute: int) -> bool:
++    """Check if a full timestamp matches the cron expression."""
++    if not spec.minute.matches(minute):
++        return False
++    if not spec.hour.matches(hour):
++        return False
++    return _day_matches(spec, year, month, day)
++
++
++def _next_minute(dt: datetime) -> datetime:
++    """Move to the next minute (seconds/microseconds zeroed)."""
++    return datetime(dt.year, dt.month, dt.day, dt.hour, dt.minute + 1, 0,
++                   tzinfo=dt.tzinfo)
++
++
++def _find_next(spec: _CronSpec, after: datetime) -> datetime:
++    """Find the earliest matching time strictly after 'after'."""
++    # Start from the next minute after 'after'
++    current = _next_minute(after)
++
++    eight_years = timedelta(days=8 * 366)
++    max_time = after + eight_years
++
++    # We iterate month by month for efficiency
++    while True:
++        if current > max_time:
++            raise ValueError(f"no matching time within eight years after {after}")
++
++        year, month = current.year, current.month
++
++        # If month doesn't match, skip to the next month
++        if not spec.month.matches(month):
++            # Move to the 1st of the next month
++            if month == 12:
++                current = datetime(year + 1, 1, 1, 0, 0, 0, tzinfo=current.tzinfo)
++            else:
++                current = datetime(year, month + 1, 1, 0, 0, 0, tzinfo=current.tzinfo)
++            continue
++
++        # Try to find a matching day/hour/minute in this month
++        day = current.day
++        days_in_month = _days_in_month(year, month)
++
++        match_found = False
++        while day <= days_in_month:
++            if not _day_matches(spec, year, month, day):
++                day += 1
++                continue
++
++            # This day matches, try the hours
++            hour = current.hour if day == current.day else 0
++            for h in range(hour, 24):
++                if not spec.hour.matches(h):
++                    continue
++                # This hour matches, try the minutes
++                minute = current.minute if day == current.day and h == current.hour else 0
++                for m in range(minute, 60):
++                    if spec.minute.matches(m):
++                        # Found a match!
++                        result = datetime(year, month, day, h, m, 0,
++                                       tzinfo=current.tzinfo)
++                        if result > after:
++                            return result
++            day += 1
++
++        # No match in this month, move to the next month
++        if month == 12:
++            current = datetime(year + 1, 1, 1, 0, 0, 0, tzinfo=current.tzinfo)
++        else:
++            current = datetime(year, month + 1, 1, 0, 0, 0, tzinfo=current.tzinfo)
+ 
+ 
+ def next_run(expr: str, after: datetime) -> datetime:
+     """The earliest minute strictly after `after` that matches `expr`."""
+-    raise NotImplementedError
++    spec = _parse(expr)
++    return _find_next(spec, after)
+diff --git a/test_cron.py b/test_cron.py
+new file mode 100644
+index 0000000..ba402cf
+--- /dev/null
++++ b/test_cron.py
+@@ -0,0 +1,18 @@
++from datetime import datetime
++from cron import next_run
++
++print("Test 1:", next_run("* * * * *", datetime(2026, 10, 17, 10, 0, 30)))
++print("Test 2:", next_run("30 9 * * *", datetime(2026, 10, 17, 9, 30, 0)))
++print("Test 3:", next_run("30 9 * * *", datetime(2026, 10, 17, 9, 30, 1)))
++print("Test 4:", next_run("@daily", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 5:", next_run("@hourly", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 6:", next_run("0 9 * * MON", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 7:", next_run("0 0 1 JAN *", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 8:", next_run("*/15 * * * *", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 9:", next_run("* 0 */2 * *", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 10:", next_run("0 0 13 * FRI", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 11:", next_run("0 0 */2 * MON", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 12:", next_run("0 0 * * 0", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 13:", next_run("0 0 * * 7", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 14:", next_run("0 0 * * 5-7", datetime(2026, 10, 17, 10, 0, 0)))
++print("Test 15:", next_run("0 0 30 2 *", datetime(2026, 10, 17, 10, 0, 0)))
+diff --git a/test_cron2.py b/test_cron2.py
+new file mode 100644
+index 0000000..55518eb
+--- /dev/null
++++ b/test_cron2.py
+@@ -0,0 +1,63 @@
++from datetime import datetime
++from cron import next_run
++
++# Test invalid expressions that should raise ValueError
++invalid_cases = [
++    "0 0 0 * *",        # day 0 out of range
++    "60 * * * *",       # minute 60 out of range
++    "* * * 13 *",       # month 13 out of range
++    "* * * * 8",        # dow 8 out of range
++    "0 0 1-31 * 2-1",   # range start > end
++    "*/0 * * * *",      # zero step
++    "*/-1 * * * *",     # negative step
++    "1, * * * *",       # empty item
++    "",                 # empty expression
++    "* * * *",          # 4 fields
++    "* * * * * *",      # 6 fields
++    "@unknown",         # unknown macro
++    "*/mon * * * *",    # name as step
++    "0 0 0-MAR * *",    # month name in wrong field?
++]
++
++for expr in invalid_cases:
++    try:
++        next_run(expr, datetime(2026, 10, 17, 10, 0, 0))
++        print(f"FAIL: {expr!r} should have raised ValueError")
++    except ValueError as e:
++        print(f"OK: {expr!r} -> ValueError")
++    except Exception as e:
++        print(f"FAIL: {expr!r} raised {type(e).__name__}: {e}")
++
++print("\n--- Valid cases ---")
++
++# Feb 29 on leap year
++print("Feb 29 leap:", next_run("0 0 29 2 *", datetime(2026, 10, 17, 10, 0, 0)))
++
++# Tab-separated
++print("Tab-separated:", next_run("0\t0\t*\t*\t*", datetime(2026, 10, 17, 10, 0, 0)))
++
++# Whitespace trimmed
++print("Trimmed:", next_run("  0 0 * * *  ", datetime(2026, 10, 17, 10, 0, 0)))
++
++# Macro case-insensitive
++print("Macro Yearly:", next_run("@yearly", datetime(2026, 10, 17, 10, 0, 0)))
++print("Macro MONTHLY:", next_run("@MONTHLY", datetime(2026, 10, 17, 10, 0, 0)))
++
++# 5-7 weekday range (Friday-Sunday)
++print("5-7 range:", next_run("0 0 * * 5-7", datetime(2026, 10, 17, 10, 0, 0)))  # Oct 17 is Saturday
++
++# N/S pattern - every S-th starting at N
++print("5/20 minutes:", next_run("5/20 * * * *", datetime(2026, 10, 17, 10, 0, 0)))
++print("9-17/4 hours:", next_run("0 9-17/4 * * *", datetime(2026, 10, 17, 10, 0, 0)))
++
++# When both DOM and DOW unrestricted: both must match (same as ignoring one)
++print("*/2 + MON:", next_run("0 0 */2 * MON", datetime(2026, 10, 17, 10, 0, 0)))
++
++# When both restricted: either matches
++print("13 + FRI:", next_run("0 0 13 * FRI", datetime(2026, 10, 17, 10, 0, 0)))
++
++# Sundays with @weekly
++print("@weekly:", next_run("@weekly", datetime(2026, 10, 17, 10, 0, 0)))  # Oct 17 is Saturday
++
++# Step in day-of-month
++print("*/2 DOM:", next_run("0 0 */2 * *", datetime(2026, 10, 17, 10, 0, 0)))
+diff --git a/test_cron3.py b/test_cron3.py
+new file mode 100644
+index 0000000..e0eb71a
+--- /dev/null
++++ b/test_cron3.py
+@@ -0,0 +1,22 @@
++from datetime import datetime, timezone, timedelta
++from cron import next_run
++
++# Zone info preservation
++utc = timezone.utc
++est = timezone(timedelta(hours=-5))
++
++after = datetime(2026, 10, 17, 10, 0, 30, tzinfo=utc)
++result = next_run("* * * * *", after)
++print(f"UTC: after={after}, next={result}, tz={result.tzinfo}")
++assert result.tzinfo is utc, "UTC tzinfo should be preserved"
++
++after = datetime(2026, 10, 17, 10, 0, 30, tzinfo=est)
++result = next_run("* * * * *", after)
++print(f"EST: after={after}, next={result}, tz={result.tzinfo}")
++assert result.tzinfo is est, "EST tzinfo should be preserved"
++
++# Seconds and microseconds should be zero
++assert result.second == 0
++assert result.microsecond == 0
++
++print("All timezone tests passed!")
+diff --git a/test_cron4.py b/test_cron4.py
+new file mode 100644
+index 0000000..6ff3403
+--- /dev/null
++++ b/test_cron4.py
+@@ -0,0 +1,58 @@
++from datetime import datetime
++from cron import next_run
++
++# Comprehensive edge cases
++
++# Case: 0/5 in minutes -> 0, 5, 10, ..., 55
++print("0/5 minutes (expect 00:00:00 next day):", next_run("0/5 0 * * *", datetime(2026, 10, 17, 0, 1, 0)))
++
++# Case: */* should be invalid (empty step? or empty base?)
++try:
++    next_run("*/* * * * *", datetime(2026, 10, 17, 0, 0, 0))
++    print("FAIL: */* should raise")
++except ValueError:
++    print("OK: */* raises ValueError")
++
++# Case: */2 in day-of-month (starts at 1, odd days)
++print("*/2 DOM next:", next_run("0 0 */2 * *", datetime(2026, 10, 1, 0, 0, 0)))
++print("*/2 DOM next (after Oct 1 00:01):", next_run("0 0 */2 * *", datetime(2026, 10, 1, 0, 1, 0)))
++
++# Case: month names in range
++print("JAN-MAR:", next_run("0 0 1 JAN-MAR *", datetime(2026, 10, 17, 10, 0, 0)))
++print("JUL-AUG:", next_run("0 0 1 JUL-AUG *", datetime(2026, 10, 17, 10, 0, 0)))
++
++# Case: day-of-week names in range
++print("MON-FRI:", next_run("0 0 * * MON-FRI", datetime(2026, 10, 17, 10, 0, 0)))
++print("SAT-SUN:", next_run("0 0 * * SAT-SUN", datetime(2026, 10, 17, 10, 0, 0)))
++
++# Case: mixed case day/month names
++print("Mixed case:", next_run("0 0 * * Mon", datetime(2026, 10, 17, 10, 0, 0)))
++print("Mixed case month:", next_run("0 0 1 Jan *", datetime(2026, 10, 17, 10, 0, 0)))
++
++# Test that Feb 30 is impossible
++print("\nFeb 30 impossible:", end=" ")
++try:
++    next_run("0 0 30 2 *", datetime(2026, 10, 17, 10, 0, 0))
++    print("FAIL - should have raised")
++except ValueError:
++    print("OK (raises ValueError)")
++
++# Test Feb 29 is fine (2028 is leap year)
++print("Feb 29 leap year:", next_run("0 0 29 2 *", datetime(2026, 10, 17, 10, 0, 0)))
++
++# Verify Feb 29 is skipped on non-leap year properly
++print("Feb 29 -> next is 2028:", next_run("0 0 29 2 *", datetime(2026, 10, 17, 10, 0, 0)))
++
++# Day matching: both restricted - either matches
++print("\nBoth restricted:")
++print("  13 or FRI (Oct 17 is Sat):", next_run("0 0 13 * FRI", datetime(2026, 10, 17, 10, 0, 0)))  # Should be Nov 13 (2026-11-13)
++print("  17 or FRI:", next_run("0 0 17 * FRI", datetime(2026, 10, 17, 10, 0, 0)))  # Should be Nov 17 (2026-11-17)
++
++# Day matching: one restricted, one unrestricted - must match both
++print("\nOne restricted, one unrestricted:")
++print("  */2 DOM + MON:", next_run("0 0 */2 * MON", datetime(2026, 10, 17, 10, 0, 0)))  # Oct 19 is Monday (odd day)
++
++# Exact examples from SPEC
++print("\nExact spec examples:")
++print("  next_run('* * * * *', 10:00:30):", next_run("* * * * *", datetime(2026, 10, 17, 10, 0, 30)))
++print("  next_run('30 9 * * *', 09:30:00):", next_run("30 9 * * *", datetime(2026, 10, 17, 9, 30, 0)))

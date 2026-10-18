@@ -1,0 +1,4 @@
+{"at": "2026-10-17T21:08:28.835Z", "event": "prepared", "tasks": 20, "executions": 40, "conditions": ["D", "E"]}
+{"at": "2026-10-17T21:08:29.142Z", "event": "run started", "budget_usd": 30.0, "max_hours": 4.0}
+{"at": "2026-10-17T21:44:03.027Z", "event": "provider unhealthy; waiting", "models": {"zai-org/GLM-5.3-Flash": "slow: 7.6s for a short reply"}, "wait_s": 300}
+{"at": "2026-10-17T21:53:02.709Z", "event": "run complete", "spent_usd": 4.6875}

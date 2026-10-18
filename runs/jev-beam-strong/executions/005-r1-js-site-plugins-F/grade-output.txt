@@ -1,0 +1,83 @@
+TAP version 13
+# Subtest: use() chains and build() works without plugins
+ok 1 - use() chains and build() works without plugins
+  ---
+  duration_ms: 2.165083
+  type: 'test'
+  ...
+# Subtest: buildSite is unchanged
+ok 2 - buildSite is unchanged
+  ---
+  duration_ms: 0.14975
+  type: 'test'
+  ...
+# Subtest: hooks run in registration order, page by page
+ok 3 - hooks run in registration order, page by page
+  ---
+  duration_ms: 0.200833
+  type: 'test'
+  ...
+# Subtest: beforeRender results chain and drive the path, title and body
+ok 4 - beforeRender results chain and drive the path, title and body
+  ---
+  duration_ms: 0.179792
+  type: 'test'
+  ...
+# Subtest: afterRender results chain; undefined keeps the HTML; final page is passed
+ok 5 - afterRender results chain; undefined keeps the HTML; final page is passed
+  ---
+  duration_ms: 0.188459
+  type: 'test'
+  ...
+# Subtest: async hooks are awaited in order
+ok 6 - async hooks are awaited in order
+  ---
+  duration_ms: 3.442958
+  type: 'test'
+  ...
+# Subtest: onComplete can add entries and build waits for it
+ok 7 - onComplete can add entries and build waits for it
+  ---
+  duration_ms: 0.353041
+  type: 'test'
+  ...
+# Subtest: the caller's page objects are not mutated
+ok 8 - the caller's page objects are not mutated
+  ---
+  duration_ms: 0.124
+  type: 'test'
+  ...
+# Subtest: use() validation
+ok 9 - use() validation
+  ---
+  duration_ms: 0.345541
+  type: 'test'
+  ...
+# Subtest: a throwing hook becomes a PluginError and stops the build
+ok 10 - a throwing hook becomes a PluginError and stops the build
+  ---
+  duration_ms: 0.302667
+  type: 'test'
+  ...
+# Subtest: a rejected promise names the plugin and hook
+ok 11 - a rejected promise names the plugin and hook
+  ---
+  duration_ms: 0.162917
+  type: 'test'
+  ...
+# Subtest: wrong return types become PluginErrors with a TypeError cause
+ok 12 - wrong return types become PluginErrors with a TypeError cause
+  ---
+  duration_ms: 0.14025
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 75.009167
+

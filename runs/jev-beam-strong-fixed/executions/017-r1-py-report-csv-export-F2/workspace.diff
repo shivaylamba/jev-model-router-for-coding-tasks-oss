@@ -1,0 +1,82 @@
+ reports/cli.py                |  2 +-
+ reports/exporters/__init__.py |  3 ++-
+ reports/exporters/csv.py      | 37 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 40 insertions(+), 2 deletions(-)
+
+diff --git a/reports/cli.py b/reports/cli.py
+index 014f7ba..0f58f11 100644
+--- a/reports/cli.py
++++ b/reports/cli.py
+@@ -10,7 +10,7 @@ from .model import load_report
+ def build_parser():
+     parser = argparse.ArgumentParser(prog="reports")
+     parser.add_argument("report", nargs="?", help="report JSON file")
+-    parser.add_argument("--format", default="text", choices=["text", "markdown"])
++    parser.add_argument("--format", default="text", choices=["text", "markdown", "csv"])
+     parser.add_argument("--output", help="write to this file instead of stdout")
+     parser.add_argument("--list-formats", action="store_true", help="print the available formats and exit")
+     return parser
+diff --git a/reports/exporters/__init__.py b/reports/exporters/__init__.py
+index 43f92f2..b0df6c9 100644
+--- a/reports/exporters/__init__.py
++++ b/reports/exporters/__init__.py
+@@ -1,5 +1,6 @@
+ """Output formats."""
+ 
++from .csv import CsvExporter
+ from .markdown import MarkdownExporter
+ from .text import TextExporter
+ 
+@@ -8,7 +9,7 @@ class UnknownFormatError(LookupError):
+     """Raised by get_exporter for a format name that is not registered."""
+ 
+ 
+-EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter())}
++EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter(), CsvExporter())}
+ 
+ 
+ def get_exporter(name):
+diff --git a/reports/exporters/csv.py b/reports/exporters/csv.py
+new file mode 100644
+index 0000000..d3446e0
+--- /dev/null
++++ b/reports/exporters/csv.py
+@@ -0,0 +1,37 @@
++"""Comma-separated values, for machines rather than people.
++
++Uses raw cell values (no display formatting): ints as plain digits, floats with
++exactly two decimals, booleans as true/false, null as an empty field."""
++
++
++def _format(value):
++    """Format a raw cell value for CSV."""
++    if value is None:
++        return ""
++    if isinstance(value, bool):
++        return "true" if value else "false"
++    if isinstance(value, int):
++        return str(value)
++    if isinstance(value, float):
++        return format(value, ".2f")
++    return str(value)
++
++
++def _quote(field):
++    """Quote a field if it contains a comma, a double quote or a line break."""
++    if any(ch in field for ch in ',"\n\r'):
++        return '"' + field.replace('"', '""') + '"'
++    return field
++
++
++class CsvExporter:
++    name = "csv"
++    extension = ".csv"
++
++    def export(self, report):
++        lines = [",".join(_quote(c.label) for c in report.columns)]
++        lines += [
++            ",".join(_quote(_format(report.cell(row, c))) for c in report.columns)
++            for row in report.rows
++        ]
++        return "\n".join(lines) + "\n"
+\ No newline at end of file

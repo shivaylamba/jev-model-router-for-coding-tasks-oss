@@ -1,0 +1,170 @@
+ src/duration.js       | 81 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ test/duration.test.js | 71 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 152 insertions(+)
+
+diff --git a/src/duration.js b/src/duration.js
+new file mode 100644
+index 0000000..97c5f89
+--- /dev/null
++++ b/src/duration.js
+@@ -0,0 +1,81 @@
++/**
++ * Largest-first unit definitions. `value` is the size in milliseconds.
++ */
++const UNITS = [
++  { value: 86400000, long: "day", abbr: "d" },
++  { value: 3600000, long: "hour", abbr: "h" },
++  { value: 60000, long: "minute", abbr: "m" },
++  { value: 1000, long: "second", abbr: "s" },
++  { value: 1, long: "millisecond", abbr: "ms" },
++];
++
++/** Every valid `smallest` abbreviation, in the same order as UNITS. */
++const SMALLEST = new Set(["d", "h", "m", "s", "ms"]);
++
++function pluralize(word, n) {
++  return n === 1 ? word : `${word}s`;
++}
++
++/**
++ * Format a millisecond duration as a readable string.
++ *
++ * The duration is floored to a whole number of milliseconds, then split into
++ * units from largest (day) to smallest (millisecond). Zero units are skipped;
++ * units smaller than `smallest` never appear, and anything below the last
++ * shown unit is dropped (never rounded).
++ *
++ * @param {number} ms
++ * @param {{
++ *   units?: number,
++ *   style?: "long" | "compact",
++ *   smallest?: "d" | "h" | "m" | "s" | "ms",
++ * }} [options]
++ * @returns {string}
++ */
++export function formatDuration(ms, options = {}) {
++  if (typeof ms !== "number") {
++    throw new TypeError("ms must be a number");
++  }
++  if (Number.isNaN(ms) || !Number.isFinite(ms) || ms < 0) {
++    throw new RangeError("ms must be a finite, non-negative number");
++  }
++
++  const { units = 2, style = "long", smallest = "s" } = options ?? {};
++
++  if (!Number.isInteger(units) || units < 1) {
++    throw new RangeError("units must be a positive integer");
++  }
++  if (style !== "long" && style !== "compact") {
++    throw new RangeError("style must be 'long' or 'compact'");
++  }
++  if (!SMALLEST.has(smallest)) {
++    throw new RangeError("smallest must be one of 'd', 'h', 'm', 's', 'ms'");
++  }
++
++  // Only units at least as coarse as `smallest` may appear. UNITS is ordered
++  // largest first, so this is every index up to and including `smallest`'s.
++  const smallestIndex = UNITS.findIndex((u) => u.abbr === smallest);
++
++  let remaining = Math.floor(ms);
++  const parts = [];
++  for (let i = 0; i <= smallestIndex; i++) {
++    const unit = UNITS[i];
++    if (remaining >= unit.value) {
++      parts.push({ value: Math.floor(remaining / unit.value), unit });
++      remaining %= unit.value;
++    }
++  }
++
++  const shown = parts.slice(0, units);
++  if (shown.length === 0) {
++    const zero = UNITS[smallestIndex];
++    return style === "compact"
++      ? `0${zero.abbr}`
++      : `0 ${pluralize(zero.long, 0)}`;
++  }
++
++  if (style === "compact") {
++    return shown.map((p) => `${p.value}${p.unit.abbr}`).join(" ");
++  }
++  return shown.map((p) => `${p.value} ${pluralize(p.unit.long, p.value)}`).join(", ");
++}
+\ No newline at end of file
+diff --git a/test/duration.test.js b/test/duration.test.js
+new file mode 100644
+index 0000000..2d187e3
+--- /dev/null
++++ b/test/duration.test.js
+@@ -0,0 +1,71 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { formatDuration } from "../src/duration.js";
++
++test("long style, default options", () => {
++  assert.equal(formatDuration(90061000), "1 day, 1 hour"); // 1d 1h 1m 1s; minute+second dropped by units
++  assert.equal(formatDuration(90061000, { units: 4 }), "1 day, 1 hour, 1 minute, 1 second");
++  assert.equal(formatDuration(3905000), "1 hour, 5 minutes");
++  assert.equal(formatDuration(3599999), "59 minutes, 59 seconds"); // floor ms, never rounded
++  assert.equal(formatDuration(1500), "1 second"); // ms hidden by default smallest
++});
++
++test("units caps the number of shown (largest non-zero) units", () => {
++  assert.equal(formatDuration(90061000, { units: 1 }), "1 day");
++  assert.equal(formatDuration(90061000, { units: 3 }), "1 day, 1 hour, 1 minute");
++});
++
++test("zero units are skipped and do not count", () => {
++  assert.equal(formatDuration(86700000), "1 day, 5 minutes"); // 1d 5m (hour skipped)
++  assert.equal(formatDuration(86700000, { units: 2 }), "1 day, 5 minutes");
++});
++
++test("smallest hides finer units or reveals them", () => {
++  assert.equal(formatDuration(1500, { smallest: "ms" }), "1 second, 500 milliseconds");
++  assert.equal(formatDuration(900000, { smallest: "h" }), "0 hours"); // 15m < 1h
++  assert.equal(formatDuration(7234000, { smallest: "m" }), "2 hours"); // seconds dropped
++});
++
++test("compact style", () => {
++  assert.equal(formatDuration(90061000, { style: "compact" }), "1d 1h");
++  assert.equal(formatDuration(1500, { smallest: "ms", style: "compact" }), "1s 500ms");
++  assert.equal(formatDuration(60000, { style: "compact" }), "1m");
++});
++
++test("zero is printed in the smallest unit", () => {
++  assert.equal(formatDuration(0), "0 seconds");
++  assert.equal(formatDuration(0, { smallest: "m" }), "0 minutes");
++  assert.equal(formatDuration(0, { style: "compact" }), "0s");
++  assert.equal(formatDuration(500), "0 seconds"); // < 1 second
++  assert.equal(formatDuration(500, { smallest: "ms" }), "500 milliseconds");
++  assert.equal(formatDuration(0, { smallest: "ms" }), "0 milliseconds");
++});
++
++test("singular only when the number is 1", () => {
++  assert.equal(formatDuration(86400000), "1 day");
++  assert.equal(formatDuration(172800000), "2 days");
++  assert.equal(formatDuration(1000), "1 second");
++  assert.equal(formatDuration(2000), "2 seconds");
++  assert.equal(formatDuration(1000, { smallest: "ms" }), "1 second");
++});
++
++test("ms must be a number (TypeError)", () => {
++  for (const bad of ["1000", null, undefined, {}, []]) {
++    assert.throws(() => formatDuration(bad), TypeError);
++  }
++});
++
++test("negative, NaN and Infinity ms are rejected (RangeError)", () => {
++  assert.throws(() => formatDuration(-1), RangeError);
++  assert.throws(() => formatDuration(NaN), RangeError);
++  assert.throws(() => formatDuration(Infinity), RangeError);
++  assert.throws(() => formatDuration(-Infinity), RangeError);
++});
++
++test("invalid option values are rejected (RangeError)", () => {
++  assert.throws(() => formatDuration(1000, { units: 0 }), RangeError);
++  assert.throws(() => formatDuration(1000, { units: 1.5 }), RangeError);
++  assert.throws(() => formatDuration(1000, { units: "2" }), RangeError);
++  assert.throws(() => formatDuration(1000, { style: "short" }), RangeError);
++  assert.throws(() => formatDuration(1000, { smallest: "w" }), RangeError);
++});
+\ No newline at end of file

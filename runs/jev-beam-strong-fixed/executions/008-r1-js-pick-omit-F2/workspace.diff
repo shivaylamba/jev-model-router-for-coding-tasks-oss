@@ -1,0 +1,42 @@
+ src/object.js | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/src/object.js b/src/object.js
+index 263bd36..c6bd689 100644
+--- a/src/object.js
++++ b/src/object.js
+@@ -19,3 +19,34 @@ export function mapValues(obj, fn) {
+   for (const key of Object.keys(obj)) out[key] = fn(obj[key], key);
+   return out;
+ }
++
++/**
++ * A new object with only the given keys that are own enumerable properties of `obj`,
++ * kept in the order they appear in `keys`. Missing, inherited and non-enumerable
++ * keys are ignored.
++ * @param {Record<string, unknown>} obj
++ * @param {string[]} keys
++ */
++export function pick(obj, keys) {
++  const out = {};
++  for (const key of keys) {
++    const desc = Object.getOwnPropertyDescriptor(obj, key);
++    if (desc && desc.enumerable) out[key] = obj[key];
++  }
++  return out;
++}
++
++/**
++ * A new object with every own enumerable string key of `obj` except the given ones,
++ * kept in the original order.
++ * @param {Record<string, unknown>} obj
++ * @param {string[]} keys
++ */
++export function omit(obj, keys) {
++  const toOmit = new Set(keys);
++  const out = {};
++  for (const key of Object.keys(obj)) {
++    if (!toOmit.has(key)) out[key] = obj[key];
++  }
++  return out;
++}

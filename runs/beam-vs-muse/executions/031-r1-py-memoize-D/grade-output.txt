@@ -1,0 +1,16 @@
+
+test_cache_clear_resets_everything (acceptance_tests.test_memoize.MemoizeTest.test_cache_clear_resets_everything) ... ok
+test_cache_info (acceptance_tests.test_memoize.MemoizeTest.test_cache_info) ... ok
+test_caches_by_arguments (acceptance_tests.test_memoize.MemoizeTest.test_caches_by_arguments) ... ok
+test_exceptions_are_not_cached (acceptance_tests.test_memoize.MemoizeTest.test_exceptions_are_not_cached) ... ok
+test_keyword_order_does_not_matter (acceptance_tests.test_memoize.MemoizeTest.test_keyword_order_does_not_matter) ... ok
+test_none_is_cached (acceptance_tests.test_memoize.MemoizeTest.test_none_is_cached) ... ok
+test_positional_and_keyword_are_separate_entries (acceptance_tests.test_memoize.MemoizeTest.test_positional_and_keyword_are_separate_entries) ... ok
+test_separate_functions_have_separate_caches (acceptance_tests.test_memoize.MemoizeTest.test_separate_functions_have_separate_caches) ... ok
+test_unhashable_arguments (acceptance_tests.test_memoize.MemoizeTest.test_unhashable_arguments) ... ok
+test_wraps_metadata (acceptance_tests.test_memoize.MemoizeTest.test_wraps_metadata) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.000s
+
+OK

@@ -1,0 +1,63 @@
+ notes.py    | 11 +++++------
+ test_fix.py | 20 ++++++++++++++++++++
+ 2 files changed, 25 insertions(+), 6 deletions(-)
+
+diff --git a/notes.py b/notes.py
+index 9bcdb53..4dd8380 100644
+--- a/notes.py
++++ b/notes.py
+@@ -10,7 +10,7 @@ def normalize_tag(tag):
+     return tag.strip().lower()
+ 
+ 
+-def create_note(title, body="", tags=[], pinned=False):
++def create_note(title, body="", tags=None, pinned=False):
+     """Create a new note.
+ 
+     title: the note title; surrounding whitespace is removed.
+@@ -24,15 +24,14 @@ def create_note(title, body="", tags=[], pinned=False):
+     Every note gets its own tags list, and the sequence passed in as `tags` is
+     never modified.
+     """
+-    for index, tag in enumerate(tags):
+-        tags[index] = normalize_tag(tag)
+-    if pinned and "pinned" not in tags:
+-        tags.append("pinned")
++    note_tags = [normalize_tag(tag) for tag in (tags or [])]
++    if pinned and "pinned" not in note_tags:
++        note_tags.append("pinned")
+     return {
+         "id": next(_ids),
+         "title": title.strip(),
+         "body": body,
+-        "tags": tags,
++        "tags": note_tags,
+         "pinned": pinned,
+     }
+ 
+diff --git a/test_fix.py b/test_fix.py
+new file mode 100644
+index 0000000..a6b7a99
+--- /dev/null
++++ b/test_fix.py
+@@ -0,0 +1,20 @@
++from notes import create_note, add_tag
++
++# Repro 1: pinned leak and new notes getting prior tags
++pinned = create_note("Standup", pinned=True)
++plain = create_note("Groceries")
++print("Repro 1 - plain tags:", plain["tags"])  # should be []
++
++# Repro 2: add_tag on one note leaking to others
++note_a = create_note("A")
++add_tag(note_a, "work")
++note_b = create_note("B")
++print("Repro 2 - note_a tags:", note_a["tags"])  # should be ["work"]
++print("Repro 2 - note_b tags:", note_b["tags"])  # should be []
++
++# Repro 3: shared list mutation
++shared = ["HOME", "URGENT"]
++create_note("Batch 1", tags=shared)
++print("Repro 3 - shared after first call:", shared)  # should be ["HOME", "URGENT"]
++create_note("Batch 2", tags=shared)
++print("Repro 3 - shared after second call:", shared)  # should still be ["HOME", "URGENT"]

@@ -1,0 +1,187 @@
+ src/signup.ts | 177 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 176 insertions(+), 1 deletion(-)
+
+diff --git a/src/signup.ts b/src/signup.ts
+index 0751a59..0824d7c 100644
+--- a/src/signup.ts
++++ b/src/signup.ts
+@@ -1,2 +1,177 @@
+ // Sign-up validation. Rules: docs/signup-rules.md
+-export type { SignupErrors, SignupInput, SignupResult } from "./types.ts";
++import { isLeapYear, daysInMonth } from "./dates.ts";
++import type { SignupErrors, SignupInput, SignupResult, SignupValue } from "./types.ts";
++
++/** lowercase ASCII letters a-z */
++const ASCII_LETTER = /[a-zA-Z]/;
++/** ASCII digit 0-9 */
++const ASCII_DIGIT = /\d/;
++/** valid username char set: ASCII letters, digits, `_` */
++const USERNAME_OK = /^[A-Za-z0-9_]+$/;
++const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
++
++/** Get a string-ish field: absent/non-string become `null`. */
++function strField(value: unknown, trim: boolean): string | null {
++  if (typeof value !== "string") return null;
++  return trim ? value.trim() : value;
++}
++
++/** Is the field missing, not a string, or an empty string?
++ *  `strField` already applies trimming for the trimmed fields. */
++function isRequiredEmpty(raw: string | null): boolean {
++  return raw === null || raw === "";
++}
++
++/** 13 = legal minimum age (matching the bundled rules document). */
++const MIN_AGE = 13;
++
++/** `true` when the birthday (month/day) has not yet been reached in `year`. */
++function birthdayNotYet(
++  year: number,
++  birthMonth: number,
++  birthDay: number,
++  today: Date,
++): boolean {
++  // Someone born on Feb 29 celebrates on Mar 1 in non-leap years.
++  let annivMonth = birthMonth;
++  let annivDay = birthDay;
++  if (birthMonth === 2 && birthDay === 29 && !isLeapYear(year)) {
++    annivMonth = 3;
++    annivDay = 1;
++  }
++  const tM = today.getUTCMonth() + 1; // 1-12
++  const tD = today.getUTCDate();
++  if (tM !== annivMonth) return tM < annivMonth;
++  return tD < annivDay;
++}
++
++export function validateSignup(input: SignupInput, today: Date): SignupResult {
++  const errors: SignupErrors = {};
++  const value: SignupValue = { username: "", email: "", birthDate: "" };
++
++  // --- username -----------------------------------------------------------
++  const usernameRaw = strField(input.username, true);
++  if (isRequiredEmpty(usernameRaw)) {
++    errors.username = "required";
++  } else {
++    const username = usernameRaw as string;
++    if (username.length < 3 || username.length > 20) {
++      errors.username = "length";
++    } else if (!USERNAME_OK.test(username) || !ASCII_LETTER.test(username.charAt(0))) {
++      errors.username = "format";
++    }
++  }
++  value.username = (usernameRaw ?? "").toLowerCase();
++  const usernameValid = !errors.username;
++
++  // --- email --------------------------------------------------------------
++  const emailRaw = strField(input.email, true);
++  if (isRequiredEmpty(emailRaw)) {
++    errors.email = "required";
++  } else {
++    const email = emailRaw as string;
++    if (!emailFormatOk(email)) {
++      errors.email = "format";
++    }
++  }
++  value.email = (emailRaw ?? "").toLowerCase();
++
++  // --- password -------------------------------------------------------------
++  const passwordRaw = strField(input.password, false);
++  if (isRequiredEmpty(passwordRaw)) {
++    errors.password = "required";
++  } else {
++    const password = passwordRaw as string;
++    if (password.length < 8 || password.length > 64) {
++      errors.password = "length";
++    } else if (!ASCII_LETTER.test(password) || !ASCII_DIGIT.test(password)) {
++      errors.password = "weak";
++    } else if (usernameValid && password.toLowerCase().includes(value.username)) {
++      // Rule only applies when the username itself is valid.
++      errors.password = "contains_username";
++    }
++  }
++
++  // --- confirmPassword ------------------------------------------------------
++  const confirmRaw = strField(input.confirmPassword, false);
++  if (isRequiredEmpty(confirmRaw)) {
++    errors.confirmPassword = "required";
++  } else {
++    // Applied even when password has its own error; skipped only when password
++    // is missing or not a string.
++    if (typeof passwordRaw === "string" && confirmRaw !== passwordRaw) {
++      errors.confirmPassword = "mismatch";
++    }
++  }
++
++  // --- birthDate -------------------------------------------------------------
++  const birthRaw = strField(input.birthDate, true);
++  if (isRequiredEmpty(birthRaw)) {
++    errors.birthDate = "required";
++  } else {
++    const birth = birthRaw as string;
++    const parsed = parseBirthDate(birth);
++    if (parsed === null) {
++      errors.birthDate = "format";
++    } else {
++      const d = new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day));
++      if (d.getTime() > today.getTime()) {
++        errors.birthDate = "future";
++      } else if (ageAt(parsed.year, parsed.month, parsed.day, today) < MIN_AGE) {
++        errors.birthDate = "too_young";
++      }
++    }
++  }
++  value.birthDate = birthRaw ?? "";
++
++  if (Object.keys(errors).length > 0) {
++    return { ok: false, errors };
++  }
++  return { ok: true, value };
++}
++
++/** Validate the email shape: no whitespace, exactly one `@`, a non-empty
++ * local part, and a domain of at least two non-empty labels separated by `.`. */
++function emailFormatOk(email: string): boolean {
++  if (/\s/.test(email)) return false;
++  const firstAt = email.indexOf("@");
++  const lastAt = email.lastIndexOf("@");
++  if (firstAt === -1 || firstAt !== lastAt) return false; // not exactly one @
++  const local = email.slice(0, firstAt);
++  const domain = email.slice(firstAt + 1);
++  if (local === "") return false;
++  return domainLabelsOk(domain);
++}
++
++/** Domain must contain a `.`, not start/end with `.`, have no `..`, and every
++ * label must be non-empty. */
++function domainLabelsOk(domain: string): boolean {
++  if (domain === "") return false;
++  if (domain.startsWith(".") || domain.endsWith(".")) return false;
++  if (domain.includes("..")) return false;
++  const labels = domain.split(".");
++  return labels.length >= 2 && labels.every((l) => l !== "");
++}
++
++/** Parse and validate `YYYY-MM-DD` (real calendar date, year >= 1900), or
++ * `null` when invalid. */
++function parseBirthDate(s: string): { year: number; month: number; day: number } | null {
++  const m = DATE_RE.exec(s);
++  if (m === null) return null;
++  const year = Number(m[1]);
++  const month = Number(m[2]);
++  const day = Number(m[3]);
++  if (year < 1900) return null;
++  if (month < 1 || month > 12) return null;
++  if (day < 1 || day > daysInMonth(year, month)) return null;
++  return { year, month, day };
++}
++
++/** Age in whole years on `today`. A person gains a year on the anniversary of
++ * their birth date; Feb-29 births celebrate on Mar 1 in non-leap years. */
++function ageAt(birthYear: number, birthMonth: number, birthDay: number, today: Date): number {
++  const tYear = today.getUTCFullYear();
++  let age = tYear - birthYear;
++  if (birthdayNotYet(tYear, birthMonth, birthDay, today)) age -= 1;
++  return age;
++}
+\ No newline at end of file

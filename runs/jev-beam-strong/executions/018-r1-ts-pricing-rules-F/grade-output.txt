@@ -1,0 +1,194 @@
+TAP version 13
+# Subtest: default rules are the five named rules in order
+ok 1 - default rules are the five named rules in order
+  ---
+  duration_ms: 0.97625
+  type: 'test'
+  ...
+# Subtest: existing behaviour without bundles is unchanged
+ok 2 - existing behaviour without bundles is unchanged
+  ---
+  duration_ms: 0.598166
+  type: 'test'
+  ...
+# Subtest: createPricer with no rules only sums the lines
+ok 3 - createPricer with no rules only sums the lines
+  ---
+  duration_ms: 0.768542
+  type: 'test'
+  ...
+# Subtest: createPricer validates before running any rule
+ok 4 - createPricer validates before running any rule
+  ---
+  duration_ms: 0.101459
+  type: 'test'
+  ...
+# Subtest: rules run once each, in order, with a fresh context per call
+ok 5 - rules run once each, in order, with a fresh context per call
+  ---
+  duration_ms: 0.181667
+  type: 'test'
+  ...
+# Subtest: the context handed to rules
+ok 6 - the context handed to rules
+  ---
+  duration_ms: 0.180542
+  type: 'test'
+  ...
+# Subtest: a rule inserted before shipping and tax affects them
+ok 7 - a rule inserted before shipping and tax affects them
+  ---
+  duration_ms: 0.122958
+  type: 'test'
+  ...
+# Subtest: default bundle via orderTotal
+ok 8 - default bundle via orderTotal
+  ---
+  duration_ms: 0.129959
+  type: 'test'
+  ...
+# Subtest: bundle discount is rounded per line
+not ok 9 - bundle discount is rounded per line
+  ---
+  duration_ms: 1.003375
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-a0si06m0/ws/acceptance_tests/pricing-rules.test.ts:130:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+        {
+    +     amount: 34,
+    -     amount: 100,
+          rule: 'bundle:pair'
+        },
+    +   {
+    +     amount: 34,
+    +     rule: 'bundle:pair'
+    +   },
+    +   {
+    +     amount: 34,
+    +     rule: 'bundle:pair'
+    +   }
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0:
+      rule: 'bundle:pair'
+      amount: 100
+  actual:
+    0:
+      rule: 'bundle:pair'
+      amount: 34
+    1:
+      rule: 'bundle:pair'
+      amount: 34
+    2:
+      rule: 'bundle:pair'
+      amount: 34
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-a0si06m0/ws/acceptance_tests/pricing-rules.test.ts:133:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: a unit belongs to one bundle; bundles form in list order
+ok 10 - a unit belongs to one bundle; bundles form in list order
+  ---
+  duration_ms: 0.179541
+  type: 'test'
+  ...
+# Subtest: a bundle can form several times and marks the bundled units
+not ok 11 - a bundle can form several times and marks the bundled units
+  ---
+  duration_ms: 0.232333
+  type: 'test'
+  location: '/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-a0si06m0/ws/acceptance_tests/pricing-rules.test.ts:149:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+        {
+    +     amount: 5250,
+    -     amount: 10500,
+          rule: 'bundle:desk-setup'
+        },
+    +   {
+    +     amount: 5250,
+    +     rule: 'bundle:desk-setup'
+    +   }
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0:
+      rule: 'bundle:desk-setup'
+      amount: 10500
+  actual:
+    0:
+      rule: 'bundle:desk-setup'
+      amount: 5250
+    1:
+      rule: 'bundle:desk-setup'
+      amount: 5250
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-a0si06m0/ws/acceptance_tests/pricing-rules.test.ts:153:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1325:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+    Test.postRun (node:internal/test_runner/test:1465:19)
+    Test.run (node:internal/test_runner/test:1390:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:911:7)
+  ...
+# Subtest: volume discount skips bundled units but eligibility uses the full quantity
+ok 12 - volume discount skips bundled units but eligibility uses the full quantity
+  ---
+  duration_ms: 0.097208
+  type: 'test'
+  ...
+# Subtest: exclusive coupons are not combined with bundles
+ok 13 - exclusive coupons are not combined with bundles
+  ---
+  duration_ms: 0.093417
+  type: 'test'
+  ...
+# Subtest: non-exclusive coupons use the merchandise total after bundles
+ok 14 - non-exclusive coupons use the merchandise total after bundles
+  ---
+  duration_ms: 0.091167
+  type: 'test'
+  ...
+# Subtest: duplicate SKU lines: bundled units come from the earliest line
+ok 15 - duplicate SKU lines: bundled units come from the earliest line
+  ---
+  duration_ms: 0.08525
+  type: 'test'
+  ...
+# Subtest: a bundle discount can drop the order below free shipping
+ok 16 - a bundle discount can drop the order below free shipping
+  ---
+  duration_ms: 0.07675
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 14
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 104.580333
+

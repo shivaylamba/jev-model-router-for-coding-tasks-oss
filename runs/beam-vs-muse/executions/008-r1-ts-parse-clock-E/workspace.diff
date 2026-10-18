@@ -1,0 +1,48 @@
+ src/clock.ts | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+diff --git a/src/clock.ts b/src/clock.ts
+index e742cdb..d897610 100644
+--- a/src/clock.ts
++++ b/src/clock.ts
+@@ -9,3 +9,40 @@ export function formatClock(minutes: number): string {
+   const mins = minutes % 60;
+   return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+ }
++
++export function parseClock(input: string): number {
++  const trimmed = input.trim();
++
++  // Try 12-hour form first: H or HH, optionally :MM, then am/pm with optional space
++  const twelveHour = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i.exec(trimmed);
++  if (twelveHour) {
++    const hour = Number(twelveHour[1]);
++    const minStr = twelveHour[2];
++    const period = twelveHour[3].toLowerCase();
++
++    if (hour < 1 || hour > 12) throw new RangeError(`hour out of range: ${hour}`);
++    if (minStr !== undefined) {
++      const mins = Number(minStr);
++      if (mins < 0 || mins > 59) throw new RangeError(`minutes out of range: ${mins}`);
++      const h12 = hour % 12; // 12 -> 0
++      const offset = period === "pm" ? 12 * 60 : 0;
++      return h12 * 60 + mins + offset;
++    } else {
++      const h12 = hour % 12;
++      const offset = period === "pm" ? 12 * 60 : 0;
++      return h12 * 60 + offset;
++    }
++  }
++
++  // Try 24-hour form: H:MM or HH:MM
++  const twentyFour = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
++  if (twentyFour) {
++    const hour = Number(twentyFour[1]);
++    const mins = Number(twentyFour[2]);
++    if (hour < 0 || hour > 23) throw new RangeError(`hour out of range: ${hour}`);
++    if (mins < 0 || mins > 59) throw new RangeError(`minutes out of range: ${mins}`);
++    return hour * 60 + mins;
++  }
++
++  throw new SyntaxError(`invalid clock format: ${JSON.stringify(input)}`);
++}

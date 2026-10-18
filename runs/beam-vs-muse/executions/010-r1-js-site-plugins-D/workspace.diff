@@ -1,0 +1,143 @@
+ src/site.js | 126 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 119 insertions(+), 7 deletions(-)
+
+diff --git a/src/site.js b/src/site.js
+index 410771c..7252627 100644
+--- a/src/site.js
++++ b/src/site.js
+@@ -6,15 +6,127 @@ export function outputPath(sourcePath) {
+   return sourcePath.replace(/\.md$/, "") + ".html";
+ }
+ 
++export class PluginError extends Error {
++  constructor(plugin, hook, cause) {
++    super(`Plugin "${plugin}" threw during "${hook}"`);
++    this.name = "PluginError";
++    this.plugin = plugin;
++    this.hook = hook;
++    this.cause = cause;
++  }
++}
++
++const HOOKS = ["beforeRender", "afterRender", "onComplete"];
++
++function validatePlugin(plugin) {
++  if (typeof plugin !== "object" || plugin === null) {
++    throw new TypeError("plugin must be an object");
++  }
++  if (typeof plugin.name !== "string" || plugin.name === "") {
++    throw new TypeError("plugin name must be a non-empty string");
++  }
++  for (const hook of HOOKS) {
++    if (plugin[hook] !== undefined && typeof plugin[hook] !== "function") {
++      throw new TypeError(`plugin hook ${hook} must be a function`);
++    }
++  }
++}
++
++export function createSite(options) {
++  const { layout = defaultLayout } = options || {};
++  const plugins = [];
++  const names = new Set();
++
++  const site = {
++    use(plugin) {
++      validatePlugin(plugin);
++      if (names.has(plugin.name)) {
++        throw new Error(`Plugin "${plugin.name}" is already registered`);
++      }
++      plugins.push(plugin);
++      names.add(plugin.name);
++      return site;
++    },
++    async build(pages) {
++      const outputs = new Map();
++      for (const page of pages) {
++        // beforeRender
++        const beforePlugins = plugins.filter((p) => typeof p.beforeRender === "function");
++        let currentPage;
++        if (beforePlugins.length > 0) {
++          currentPage = { ...page };
++          for (const plugin of beforePlugins) {
++            let result;
++            try {
++              result = await plugin.beforeRender(currentPage);
++            } catch (err) {
++              throw new PluginError(plugin.name, "beforeRender", err);
++            }
++            if (result === undefined) {
++              // keep
++            } else if (result !== null && typeof result === "object") {
++              currentPage = result;
++            } else {
++              throw new PluginError(
++                plugin.name,
++                "beforeRender",
++                new TypeError("beforeRender must return an object or undefined"),
++              );
++            }
++          }
++        } else {
++          currentPage = page;
++        }
++
++        const content = renderMarkdown(currentPage.body);
++        let html = layout({ title: currentPage.title, content, path: currentPage.path });
++
++        // afterRender
++        const afterPlugins = plugins.filter((p) => typeof p.afterRender === "function");
++        for (const plugin of afterPlugins) {
++          let result;
++          try {
++            result = await plugin.afterRender(html, currentPage);
++          } catch (err) {
++            throw new PluginError(plugin.name, "afterRender", err);
++          }
++          if (result === undefined) {
++            // keep
++          } else if (typeof result === "string") {
++            html = result;
++          } else {
++            throw new PluginError(
++              plugin.name,
++              "afterRender",
++              new TypeError("afterRender must return a string or undefined"),
++            );
++          }
++        }
++
++        outputs.set(outputPath(currentPage.path), html);
++      }
++
++      // onComplete
++      const completePlugins = plugins.filter((p) => typeof p.onComplete === "function");
++      for (const plugin of completePlugins) {
++        try {
++          await plugin.onComplete(outputs);
++        } catch (err) {
++          throw new PluginError(plugin.name, "onComplete", err);
++        }
++      }
++
++      return outputs;
++    },
++  };
++
++  return site;
++}
++
+ /**
+  * Render every page. Pages are { path, title, body }; the result maps each
+  * output path to its HTML, in page order.
+  */
+ export async function buildSite(pages, { layout = defaultLayout } = {}) {
+-  const outputs = new Map();
+-  for (const page of pages) {
+-    const content = renderMarkdown(page.body);
+-    outputs.set(outputPath(page.path), layout({ title: page.title, content, path: page.path }));
+-  }
+-  return outputs;
+-}
++  return createSite({ layout }).build(pages);
++}
+\ No newline at end of file

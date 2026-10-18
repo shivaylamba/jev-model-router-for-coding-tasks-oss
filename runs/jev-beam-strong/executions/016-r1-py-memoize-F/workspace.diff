@@ -1,0 +1,69 @@
+ __pycache__/funcutil.cpython-311.pyc | Bin 0 -> 2823 bytes
+ funcutil.py                          |  46 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 46 insertions(+)
+
+diff --git a/__pycache__/funcutil.cpython-311.pyc b/__pycache__/funcutil.cpython-311.pyc
+new file mode 100644
+index 0000000..a4901da
+Binary files /dev/null and b/__pycache__/funcutil.cpython-311.pyc differ
+diff --git a/funcutil.py b/funcutil.py
+index f1ca4e7..048b1f9 100644
+--- a/funcutil.py
++++ b/funcutil.py
+@@ -1,6 +1,9 @@
+ """Function decorators."""
+ 
+ import functools
++from collections import namedtuple
++
++CacheInfo = namedtuple("CacheInfo", "hits misses size")
+ 
+ 
+ def once(func):
+@@ -14,3 +17,46 @@ def once(func):
+         return result[0]
+ 
+     return wrapper
++
++
++def memoize(func):
++    """Cache `func`'s return value per distinct set of arguments."""
++    cache = {}
++    hits = 0
++    misses = 0
++
++    def key(*args, **kwargs):
++        if kwargs:
++            items = tuple(sorted(kwargs.items()))
++            return (*args, items)
++        return args
++
++    @functools.wraps(func)
++    def wrapper(*args, **kwargs):
++        nonlocal hits, misses
++        try:
++            result = cache[key(*args, **kwargs)]
++        except TypeError:
++            # Unhashable argument: the function is never called.
++            raise
++        except KeyError:
++            # Miss: call the function and store its result.
++            misses += 1
++            result = func(*args, **kwargs)
++            cache[key(*args, **kwargs)] = result
++            return result
++        hits += 1
++        return result
++
++    def cache_info():
++        return CacheInfo(hits, misses, len(cache))
++
++    def cache_clear():
++        nonlocal hits, misses
++        cache.clear()
++        hits = 0
++        misses = 0
++
++    wrapper.cache_info = cache_info
++    wrapper.cache_clear = cache_clear
++    return wrapper

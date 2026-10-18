@@ -1,0 +1,47 @@
+TAP version 13
+# Subtest: single string still works and returns 1
+ok 1 - single string still works and returns 1
+  ---
+  duration_ms: 0.892208
+  type: 'test'
+  ...
+# Subtest: array sends to each recipient in order
+ok 2 - array sends to each recipient in order
+  ---
+  duration_ms: 0.128667
+  type: 'test'
+  ...
+# Subtest: duplicates are sent once, case-insensitively, keeping the first spelling
+ok 3 - duplicates are sent once, case-insensitively, keeping the first spelling
+  ---
+  duration_ms: 0.091083
+  type: 'test'
+  ...
+# Subtest: empty array sends nothing
+ok 4 - empty array sends nothing
+  ---
+  duration_ms: 0.066209
+  type: 'test'
+  ...
+# Subtest: a blank entry throws TypeError before anything is sent
+ok 5 - a blank entry throws TypeError before anything is sent
+  ---
+  duration_ms: 0.246416
+  type: 'test'
+  ...
+# Subtest: existing callers are unchanged
+ok 6 - existing callers are unchanged
+  ---
+  duration_ms: 0.130333
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 96.313584
+

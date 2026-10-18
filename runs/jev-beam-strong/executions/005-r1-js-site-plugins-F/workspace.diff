@@ -1,0 +1,589 @@
+ src/site.js          | 111 ++++++++++++-
+ test/plugins.test.js | 455 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 559 insertions(+), 7 deletions(-)
+
+diff --git a/src/site.js b/src/site.js
+index 410771c..d58c3e6 100644
+--- a/src/site.js
++++ b/src/site.js
+@@ -6,15 +6,112 @@ export function outputPath(sourcePath) {
+   return sourcePath.replace(/\.md$/, "") + ".html";
+ }
+ 
++export class PluginError extends Error {
++  constructor(plugin, hook, cause) {
++    super(`Plugin "${plugin}" failed in ${hook} hook`);
++    this.plugin = plugin;
++    this.hook = hook;
++    this.cause = cause;
++  }
++}
++
++const HOOKS = ["beforeRender", "afterRender", "onComplete"];
++
++export function createSite({ layout = defaultLayout } = {}) {
++  const plugins = [];
++
++  function use(plugin) {
++    if (typeof plugin !== "object" || plugin === null) {
++      throw new TypeError("Plugin must be an object");
++    }
++    if (typeof plugin.name !== "string" || plugin.name === "") {
++      throw new TypeError("Plugin name must be a non-empty string");
++    }
++    for (const hook of HOOKS) {
++      if (hook in plugin && typeof plugin[hook] !== "function") {
++        throw new TypeError(`Plugin hook "${hook}" must be a function`);
++      }
++    }
++    if (plugins.some((p) => p.name === plugin.name)) {
++      throw new Error(`Plugin "${plugin.name}" is already registered`);
++    }
++    plugins.push(plugin);
++    return site;
++  }
++
++  async function build(pages) {
++    const outputs = new Map();
++    const beforeRenderPlugins = plugins.filter((p) => typeof p.beforeRender === "function");
++    const afterRenderPlugins = plugins.filter((p) => typeof p.afterRender === "function");
++    const onCompletePlugins = plugins.filter((p) => typeof p.onComplete === "function");
++
++    for (const originalPage of pages) {
++      // Shallow copy so plugins can mutate without affecting caller's data
++      let page = { ...originalPage };
++
++      for (const plugin of beforeRenderPlugins) {
++        let result;
++        try {
++          result = await plugin.beforeRender(page);
++        } catch (cause) {
++          throw new PluginError(plugin.name, "beforeRender", cause);
++        }
++        if (result !== undefined) {
++          if (typeof result !== "object" || result === null) {
++            throw new PluginError(
++              plugin.name,
++              "beforeRender",
++              new TypeError("beforeRender must return undefined or an object"),
++            );
++          }
++          page = result;
++        }
++      }
++
++      const content = renderMarkdown(page.body);
++      let html = layout({ title: page.title, content, path: page.path });
++
++      for (const plugin of afterRenderPlugins) {
++        let result;
++        try {
++          result = await plugin.afterRender(html, page);
++        } catch (cause) {
++          throw new PluginError(plugin.name, "afterRender", cause);
++        }
++        if (result !== undefined) {
++          if (typeof result !== "string") {
++            throw new PluginError(
++              plugin.name,
++              "afterRender",
++              new TypeError("afterRender must return undefined or a string"),
++            );
++          }
++          html = result;
++        }
++      }
++
++      outputs.set(outputPath(page.path), html);
++    }
++
++    for (const plugin of onCompletePlugins) {
++      try {
++        await plugin.onComplete(outputs);
++      } catch (cause) {
++        throw new PluginError(plugin.name, "onComplete", cause);
++      }
++    }
++
++    return outputs;
++  }
++
++  const site = { use, build };
++  return site;
++}
++
+ /**
+  * Render every page. Pages are { path, title, body }; the result maps each
+  * output path to its HTML, in page order.
+  */
+-export async function buildSite(pages, { layout = defaultLayout } = {}) {
+-  const outputs = new Map();
+-  for (const page of pages) {
+-    const content = renderMarkdown(page.body);
+-    outputs.set(outputPath(page.path), layout({ title: page.title, content, path: page.path }));
+-  }
+-  return outputs;
++export async function buildSite(pages, options = {}) {
++  return createSite(options).build(pages);
+ }
+diff --git a/test/plugins.test.js b/test/plugins.test.js
+new file mode 100644
+index 0000000..c032993
+--- /dev/null
++++ b/test/plugins.test.js
+@@ -0,0 +1,455 @@
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { createSite, buildSite, PluginError, outputPath } from "../src/site.js";
++
++/* ── createSite basic API ── */
++
++test("createSite returns an object with use and build", () => {
++  const site = createSite();
++  assert.equal(typeof site.use, "function");
++  assert.equal(typeof site.build, "function");
++});
++
++test("use() returns the site for chaining", () => {
++  const site = createSite();
++  assert.strictEqual(site.use({ name: "p1" }), site);
++});
++
++/* ── Plugin validation in use() ── */
++
++test("use() throws TypeError for non-object plugin", () => {
++  assert.throws(() => createSite().use("not an object"), TypeError);
++});
++
++test("use() throws TypeError for plugin without name", () => {
++  assert.throws(() => createSite().use({}), TypeError);
++});
++
++test("use() throws TypeError for plugin with empty string name", () => {
++  assert.throws(() => createSite().use({ name: "" }), TypeError);
++});
++
++test("use() throws TypeError for non-function beforeRender", () => {
++  assert.throws(() => createSite().use({ name: "p1", beforeRender: "nope" }), TypeError);
++});
++
++test("use() throws TypeError for non-function afterRender", () => {
++  assert.throws(() => createSite().use({ name: "p1", afterRender: 42 }), TypeError);
++});
++
++test("use() throws TypeError for non-function onComplete", () => {
++  assert.throws(() => createSite().use({ name: "p1", onComplete: {} }), TypeError);
++});
++
++test("use() throws Error for duplicate plugin name", () => {
++  const site = createSite();
++  site.use({ name: "p1" });
++  assert.throws(() => site.use({ name: "p1" }), Error);
++});
++
++test("use() ignores extra properties on plugin", () => {
++  const site = createSite();
++  assert.doesNotThrow(() => site.use({ name: "p1", extra: "whatever", afterRender() {} }));
++});
++
++/* ── buildSite delegates to createSite ── */
++
++test("buildSite still works with no plugins", async () => {
++  const outputs = await buildSite([
++    { path: "index.md", title: "Home", body: "# Home" },
++  ]);
++  assert.equal(outputs.get("index.html").includes("<title>Home</title>"), true);
++});
++
++/* ── beforeRender ── */
++
++test("beforeRender transforms page, receiving prior plugin result", async () => {
++  const site = createSite();
++  site
++    .use({
++      name: "p1",
++      beforeRender(page) {
++        return { ...page, title: page.title + "-p1" };
++      },
++    })
++    .use({
++      name: "p2",
++      beforeRender(page) {
++        return { ...page, title: page.title + "-p2" };
++      },
++    });
++  const outputs = await site.build([
++    { path: "a.md", title: "T", body: "x" },
++  ]);
++  assert.match(outputs.get("a.html"), /<title>T-p1-p2<\/title>/);
++});
++
++test("beforeRender returning undefined keeps current page", async () => {
++  const site = createSite();
++  site.use({
++    name: "p1",
++    beforeRender() {
++      // returns undefined
++    },
++  });
++  const outputs = await site.build([
++    { path: "a.md", title: "T", body: "x" },
++  ]);
++  assert.match(outputs.get("a.html"), /<title>T<\/title>/);
++});
++
++test("first beforeRender receives a shallow copy of caller's page", async () => {
++  const site = createSite();
++  const seen = [];
++  site.use({
++    name: "p1",
++    beforeRender(page) {
++      seen.push(page);
++      page.mutated = true;
++    },
++  });
++  const input = { path: "a.md", title: "T", body: "x" };
++  await site.build([input]);
++  assert.equal("mutated" in input, false);
++  assert.equal(seen[0].mutated, true);
++});
++
++test("beforeRender rejecting a string throws PluginError", async () => {
++  const site = createSite();
++  site.use({
++    name: "bad",
++    beforeRender() {
++      return "not an object";
++    },
++  });
++  await assert.rejects(
++    site.build([{ path: "a.md", title: "T", body: "x" }]),
++    (err) =>
++      err instanceof PluginError &&
++      err.plugin === "bad" &&
++      err.hook === "beforeRender" &&
++      err.cause instanceof TypeError,
++  );
++});
++
++/* ── afterRender ── */
++
++test("afterRender receives html and final page", async () => {
++  const site = createSite();
++  site.use({
++    name: "p1",
++    afterRender(html, page) {
++      assert.equal(typeof html, "string");
++      assert.equal(page.title, "T");
++      return html.replace("</body>", "<footer>hi</footer></body>");
++    },
++  });
++  const outputs = await site.build([
++    { path: "a.md", title: "T", body: "x" },
++  ]);
++  assert.match(outputs.get("a.html"), /<footer>hi<\/footer>/);
++});
++
++test("afterRender chains in registration order", async () => {
++  const site = createSite();
++  site
++    .use({
++      name: "p1",
++      afterRender(html) {
++        return html + "[p1]";
++      },
++    })
++    .use({
++      name: "p2",
++      afterRender(html) {
++        return html + "[p2]";
++      },
++    });
++  const outputs = await site.build([
++    { path: "a.md", title: "T", body: "x" },
++  ]);
++  const h = outputs.get("a.html");
++  assert.ok(h.indexOf("[p1]") < h.indexOf("[p2]"));
++});
++
++test("afterRender receiving undefined keeps current html", async () => {
++  const site = createSite();
++  site.use({
++    name: "p1",
++    afterRender() {
++      // returns undefined
++    },
++  });
++  const outputs = await site.build([
++    { path: "a.md", title: "T", body: "x" },
++  ]);
++  assert.match(outputs.get("a.html"), /<title>T<\/title>/);
++});
++
++test("afterRender returning a non-string throws PluginError", async () => {
++  const site = createSite();
++  site.use({
++    name: "bad",
++    afterRender() {
++      return 42;
++    },
++  });
++  await assert.rejects(
++    site.build([{ path: "a.md", title: "T", body: "x" }]),
++    (err) =>
++      err instanceof PluginError &&
++      err.plugin === "bad" &&
++      err.hook === "afterRender" &&
++      err.cause instanceof TypeError,
++  );
++});
++
++/* ── onComplete ── */
++
++test("onComplete can add entries to outputs", async () => {
++  const site = createSite();
++  site.use({
++    name: "sitemap",
++    onComplete(outputs) {
++      outputs.set("sitemap.xml", "<urlset/>");
++    },
++  });
++  const outputs = await site.build([
++    { path: "a.md", title: "A", body: "x" },
++  ]);
++  assert.equal(outputs.get("sitemap.xml"), "<urlset/>");
++});
++
++test("onComplete runs in registration order", async () => {
++  const site = createSite();
++  const order = [];
++  site
++    .use({
++      name: "p1",
++      onComplete() {
++        order.push("p1");
++      },
++    })
++    .use({
++      name: "p2",
++      onComplete() {
++        order.push("p2");
++      },
++    });
++  await site.build([{ path: "a.md", title: "A", body: "x" }]);
++  assert.deepEqual(order, ["p1", "p2"]);
++});
++
++/* ── async hooks awaited before next hook ── */
++
++test("async beforeRender is awaited", async () => {
++  const site = createSite();
++  site.use({
++    name: "async",
++    async beforeRender(page) {
++      await new Promise((r) => setTimeout(r, 5));
++      return { ...page, title: "asynced" };
++    },
++  });
++  const outputs = await site.build([
++    { path: "a.md", title: "T", body: "x" },
++  ]);
++  assert.match(outputs.get("a.html"), /<title>asynced<\/title>/);
++});
++
++test("async afterRender is awaited", async () => {
++  const site = createSite();
++  site.use({
++    name: "async",
++    async afterRender(html) {
++      await new Promise((r) => setTimeout(r, 5));
++      return html + "<!-- done -->";
++    },
++  });
++  const outputs = await site.build([
++    { path: "a.md", title: "T", body: "x" },
++  ]);
++  assert.ok(outputs.get("a.html").endsWith("<!-- done -->"));
++});
++
++test("async onComplete is awaited", async () => {
++  const site = createSite();
++  site.use({
++    name: "async",
++    async onComplete(outputs) {
++      await new Promise((r) => setTimeout(r, 5));
++      outputs.set("done", "yes");
++    },
++  });
++  const outputs = await site.build([
++    { path: "a.md", title: "T", body: "x" },
++  ]);
++  assert.equal(outputs.get("done"), "yes");
++});
++
++/* ── PluginError on hook failure ── */
++
++test("throwing beforeRender causes PluginError", async () => {
++  const site = createSite();
++  site.use({
++    name: "bad",
++    beforeRender() {
++      throw new Error("boom");
++    },
++  });
++  await assert.rejects(
++    site.build([{ path: "a.md", title: "T", body: "x" }]),
++    (err) =>
++      err instanceof PluginError &&
++      err.plugin === "bad" &&
++      err.hook === "beforeRender" &&
++      err.cause.message === "boom",
++  );
++});
++
++test("rejecting beforeRender causes PluginError", async () => {
++  const site = createSite();
++  site.use({
++    name: "bad",
++    async beforeRender() {
++      throw new Error("async boom");
++    },
++  });
++  await assert.rejects(
++    site.build([{ path: "a.md", title: "T", body: "x" }]),
++    (err) =>
++      err instanceof PluginError &&
++      err.plugin === "bad" &&
++      err.hook === "beforeRender" &&
++      err.cause.message === "async boom",
++  );
++});
++
++test("throwing afterRender causes PluginError", async () => {
++  const site = createSite();
++  site.use({
++    name: "bad",
++    afterRender() {
++      throw new Error("boom");
++    },
++  });
++  await assert.rejects(
++    site.build([{ path: "a.md", title: "T", body: "x" }]),
++    (err) =>
++      err instanceof PluginError &&
++      err.plugin === "bad" &&
++      err.hook === "afterRender" &&
++      err.cause.message === "boom",
++  );
++});
++
++test("throwing onComplete causes PluginError", async () => {
++  const site = createSite();
++  site.use({
++    name: "bad",
++    onComplete() {
++      throw new Error("boom");
++    },
++  });
++  await assert.rejects(
++    site.build([{ path: "a.md", title: "T", body: "x" }]),
++    (err) =>
++      err instanceof PluginError &&
++      err.plugin === "bad" &&
++      err.hook === "onComplete" &&
++      err.cause.message === "boom",
++  );
++});
++
++test("PluginError message includes plugin name", async () => {
++  const site = createSite();
++  site.use({
++    name: "bad",
++    beforeRender() {
++      throw new Error("boom");
++    },
++  });
++  await assert.rejects(site.build([{ path: "a.md", title: "T", body: "x" }]), (err) =>
++    err.message.includes('"bad"'),
++  );
++});
++
++/* ── output path comes from final page ── */
++
++test("beforeRender can change output path", async () => {
++  const site = createSite();
++  site.use({
++    name: "rename",
++    beforeRender(page) {
++      return { ...page, path: "renamed.md" };
++    },
++  });
++  const outputs = await site.build([
++    { path: "a.md", title: "T", body: "x" },
++  ]);
++  assert.equal(outputs.has("a.html"), false);
++  assert.equal(outputs.has("renamed.html"), true);
++});
++
++/* ── pages processed one at a time in input order ── */
++
++test("plugins see pages in input order", async () => {
++  const site = createSite();
++  const titles = [];
++  site.use({
++    name: "rec",
++    beforeRender(page) {
++      titles.push(page.title);
++    },
++  });
++  await site.build([
++    { path: "a.md", title: "A", body: "x" },
++    { path: "b.md", title: "B", body: "y" },
++  ]);
++  assert.deepEqual(titles, ["A", "B"]);
++});
++
++/* ── no further hooks run after error ── */
++
++test("error in beforeRender stops later hooks", async () => {
++  const site = createSite();
++  const ran = [];
++  site
++    .use({
++      name: "bad",
++      beforeRender() {
++        throw new Error("boom");
++      },
++    })
++    .use({
++      name: "good",
++      afterRender() {
++        ran.push("afterRender");
++      },
++      onComplete() {
++        ran.push("onComplete");
++      },
++    });
++  await assert.rejects(site.build([{ path: "a.md", title: "T", body: "x" }]));
++  assert.deepEqual(ran, []);
++});
++
++test("error in afterRender stops onComplete", async () => {
++  const site = createSite();
++  const ran = [];
++  site
++    .use({
++      name: "bad",
++      afterRender() {
++        throw new Error("boom");
++      },
++    })
++    .use({
++      name: "good",
++      onComplete() {
++        ran.push("onComplete");
++      },
++    });
++  await assert.rejects(site.build([{ path: "a.md", title: "T", body: "x" }]));
++  assert.deepEqual(ran, []);
++});

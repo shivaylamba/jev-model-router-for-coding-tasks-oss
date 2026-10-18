@@ -326,7 +326,7 @@ def normalize(exec_dir: Path, manifest: dict) -> dict:
     condition = meta["condition"]
     expected = manifest["conditions"][condition]
     anomalies = list(meta.get("anomalies", []))
-    if condition == "A":
+    if expected["nconnect_model"] != "auto":  # any fixed-model condition (A, and the Beam/Muse conditions D, E)
         wrong = sorted({m for m in upstream["agent_request_models"] if m != expected["nconnect_model"]})
         if wrong:
             anomalies.append(f"foreground requests went to {wrong}, not {expected['nconnect_model']}")

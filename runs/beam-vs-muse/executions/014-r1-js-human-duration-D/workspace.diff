@@ -1,0 +1,79 @@
+ src/duration.js | 70 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 70 insertions(+)
+
+diff --git a/src/duration.js b/src/duration.js
+new file mode 100644
+index 0000000..422c788
+--- /dev/null
++++ b/src/duration.js
+@@ -0,0 +1,70 @@
++const UNITS = [
++  { abbr: "d", name: "day", factor: 86400000 },
++  { abbr: "h", name: "hour", factor: 3600000 },
++  { abbr: "m", name: "minute", factor: 60000 },
++  { abbr: "s", name: "second", factor: 1000 },
++  { abbr: "ms", name: "millisecond", factor: 1 },
++];
++
++const VALID_SMALLEST = new Set(UNITS.map((u) => u.abbr));
++const VALID_STYLES = new Set(["long", "compact"]);
++
++export function formatDuration(ms, options = {}) {
++  if (typeof ms !== "number") {
++    throw new TypeError("ms must be a number");
++  }
++  if (ms < 0 || Number.isNaN(ms) || !Number.isFinite(ms)) {
++    throw new RangeError("ms must be a finite non-negative number");
++  }
++
++  const opts = options == null ? {} : options;
++  const { units = 2, style = "long", smallest = "s" } = opts;
++
++  if (!Number.isInteger(units) || units <= 0) {
++    throw new RangeError("units must be a positive integer");
++  }
++  if (!VALID_STYLES.has(style)) {
++    throw new RangeError('style must be "long" or "compact"');
++  }
++  if (!VALID_SMALLEST.has(smallest)) {
++    throw new RangeError("smallest must be one of d, h, m, s, ms");
++  }
++
++  const smallestIndex = UNITS.findIndex((u) => u.abbr === smallest);
++  const allowed = UNITS.slice(0, smallestIndex + 1);
++
++  let remaining = Math.floor(ms);
++  const counts = allowed.map((u) => {
++    const c = Math.floor(remaining / u.factor);
++    remaining = remaining % u.factor;
++    return c;
++  });
++
++  const parts = [];
++  let taken = 0;
++  for (let i = 0; i < allowed.length; i++) {
++    if (counts[i] === 0) continue;
++    if (taken >= units) break;
++    taken++;
++    const u = allowed[i];
++    const n = counts[i];
++    if (style === "long") {
++      const name = n === 1 ? u.name : `${u.name}s`;
++      parts.push(`${n} ${name}`);
++    } else {
++      parts.push(`${n}${u.abbr}`);
++    }
++  }
++
++  if (parts.length === 0) {
++    const u = allowed[allowed.length - 1];
++    if (style === "long") {
++      parts.push(`0 ${u.name}s`);
++    } else {
++      parts.push(`0${u.abbr}`);
++    }
++  }
++
++  return style === "long" ? parts.join(", ") : parts.join(" ");
++}
++export default formatDuration;

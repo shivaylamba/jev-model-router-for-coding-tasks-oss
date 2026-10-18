@@ -1,0 +1,122 @@
+ urlbits.py | 110 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 99 insertions(+), 11 deletions(-)
+
+diff --git a/urlbits.py b/urlbits.py
+index aed0ed5..32c9ecf 100644
+--- a/urlbits.py
++++ b/urlbits.py
+@@ -1,15 +1,103 @@
+-"""URL helpers for the link checker."""
++def _decode(s: str) -> str:
++    # "+" -> space, then %XX decoding
++    s = s.replace("+", " ")
++    # Process %XX escapes
++    res = bytearray()
++    # We need to track which bytes came from % decoding vs literal chars
++    # Literal chars should be encoded as utf-8 bytes then decoded? Actually
++    # spec says %XX escapes are decoded as UTF-8 bytes. Non-escaped chars are as-is.
++    # But to handle invalid UTF-8 -> U+FFFD, we collect bytes from % escapes
++    # and literal chars as utf-8 bytes, but we need to handle them together.
++    # Simpler: build bytearray where %XX contributes raw byte, literal chars contribute their utf-8 bytes,
++    # but we need to distinguish valid multi-byte sequences from isolated bytes.
++    # Actually spec: "%XX escapes ... are decoded as UTF-8 bytes. Bytes that are not valid UTF-8 become U+FFFD"
++    # This means we take the string after "+" replacement, and wherever there's %XX (valid hex), that byte value
++    # is a raw byte. Other characters are... they are already characters. How to handle?
++    # The most consistent interpretation: iterate chars; %XX -> raw byte; otherwise char -> its codepoint byte(s)?
++    # But if other chars are ASCII (which they should be in a query string), their utf-8 encoding is single byte = codepoint.
++    # For non-ASCII literal chars (shouldn't appear in properly encoded query but could), we encode as utf-8.
++    # Then decode the whole byte array as utf-8 with replacement.
+ 
++    # We'll collect bytes
++    i = 0
++    while i < len(s):
++        if s[i] == '%' and i + 2 < len(s) and _is_hex(s[i+1]) and _is_hex(s[i+2]):
++            res.append(int(s[i+1:i+3], 16))
++            i += 3
++        else:
++            # Encode this char as utf-8 bytes
++            for b in s[i].encode('utf-8'):
++                res.append(b)
++            i += 1
++    return res.decode('utf-8', errors='replace')
+ 
+-def split_url(url):
+-    """Split a URL into (base, query, fragment).
++def _is_hex(c: str) -> bool:
++    return c in '0123456789abcdefABCDEF'
+ 
+-    The query is the text after the first "?" (without the "?") and the
+-    fragment is the text after the first "#". Missing parts are "".
++def parse_query(query: str) -> dict[str, list[str | None]]:
++    if query.startswith("?"):
++        query = query[1:]
++    result: dict[str, list[str | None]] = {}
++    for segment in query.split("&"):
++        if segment == "":
++            continue
++        if "=" in segment:
++            idx = segment.index("=")
++            k_raw = segment[:idx]
++            v_raw = segment[idx+1:]
++            k = _decode(k_raw)
++            v = _decode(v_raw)
++        else:
++            k = _decode(segment)
++            v = None
++        if k not in result:
++            result[k] = []
++        result[k].append(v)
++    return result
+ 
+-    >>> split_url("https://x.test/a?b=1#top")
+-    ('https://x.test/a', 'b=1', 'top')
+-    """
+-    base, _, fragment = url.partition("#")
+-    base, _, query = base.partition("?")
+-    return base, query, fragment
++def _encode(s: str) -> str:
++    # UTF-8 percent-encode with uppercase hex; unreserved: A-Z a-z 0-9 - . _ ~ left as-is, space -> "+"
++    # First handle: encode string to utf-8 bytes, then for each byte decide
++    out = []
++    for b in s.encode('utf-8'):
++        c = chr(b)
++        if c == ' ':
++            out.append('+')
++        elif c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~':
++            out.append(c)
++        else:
++            out.append(f'%{b:02X}')
++    return ''.join(out)
++
++def build_query(params) -> str:
++    parts = []
++    for key, val in params.items():
++        # Normalize value to list
++        if isinstance(val, list):
++            items = val
++        elif isinstance(val, str) or val is None:
++            items = [val]
++        else:
++            raise TypeError(f"Invalid value type for key {key!r}: {type(val)}")
++
++        if len(items) == 0:
++            continue
++
++        for item in items:
++            if item is None:
++                # bare key
++                if not isinstance(key, str):
++                    raise TypeError(f"Key must be str, got {type(key)}")
++                parts.append(_encode(key))
++            elif isinstance(item, str):
++                if not isinstance(key, str):
++                    raise TypeError(f"Key must be str, got {type(key)}")
++                parts.append(f"{_encode(key)}={_encode(item)}")
++            else:
++                raise TypeError(f"Invalid list item type for key {key!r}: {type(item)}")
++
++        # Validate key is str
++        if not isinstance(key, str):
++            raise TypeError(f"Key must be str, got {type(key)}")
++
++    return "&".join(parts)

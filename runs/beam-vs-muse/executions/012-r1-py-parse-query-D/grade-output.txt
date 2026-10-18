@@ -1,0 +1,21 @@
+
+test_basic (acceptance_tests.test_query.BuildQueryTest.test_basic) ... ok
+test_empty_list_omits_key (acceptance_tests.test_query.BuildQueryTest.test_empty_list_omits_key) ... ok
+test_encoding (acceptance_tests.test_query.BuildQueryTest.test_encoding) ... ok
+test_none_and_empty (acceptance_tests.test_query.BuildQueryTest.test_none_and_empty) ... ok
+test_type_errors (acceptance_tests.test_query.BuildQueryTest.test_type_errors) ... ok
+test_bare_key_and_empty_value (acceptance_tests.test_query.ParseQueryTest.test_bare_key_and_empty_value) ... ok
+test_basic_and_repeated_keys (acceptance_tests.test_query.ParseQueryTest.test_basic_and_repeated_keys) ... ok
+test_invalid_utf8_replaced (acceptance_tests.test_query.ParseQueryTest.test_invalid_utf8_replaced) ... ok
+test_leading_question_mark_and_empty_segments (acceptance_tests.test_query.ParseQueryTest.test_leading_question_mark_and_empty_segments) ... ok
+test_malformed_escapes_kept (acceptance_tests.test_query.ParseQueryTest.test_malformed_escapes_kept) ... ok
+test_plus_and_percent_decoding (acceptance_tests.test_query.ParseQueryTest.test_plus_and_percent_decoding) ... ok
+test_split_on_first_equals (acceptance_tests.test_query.ParseQueryTest.test_split_on_first_equals) ... ok
+test_utf8_decoding (acceptance_tests.test_query.ParseQueryTest.test_utf8_decoding) ... ok
+test_build_then_parse (acceptance_tests.test_query.RoundTripTest.test_build_then_parse) ... ok
+test_parse_then_build (acceptance_tests.test_query.RoundTripTest.test_parse_then_build) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.001s
+
+OK

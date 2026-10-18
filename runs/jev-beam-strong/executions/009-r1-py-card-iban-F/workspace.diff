@@ -1,0 +1,258 @@
+ _scratch_gen.py              | 35 ++++++++++++++++++++
+ _scratch_verify.py           | 29 ++++++++++++++++
+ payment_checks.py            | 78 ++++++++++++++++++++++++++++++++++++++++++++
+ tests/test_payment_checks.py | 72 +++++++++++++++++++++++++++++++++++++++-
+ 4 files changed, 213 insertions(+), 1 deletion(-)
+
+diff --git a/_scratch_gen.py b/_scratch_gen.py
+new file mode 100644
+index 0000000..8bbf670
+--- /dev/null
++++ b/_scratch_gen.py
+@@ -0,0 +1,35 @@
++def luhn_check(digits):
++    total = 0
++    for i, digit in enumerate(reversed(digits)):
++        value = int(digit)
++        if i % 2:
++            value *= 2
++            if value > 9:
++                value -= 9
++        total += value
++    return total % 10 == 0
++
++def luhn_fix(prefix):
++    for d in range(10):
++        if luhn_check(prefix + str(d)):
++            return prefix + str(d)
++    return None
++
++tests = {
++ 'visa13': luhn_fix('453252125595'),       # 12 + 1 = 13
++ 'visa19': luhn_fix('411111111111111111'), # 18 + 1 = 19
++ 'mc2221': luhn_fix('222100000000000'),    # 15 + 1 = 16
++ 'mc2720': luhn_fix('272099999999999'),
++ 'mc55': luhn_fix('55000000000000'),
++ 'mc2200below': luhn_fix('22000000000000'),
++ 'disc6011': luhn_fix('60110000000000'),
++ 'disc65': luhn_fix('65000000000000'),
++ 'disc649': luhn_fix('64900000000000'),
++ 'disc644': luhn_fix('64400000000000'),
++ 'disc643below': luhn_fix('64300000000000'),
++ 'disc649_19': luhn_fix('649000000000000000'),
++ 'disc6011_19': luhn_fix('601100000000000000'),
++}
++from payment_checks import card_brand
++for k, v in tests.items():
++    print(k, len(v), '->', card_brand(v))
+\ No newline at end of file
+diff --git a/_scratch_verify.py b/_scratch_verify.py
+new file mode 100644
+index 0000000..35d49c2
+--- /dev/null
++++ b/_scratch_verify.py
+@@ -0,0 +1,29 @@
++from payment_checks import card_brand, is_valid_iban, mask_card, strip_separators
++
++print('visa16:', card_brand('4111 1111 1111 1111'))
++print('visa13:', card_brand('4532 5212 5595 195'))
++print('visa19:', card_brand('4111 1111 1111 1111 111'))
++print('amex:', card_brand('3782 822463 10005'))
++print('amex34:', card_brand('3400 0000 0000 009'))
++print('mc2221:', card_brand('2221 0000 0000 0009'))
++print('mc2200 (below):', card_brand('2200 0000 0000 0006'))
++print('mc2720:', card_brand('2720 9999 9999 9995'))
++print('mc55:', card_brand('5500 0000 0000 0004'))
++print('disc6011:', card_brand('6011 0000 0000 0004'))
++print('disc65:', card_brand('6500 0000 0000 0002'))
++print('disc649:', card_brand('6490 0000 0000 0000'))
++print('disc643 (below):', card_brand('6430 0000 0000 0008'))
++print('invalid luhn:', card_brand('4111 1111 1111 1112'))
++print('empty:', repr(card_brand('')))
++print('bad char:', card_brand('4111x11111111111'))
++print('visa wrong len12:', card_brand('4111 1111 1111'))
++print('amex wrong len16:', card_brand('3782 822463 1000 55'))
++print()
++print('gb valid:', is_valid_iban('GB82 WEST 1234 5698 7654 32'))
++print('gb lowercase:', is_valid_iban('gb82 west 1234 5698 7654 32'))
++print('bad sep:', is_valid_iban('GB82-WEST-1234-5698-7654-32'))
++print('unknown country:', is_valid_iban('XX82 WEST 1234 5698 7654 32'))
++print('wrong length:', is_valid_iban('GB8 WEST 1234 5698 7654 32'))
++print('de:', is_valid_iban('DE89 3704 0044 0532 0130 00'))
++print('mask:', mask_card('4111 1111 1111 1111'))
++print('strip:', strip_separators('12 34-56'))
+\ No newline at end of file
+diff --git a/payment_checks.py b/payment_checks.py
+index 8cf49c1..bf8a4b7 100644
+--- a/payment_checks.py
++++ b/payment_checks.py
+@@ -17,3 +17,81 @@ def mask_card(number):
+     if len(digits) < 4 or not digits.isdigit():
+         raise ValueError("not a card number")
+     return "*" * (len(digits) - 4) + digits[-4:]
++
++
++def _luhn_valid(digits):
++    """Return True if `digits` (all digits, no separators) passes the Luhn checksum."""
++    total = 0
++    for i, digit in enumerate(reversed(digits)):
++        value = int(digit)
++        if i % 2:
++            value *= 2
++            if value > 9:
++                value -= 9
++        total += value
++    return total % 10 == 0
++
++
++def card_brand(number):
++    """Return the brand of a card number: 'visa', 'mastercard', 'amex' or 'discover'.
++
++    Spaces and hyphens are ignored. Any other non-digit character, a number that
++    fails the Luhn checksum, or a number that matches no @brand@ prefix/length
++    combo returns None. An empty string returns None.
++    """
++    if not isinstance(number, str):
++        raise TypeError("card number must be a str")
++    for ch in number:
++        if not (ch.isdigit() or ch in " -"):
++            return None
++    digits = strip_separators(number)
++    if not digits or not _luhn_valid(digits):
++        return None
++    length = len(digits)
++
++    if digits[:2] in ("34", "37") and length == 15:
++        return "amex"
++    if digits[0] == "4" and length in (13, 16, 19):
++        return "visa"
++    if length == 16 and (
++        digits[:2] in ("51", "52", "53", "54", "55")
++        or "2221" <= digits[:4] <= "2720"
++    ):
++        return "mastercard"
++    if length in (16, 19) and (
++        digits.startswith("6011")
++        or digits.startswith("65")
++        or digits[:3] in ("644", "645", "646", "647", "648", "649")
++    ):
++        return "discover"
++    return None
++
++
++def is_valid_iban(iban):
++    """Return True if `iban` is a well-formed IBAN for a supported country.
++
++    Spaces are ignored and letters may be either case; any other separator (hyphen,
++    dot, ...) is invalid. The country must be listed in IBAN_LENGTHS and match its
++    exact length, and the standard mod-97 check must pass.
++    """
++    if not isinstance(iban, str):
++        raise TypeError("iban must be a str")
++    if any(ch not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 " for ch in iban):
++        return False
++    compact = iban.replace(" ", "")
++    if len(compact) < 4:
++        return False
++    country = compact[:2].upper()
++    if not (compact[0].isalpha() and compact[1].isalpha()):
++        return False
++    if country not in IBAN_LENGTHS or len(compact) != IBAN_LENGTHS[country]:
++        return False
++    if not (compact[2:4].isdigit() and compact[4:].isalnum()):
++        return False
++
++    rearranged = compact[4:] + compact[:4]
++    expanded = "".join(
++        ch if ch.isdigit() else str(ord(ch.upper()) - ord("A") + 10)
++        for ch in rearranged
++    )
++    return int(expanded) % 97 == 1
+diff --git a/tests/test_payment_checks.py b/tests/test_payment_checks.py
+index 5bae6c1..24639db 100644
+--- a/tests/test_payment_checks.py
++++ b/tests/test_payment_checks.py
+@@ -1,6 +1,6 @@
+ import unittest
+ 
+-from payment_checks import mask_card, strip_separators
++from payment_checks import card_brand, is_valid_iban, mask_card, strip_separators
+ 
+ 
+ class MaskCardTest(unittest.TestCase):
+@@ -15,5 +15,75 @@ class MaskCardTest(unittest.TestCase):
+         self.assertEqual(strip_separators("12 34-56"), "123456")
+ 
+ 
++class CardBrandTest(unittest.TestCase):
++    def test_visa(self):
++        self.assertEqual(card_brand("4111 1111 1111 1111"), "visa")
++        self.assertEqual(card_brand("4532 5212 5595 195"), "visa")
++        self.assertEqual(card_brand("4111 1111 1111 1111 111"), "visa")
++
++    def test_mastercard(self):
++        self.assertEqual(card_brand("5500 0000 0000 0004"), "mastercard")
++        self.assertEqual(card_brand("2221 0000 0000 0009"), "mastercard")
++        self.assertEqual(card_brand("2720 9999 9999 9996"), "mastercard")
++
++    def test_amex(self):
++        self.assertEqual(card_brand("3782 822463 10005"), "amex")
++        self.assertEqual(card_brand("3400 0000 0000 009"), "amex")
++
++    def test_discover(self):
++        self.assertEqual(card_brand("6011 0000 0000 0004"), "discover")
++        self.assertEqual(card_brand("6500 0000 0000 0002"), "discover")
++        self.assertEqual(card_brand("6440 0000 0000 0004"), "discover")
++        self.assertEqual(card_brand("6490 0000 0000 0006"), "discover")
++
++    def test_hyphens_are_separators(self):
++        self.assertEqual(card_brand("4111-1111-1111-1111"), "visa")
++
++    def test_empty_returns_none(self):
++        self.assertIsNone(card_brand(""))
++
++    def test_failed_luhn_returns_none(self):
++        self.assertIsNone(card_brand("4111 1111 1111 1112"))
++
++    def test_bad_character_returns_none(self):
++        self.assertIsNone(card_brand("4111.1111.1111.1111"))
++        self.assertIsNone(card_brand("4111x11111111111"))
++
++    def test_right_prefix_wrong_length_returns_none(self):
++        # 4-prefix but not a valid visa length
++        self.assertIsNone(card_brand("4222 2222"))
++        # 37-prefix but 16 digits, not 15
++        self.assertIsNone(card_brand("3782 822463 1000 55"))
++
++    def test_rejects_non_string(self):
++        with self.assertRaises(TypeError):
++            card_brand(4111)
++
++
++class IbanValidTest(unittest.TestCase):
++    def test_valid_gb(self):
++        self.assertTrue(is_valid_iban("GB82 WEST 1234 5698 7654 32"))
++
++    def test_lowercase_letters(self):
++        self.assertTrue(is_valid_iban("gb82 west 1234 5698 7654 32"))
++
++    def test_other_separator_invalid(self):
++        self.assertFalse(is_valid_iban("GB82-WEST-1234-5698-7654-32"))
++        self.assertFalse(is_valid_iban("GB82.WEST.1234.5698.7654.32"))
++
++    def test_unknown_country_invalid(self):
++        self.assertFalse(is_valid_iban("ZZ82 WEST 1234 5698 7654 32"))
++
++    def test_wrong_length_invalid(self):
++        self.assertFalse(is_valid_iban("GB8 WEST 1234 5698 7654 32"))
++
++    def test_bad_check_digits_invalid(self):
++        self.assertFalse(is_valid_iban("GB00 WEST 1234 5698 7654 32"))
++
++    def test_rejects_non_string(self):
++        with self.assertRaises(TypeError):
++            is_valid_iban(123456)
++
++
+ if __name__ == "__main__":
+     unittest.main()

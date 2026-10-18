@@ -1,0 +1,175 @@
+ src/signup.ts | 165 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 164 insertions(+), 1 deletion(-)
+
+diff --git a/src/signup.ts b/src/signup.ts
+index 0751a59..016d267 100644
+--- a/src/signup.ts
++++ b/src/signup.ts
+@@ -1,2 +1,165 @@
+-// Sign-up validation. Rules: docs/signup-rules.md
++import { daysInMonth, isLeapYear } from "./dates.ts";
++import type { SignupErrors, SignupInput, SignupResult } from "./types.ts";
++
+ export type { SignupErrors, SignupInput, SignupResult } from "./types.ts";
++
++function isValidEmail(value: string): boolean {
++  if (/\s/.test(value)) return false;
++  const parts = value.split("@");
++  if (parts.length !== 2) return false;
++  const [local, domain] = parts;
++  if (!local || !domain) return false;
++  const labels = domain.split(".");
++  if (labels.length < 2) return false;
++  return labels.every((label) => label.length > 0);
++}
++
++export function validateSignup(input: SignupInput, today: Date): SignupResult {
++  const src =
++    input && typeof input === "object"
++      ? (input as Record<string, unknown>)
++      : {};
++
++  const errors: SignupErrors = {};
++
++  // username
++  let usernameValid = false;
++  let usernameNormalized = "";
++  const rawUsername = src.username;
++  if (typeof rawUsername !== "string") {
++    errors.username = "required";
++  } else {
++    const trimmed = rawUsername.trim();
++    if (trimmed === "") {
++      errors.username = "required";
++    } else if (trimmed.length < 3 || trimmed.length > 20) {
++      errors.username = "length";
++    } else if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(trimmed)) {
++      errors.username = "format";
++    } else {
++      usernameValid = true;
++      usernameNormalized = trimmed.toLowerCase();
++    }
++  }
++
++  // email
++  let emailNormalized = "";
++  const rawEmail = src.email;
++  if (typeof rawEmail !== "string") {
++    errors.email = "required";
++  } else {
++    const trimmed = rawEmail.trim();
++    if (trimmed === "") {
++      errors.email = "required";
++    } else if (!isValidEmail(trimmed)) {
++      errors.email = "format";
++    } else {
++      emailNormalized = trimmed.toLowerCase();
++    }
++  }
++
++  // password
++  const rawPassword = src.password;
++  const passwordIsString = typeof rawPassword === "string";
++  if (!passwordIsString) {
++    errors.password = "required";
++  } else if (rawPassword === "") {
++    errors.password = "required";
++  } else if (rawPassword.length < 8 || rawPassword.length > 64) {
++    errors.password = "length";
++  } else if (!/[A-Za-z]/.test(rawPassword) || !/[0-9]/.test(rawPassword)) {
++    errors.password = "weak";
++  } else if (
++    usernameValid &&
++    rawPassword.toLowerCase().includes(usernameNormalized)
++  ) {
++    errors.password = "contains_username";
++  }
++
++  // confirmPassword
++  const rawConfirm = src.confirmPassword;
++  if (typeof rawConfirm !== "string") {
++    errors.confirmPassword = "required";
++  } else if (rawConfirm === "") {
++    errors.confirmPassword = "required";
++  } else if (passwordIsString && rawConfirm !== rawPassword) {
++    errors.confirmPassword = "mismatch";
++  }
++
++  // birthDate
++  let birthDateNormalized = "";
++  const rawBirth = src.birthDate;
++  if (typeof rawBirth !== "string") {
++    errors.birthDate = "required";
++  } else {
++    const trimmed = rawBirth.trim();
++    if (trimmed === "") {
++      errors.birthDate = "required";
++    } else if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
++      errors.birthDate = "format";
++    } else {
++      const year = Number(trimmed.slice(0, 4));
++      const month = Number(trimmed.slice(5, 7));
++      const day = Number(trimmed.slice(8, 10));
++      const yearOk = year >= 1900;
++      const monthOk = month >= 1 && month <= 12;
++      const dayOk = monthOk && day >= 1 && day <= daysInMonth(year, month);
++      if (!yearOk || !monthOk || !dayOk) {
++        errors.birthDate = "format";
++      } else {
++        const todayY = today.getUTCFullYear();
++        const todayM = today.getUTCMonth();
++        const todayD = today.getUTCDate();
++
++        let isFuture = false;
++        if (year > todayY) isFuture = true;
++        else if (year === todayY) {
++          if (month - 1 > todayM) isFuture = true;
++          else if (month - 1 === todayM && day > todayD) isFuture = true;
++        }
++        if (isFuture) {
++          errors.birthDate = "future";
++        } else {
++          let age = todayY - year;
++          let annivMonth: number;
++          let annivDay: number;
++          if (month === 2 && day === 29) {
++            if (isLeapYear(todayY)) {
++              annivMonth = 1;
++              annivDay = 29;
++            } else {
++              annivMonth = 2;
++              annivDay = 1;
++            }
++          } else {
++            annivMonth = month - 1;
++            annivDay = day;
++          }
++          if (
++            todayM < annivMonth ||
++            (todayM === annivMonth && todayD < annivDay)
++          ) {
++            age -= 1;
++          }
++          if (age < 13) {
++            errors.birthDate = "too_young";
++          } else {
++            birthDateNormalized = trimmed;
++          }
++        }
++      }
++    }
++  }
++
++  if (Object.keys(errors).length === 0) {
++    return {
++      ok: true,
++      value: {
++        username: usernameNormalized,
++        email: emailNormalized,
++        birthDate: birthDateNormalized,
++      },
++    };
++  }
++  return { ok: false, errors };
++}
+\ No newline at end of file

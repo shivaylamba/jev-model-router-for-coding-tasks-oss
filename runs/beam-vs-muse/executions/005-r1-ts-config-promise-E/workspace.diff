@@ -1,0 +1,59 @@
+ src/config.ts | 46 ++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 32 insertions(+), 14 deletions(-)
+
+diff --git a/src/config.ts b/src/config.ts
+index 80b782b..d62e804 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -42,19 +42,37 @@ export function applyDefaults(raw: unknown): Config {
+  * Errors from the file system (for example ENOENT), a SyntaxError for
+  * malformed JSON, or a ConfigError for bad values are passed to the callback.
+  */
+-export function readConfig(path: string, callback: ConfigCallback): void {
+-  readFile(path, "utf8", (err, text) => {
+-    if (err) {
+-      callback(err);
+-      return;
+-    }
+-    let config: Config;
+-    try {
+-      config = applyDefaults(JSON.parse(text));
+-    } catch (parseErr) {
+-      callback(parseErr as Error);
+-      return;
+-    }
+-    callback(null, config);
++export function readConfig(path: string): Promise<Config>;
++export function readConfig(path: string, callback: ConfigCallback): void;
++export function readConfig(path: string, callback?: ConfigCallback): Promise<Config> | void {
++  if (callback) {
++    readFile(path, "utf8", (err, text) => {
++      if (err) {
++        callback(err);
++        return;
++      }
++      let config: Config;
++      try {
++        config = applyDefaults(JSON.parse(text));
++      } catch (parseErr) {
++        callback(parseErr as Error);
++        return;
++      }
++      callback(null, config);
++    });
++    return;
++  }
++  return new Promise<Config>((resolve, reject) => {
++    readFile(path, "utf8", (err, text) => {
++      if (err) {
++        reject(err);
++        return;
++      }
++      try {
++        resolve(applyDefaults(JSON.parse(text)));
++      } catch (e) {
++        reject(e as Error);
++      }
++    });
+   });
+ }

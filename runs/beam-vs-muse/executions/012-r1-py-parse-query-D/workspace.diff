@@ -1,0 +1,113 @@
+ urlbits.py | 102 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 102 insertions(+)
+
+diff --git a/urlbits.py b/urlbits.py
+index aed0ed5..fa1ffc4 100644
+--- a/urlbits.py
++++ b/urlbits.py
+@@ -13,3 +13,105 @@ def split_url(url):
+     base, _, fragment = url.partition("#")
+     base, _, query = base.partition("?")
+     return base, query, fragment
++
++
++def _is_hex(c):
++    return ("0" <= c <= "9") or ("a" <= c <= "f") or ("A" <= c <= "F")
++
++
++def _decode_component(s):
++    # First, "+" becomes a space.
++    s = s.replace("+", " ")
++    # Decode %XX escapes as UTF-8 bytes.
++    out = bytearray()
++    i = 0
++    n = len(s)
++    while i < n:
++        ch = s[i]
++        if ch == "%" and i + 2 < n:
++            a = s[i + 1]
++            b = s[i + 2]
++            if _is_hex(a) and _is_hex(b):
++                out.append(int(a + b, 16))
++                i += 3
++                continue
++        # A "%" not followed by two hex digits is kept as-is.
++        if ch == "%":
++            out.extend(b"%")
++            i += 1
++            continue
++        # literal char -> UTF-8 bytes
++        out.extend(ch.encode("utf-8"))
++        i += 1
++    try:
++        return out.decode("utf-8")
++    except UnicodeDecodeError:
++        return out.decode("utf-8", errors="replace")
++
++
++def parse_query(query):
++    if query.startswith("?"):
++        query = query[1:]
++    result = {}
++    if query == "":
++        return result
++    for seg in query.split("&"):
++        if seg == "":
++            continue
++        if "=" in seg:
++            key, _, value = seg.partition("=")
++        else:
++            key, value = seg, None
++        dkey = _decode_component(key)
++        dval = None if value is None else _decode_component(value)
++        result.setdefault(dkey, []).append(dval)
++    return result
++
++
++_SAFE_ENCODE = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
++
++
++def _encode_component(s):
++    out = []
++    for ch in s:
++        if ch == " ":
++            out.append("+")
++        elif ch in _SAFE_ENCODE:
++            out.append(ch)
++        else:
++            for b in ch.encode("utf-8"):
++                out.append("%{:02X}".format(b))
++    return "".join(out)
++
++
++def _check_value(v):
++    if v is None or isinstance(v, str):
++        return
++    if isinstance(v, list):
++        for item in v:
++            if not (item is None or isinstance(item, str)):
++                raise TypeError("query values must be str or None")
++        return
++    raise TypeError("query values must be str or None")
++
++
++def build_query(params):
++    parts = []
++    for key, value in params.items():
++        ekey = _encode_component(key)
++        _check_value(value)
++        if value is None:
++            parts.append(ekey)
++        elif isinstance(value, str):
++            parts.append(ekey + "=" + _encode_component(value))
++        elif isinstance(value, list):
++            if len(value) == 0:
++                continue
++            for item in value:
++                if item is None:
++                    parts.append(ekey)
++                else:
++                    parts.append(ekey + "=" + _encode_component(item))
++        else:
++            raise TypeError("query values must be str or None")
++    return "&".join(parts)

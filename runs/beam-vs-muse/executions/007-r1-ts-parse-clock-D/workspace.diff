@@ -1,0 +1,42 @@
+ src/clock.ts | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
+
+diff --git a/src/clock.ts b/src/clock.ts
+index e742cdb..5ab9773 100644
+--- a/src/clock.ts
++++ b/src/clock.ts
+@@ -1,6 +1,34 @@
+ export const MINUTES_PER_DAY = 24 * 60;
+ 
+ /** Format minutes after midnight as zero-padded 24-hour "HH:MM". */
++const TWENTY_FOUR_HOUR = /^(\d{1,2}):(\d{2})$/;
++const TWELVE_HOUR = /^(\d{1,2})(?::(\d{2}))?\s?(am|pm)$/i;
++
++export function parseClock(input: string): number {
++  const text = input.trim();
++  const twentyFourMatch = TWENTY_FOUR_HOUR.exec(text);
++  if (twentyFourMatch) {
++    const hour = Number(twentyFourMatch[1]);
++    const minute = Number(twentyFourMatch[2]);
++    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
++      throw new RangeError(`out of range: ${text}`);
++    }
++    return hour * 60 + minute;
++  }
++  const twelveMatch = TWELVE_HOUR.exec(text);
++  if (twelveMatch) {
++    const hour = Number(twelveMatch[1]);
++    const minute = twelveMatch[2] === undefined ? 0 : Number(twelveMatch[2]);
++    const meridiem = twelveMatch[3].toLowerCase();
++    if (hour < 1 || hour > 12 || minute < 0 || minute > 59) {
++      throw new RangeError(`out of range: ${text}`);
++    }
++    const baseHour = meridiem === "am" ? hour % 12 : (hour % 12) + 12;
++    return baseHour * 60 + minute;
++  }
++  throw new SyntaxError(`invalid clock: ${text}`);
++}
++
+ export function formatClock(minutes: number): string {
+   if (!Number.isInteger(minutes) || minutes < 0 || minutes >= MINUTES_PER_DAY) {
+     throw new RangeError(`minutes out of range: ${minutes}`);

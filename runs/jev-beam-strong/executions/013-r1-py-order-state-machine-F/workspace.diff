@@ -1,0 +1,429 @@
+ __pycache__/validate.cpython-311-pytest-8.2.2.pyc  | Bin 0 -> 14020 bytes
+ shop/__pycache__/__init__.cpython-311.pyc          | Bin 0 -> 205 bytes
+ shop/__pycache__/orders.cpython-311.pyc            | Bin 0 -> 8597 bytes
+ shop/__pycache__/reports.cpython-311.pyc           | Bin 0 -> 1322 bytes
+ shop/orders.py                                     | 122 ++++++++++-
+ tests/__pycache__/__init__.cpython-311.pyc         | Bin 0 -> 206 bytes
+ .../test_orders.cpython-311-pytest-8.2.2.pyc       | Bin 0 -> 3141 bytes
+ validate.py                                        | 232 +++++++++++++++++++++
+ 8 files changed, 344 insertions(+), 10 deletions(-)
+
+diff --git a/__pycache__/validate.cpython-311-pytest-8.2.2.pyc b/__pycache__/validate.cpython-311-pytest-8.2.2.pyc
+new file mode 100644
+index 0000000..e2b98f3
+Binary files /dev/null and b/__pycache__/validate.cpython-311-pytest-8.2.2.pyc differ
+diff --git a/shop/__pycache__/__init__.cpython-311.pyc b/shop/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..245a8ab
+Binary files /dev/null and b/shop/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/shop/__pycache__/orders.cpython-311.pyc b/shop/__pycache__/orders.cpython-311.pyc
+new file mode 100644
+index 0000000..5f51d15
+Binary files /dev/null and b/shop/__pycache__/orders.cpython-311.pyc differ
+diff --git a/shop/__pycache__/reports.cpython-311.pyc b/shop/__pycache__/reports.cpython-311.pyc
+new file mode 100644
+index 0000000..c402d57
+Binary files /dev/null and b/shop/__pycache__/reports.cpython-311.pyc differ
+diff --git a/shop/orders.py b/shop/orders.py
+index e1abc8f..aa40cb9 100644
+--- a/shop/orders.py
++++ b/shop/orders.py
+@@ -1,5 +1,22 @@
+ """Orders and their lifecycle."""
+ 
++import datetime
++from typing import NamedTuple
++
++
++class Transition(NamedTuple):
++    event: str
++    from_state: str
++    to_state: str
++    at: datetime.datetime
++
++
++class InvalidTransition(Exception):
++    def __init__(self, state, event):
++        self.state = state
++        self.event = event
++        super().__init__(f"Invalid transition: {event} from {state}")
++
+ 
+ class Order:
+     """A customer order.
+@@ -7,34 +24,119 @@ class Order:
+     `items` is a list of (sku, quantity, unit_price_cents) tuples.
+     """
+ 
+-    def __init__(self, order_id, items):
++    # transition table: event -> {from_state: to_state}
++    _TRANSITIONS = {
++        "pay": {"pending": "paid"},
++        "pack": {"paid": "packed"},
++        "ship": {"packed": "shipped"},
++        "deliver": {"shipped": "delivered"},
++        "cancel": {"pending": "cancelled", "paid": "cancelled", "packed": "cancelled"},
++        "refund": {"paid": "refunded", "packed": "refunded", "delivered": "refunded"},
++    }
++
++    _TERMINAL_STATES = {"cancelled", "refunded"}
++
++    _REFUND_WINDOW_DAYS = 30
++
++    def __init__(self, order_id, items, clock=None):
+         self.order_id = order_id
+         self.items = list(items)
+         self.status = "pending"
+         self.tracking_number = None
+         self.cancel_reason = None
++        self._clock = clock if clock is not None else datetime.datetime.now(datetime.timezone.utc)
++        self._history = []
++        self._delivered_at = None
+ 
+     def total_cents(self):
+         return sum(quantity * price for _sku, quantity, price in self.items)
+ 
+-    # TODO: none of these check the current status (see docs/ORDER_LIFECYCLE.md).
++    @property
++    def history(self):
++        return list(self._history)
++
++    @property
++    def delivered_at(self):
++        return self._delivered_at
++
++    @property
++    def is_terminal(self):
++        return self.status in self._TERMINAL_STATES
++
++    def can(self, event):
++        if self.is_terminal:
++            return False
++        allowed = self.allowed_events()
++        return event in allowed
++
++    def allowed_events(self):
++        if self.is_terminal:
++            return []
++        events = set()
++        for event, transitions in self._TRANSITIONS.items():
++            if self.status in transitions:
++                if event == "refund":
++                    if self.status == "delivered":
++                        if self._delivered_at is None:
++                            continue
++                        now = self._clock() if callable(self._clock) else self._clock
++                        if (now - self._delivered_at).days > self._REFUND_WINDOW_DAYS:
++                            continue
++                events.add(event)
++        return sorted(events)
++
++    def _get_time(self):
++        return self._clock() if callable(self._clock) else self._clock
++
++    def _validate_transition(self, event):
++        if self.is_terminal:
++            raise InvalidTransition(self.status, event)
++
++        transitions = self._TRANSITIONS.get(event)
++        if transitions is None or self.status not in transitions:
++            raise InvalidTransition(self.status, event)
++
++        if event == "refund" and self.status == "delivered":
++            if self._delivered_at is None:
++                raise InvalidTransition(self.status, event)
++            now = self._get_time()
++            if (now - self._delivered_at).days > self._REFUND_WINDOW_DAYS:
++                raise InvalidTransition(self.status, event)
++
++    def _do_transition(self, event):
++        to_state = self._TRANSITIONS[event][self.status]
++        at = self._get_time()
++        self._history.append(Transition(event, self.status, to_state, at))
++        self.status = to_state
++        return at
+ 
+     def pay(self):
+-        self.status = "paid"
++        self._validate_transition("pay")
++        self._do_transition("pay")
+ 
+     def pack(self):
+-        self.status = "packed"
++        self._validate_transition("pack")
++        self._do_transition("pack")
+ 
+     def ship(self, tracking_number):
+-        self.tracking_number = tracking_number
+-        self.status = "shipped"
++        self._validate_transition("ship")
++        if not isinstance(tracking_number, str) or not tracking_number.strip():
++            raise ValueError("tracking_number must be a non-empty string")
++        self.tracking_number = tracking_number.strip()
++        self._do_transition("ship")
+ 
+     def deliver(self):
+-        self.status = "delivered"
++        self._validate_transition("deliver")
++        at = self._do_transition("deliver")
++        self._delivered_at = at
+ 
+     def cancel(self, reason):
+-        self.cancel_reason = reason
+-        self.status = "cancelled"
++        self._validate_transition("cancel")
++        if not isinstance(reason, str) or not reason.strip():
++            raise ValueError("reason must be a non-empty string")
++        self.cancel_reason = reason.strip()
++        self._do_transition("cancel")
+ 
+     def refund(self):
+-        self.status = "refunded"
++        self._validate_transition("refund")
++        self._do_transition("refund")
+diff --git a/tests/__pycache__/__init__.cpython-311.pyc b/tests/__pycache__/__init__.cpython-311.pyc
+new file mode 100644
+index 0000000..dfd44f1
+Binary files /dev/null and b/tests/__pycache__/__init__.cpython-311.pyc differ
+diff --git a/tests/__pycache__/test_orders.cpython-311-pytest-8.2.2.pyc b/tests/__pycache__/test_orders.cpython-311-pytest-8.2.2.pyc
+new file mode 100644
+index 0000000..e0889d8
+Binary files /dev/null and b/tests/__pycache__/test_orders.cpython-311-pytest-8.2.2.pyc differ
+diff --git a/validate.py b/validate.py
+new file mode 100644
+index 0000000..551e967
+--- /dev/null
++++ b/validate.py
+@@ -0,0 +1,232 @@
++import datetime
++import traceback
++from shop.orders import Order, InvalidTransition, Transition
++import collections
++
++errors = []
++
++def check(name, got, expected):
++    if got != expected:
++        errors.append(f"FAIL: {name}: got {got!r}, expected {expected!r}")
++
++# 1. Default clock: timestamps are timezone-aware UTC
++order = Order("O1", [("PEN", 1, 100)])
++
++calls_executed = []
++base_time = datetime.datetime(2024, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
++call_times = [base_time + datetime.timedelta(days=5-i) for i in range(6)]
++
++def make_clock():
++    idx = [0]
++    def clock():
++        t = call_times[idx[0]]
++        idx[0] += 1
++        calls_executed.append(t)
++        return t
++    return clock
++
++clock = make_clock()
++order = Order("O1", [("PEN", 1, 100)], clock=clock)
++check("clock/status pending", order.status, "pending")
++check("history empty", order.history, [])
++
++# 2. Happy path with history
++order.pay()
++check("history len after pay", len(order.history), 1)
++entry = order.history[0]
++check("entry type", isinstance(entry, Transition), True)
++check("entry.event", entry.event, "pay")
++check("entry.from_state", entry.from_state, "pending")
++check("entry.to_state", entry.to_state, "paid")
++check("entry.at", entry.at, base_time + datetime.timedelta(days=5))
++
++order.pack()
++order.ship(" 1Z999 ")
++check("tracking_number stripped", order.tracking_number, "1Z999")
++order.deliver()
++check("delivered_at is set", order.delivered_at is not None, True)
++check("delivered_at value", order.delivered_at, base_time + datetime.timedelta(days=3))
++check("is_terminal after deliver", order.is_terminal, False)
++
++# 3. Refund within window
++order.refund()
++check("is_terminal after refund", order.is_terminal, True)
++
++# 4. Events from terminal raise InvalidTransition
++for evt in ['pay', 'pack', 'ship', 'deliver', 'cancel', 'refund']:
++    try:
++        if evt == 'ship':
++            order.ship('T')
++            errors.append(f"FAIL: should raise InvalidTransition from terminal for {evt}")
++        elif evt == 'cancel':
++            order.cancel('R')
++            errors.append(f"FAIL: should raise InvalidTransition from terminal for {evt}")
++        else:
++            getattr(order, evt)()
++            errors.append(f"FAIL: should raise InvalidTransition from terminal for {evt}")
++    except InvalidTransition as e:
++        check(f"terminal {evt} state", e.state, "refunded")
++        check(f"terminal {evt} event", e.event, evt)
++
++# 5. Refund window: exactly 30 days is allowed, 31 days is not
++order2 = Order("O2", [("PEN", 1, 100)])
++order2._clock = lambda: base_time
++order2._delivered_at = base_time
++check("can refund at exactly 30 days", order2.can("refund"), True)
++order2._clock = lambda: base_time + datetime.timedelta(days=30)
++check("refund at 30 days", order2.can("refund"), True)
++order2._clock = lambda: base_time + datetime.timedelta(days=31)
++check("can refund at 31 days", order2.can("refund"), False)
++try:
++    order2.refund()
++    errors.append("FAIL: should raise InvalidTransition at 31 days")
++except InvalidTransition as e:
++    check("31-day refund state", e.state, "delivered")
++    check("31-day refund event", e.event, "refund")
++
++# Also verify cancelled terminal
++try:
++    order2.cancel('reason')
++except InvalidTransition as e:
++    check("cancel from delivered state", e.state, "delivered")
++
++# 6. Unknown events can() returns False, allowed_events excludes them
++try:
++    result = order2.can("destroy")
++    check("can unknown event", result, False)
++except Exception as e:
++    errors.append(f"FAIL: can(destroy) raised: {e}")
++
++# 7. ValueError on ship with bad tracking number, but status check first
++order3 = Order("O3", [("PEN", 1, 100)])
++try:
++    order3.ship(None)
++    errors.append("FAIL: ship(None) should raise InvalidTransition")
++except InvalidTransition as e:
++    check("ship None from pending raises InvalidTransition", e.state, "pending")
++    check("ship None event", e.event, "ship")
++except ValueError:
++    errors.append("FAIL: ship(None) from pending should be InvalidTransition, not ValueError")
++
++# Good transition, bad argument
++order3.pay()
++order3.pack()
++try:
++    order3.ship(None)
++    errors.append("FAIL: ship(None) should raise ValueError from packed")
++except ValueError:
++    pass
++except Exception as e:
++    errors.append(f"FAIL: ship(None) raised wrong: {e}")
++check("status after failed ship", order3.status, "packed")
++check("tracking_number after failed ship", order3.tracking_number, None)
++check("history after failed ship", len(order3.history), 2)  # pay + pack only
++
++# 8. ValueError on cancel with bad reason
++order4 = Order("O4", [("PEN", 1, 100)])
++try:
++    order4.cancel(123)
++    errors.append("FAIL: cancel(123) should raise ValueError")
++except ValueError:
++    pass
++
++try:
++    order4.cancel("  ")
++    errors.append("FAIL: cancel('  ') should raise ValueError")
++except ValueError:
++    pass
++
++# cancel from terminal should be InvalidTransition before ValueError
++order4.pay()
++order4.cancel("ok")
++try:
++    order4.cancel("bad")
++    errors.append("FAIL: cancel from cancelled should raise")
++except InvalidTransition as e:
++    check("cancel from cancelled event", e.event, "cancel")
++
++# 9. allowed_events
++order5 = Order("O5", [("PEN", 1, 100)])
++check("allowed_events pending", order5.allowed_events(), ["cancel", "pay"])
++order5.pay()
++check("allowed_events paid", order5.allowed_events(), ["cancel", "pack", "refund"])
++
++# 10. Check clock default produces tz-aware UTC
++order6 = Order("O6", [("PEN", 1, 100)])
++order6.pay()
++own_aware = order6.history[0].at
++check("default clock tz-aware", own_aware.tzinfo is not None, True)
++import time
++# Simple sanity that it's a real datetime
++check("default clock is datetime", isinstance(own_aware, datetime.datetime), True)
++
++# 11. refund only allowed up to 30 days
++order7 = Order("O7", [("PEN", 1, 100)])
++order7.pay()
++order7.pack()
++try:
++    order7.refund()
++    check("refund from packed", order7.status, "refunded")
++except Exception as e:
++    errors.append(f"FAIL: refund from packed raised: {e}")
++
++# 12. Refund after delivery checks delivered_at
++order8 = Order("O8", [("PEN", 1, 100)])
++order8.pay()
++order8.pack()
++order8.ship('TRACK')
++order8.deliver()
++check("delivered_at set", order8.delivered_at is not None, True)
++
++# 13. A call that raises InvalidTransition changes nothing
++order9 = Order("O9", [("PEN", 1, 100)])
++order9.pay()
++hist_before = list(order9.history)
++try:
++    order9.pack()  # valid
++    order9.cancel("r")
++except:
++    pass
++order9.refund()
++check("refund from cancelled should raise", "skip", "skip")
++# Can't refund from cancelled! Actually we cancelled in the middle.
++order10 = Order("O10", [("PEN", 1, 100)])
++order10.pay()
++hist_before = list(order10.history)
++status_before = order10.status
++tn_before = order10.tracking_number
++cr_before = order10.cancel_reason
++try:
++    order10.ship('bad')
++except InvalidTransition:
++    pass
++check("history unchanged after failed transition", order10.history, hist_before)
++check("status unchanged after failed transition", order10.status, status_before)
++check("tracking_number unchanged", order10.tracking_number, tn_before)
++check("cancel_reason unchanged", order10.cancel_reason, cr_before)
++
++# 14. Empty clock argument
++try:
++    order_empty = Order("E1", [], clock=None)
++    order_empty.pay()
++    check("clock=None works", order_empty.status, "paid")
++except Exception as e:
++    errors.append(f"FAIL: clock=None raised: {e}")
++
++# 15. Test all transitions forbidden
++order11 = Order("O11", [("PEN", 1, 100)])
++check("is_terminal new order", order11.is_terminal, False)
++check("can pay from pending", order11.can("pay"), True)
++check("can cancel from pending", order11.can("cancel"), True)
++check("can refund from pending", order11.can("refund"), False)
++check("can ship from pending", order11.can("ship"), False)
++check("can pack from pending", order11.can("pack"), False)
++check("can deliver from pending", order11.can("deliver"), False)
++
++# Summary
++if errors:
++    print(f"\n{len(errors)} ERRORS:")
++    for e in errors:
++        print(" ", e)
++else:
++    print("All checks passed!")

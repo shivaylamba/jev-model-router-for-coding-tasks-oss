@@ -1,0 +1,26 @@
+ textstats.py | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/textstats.py b/textstats.py
+index 083c1e0..e1f4a9d 100644
+--- a/textstats.py
++++ b/textstats.py
+@@ -1 +1,18 @@
+ """Text statistics."""
++
++import re
++
++_WORD_RE = re.compile(r"(?:[^\W_]|')+")
++
++
++def word_counts(text):
++    """Return a dict mapping each lowercase word to its occurrence count.
++
++    Words are maximal runs of letters, digits or apostrophes; any other
++    character separates words.
++    """
++    counts = {}
++    for word in _WORD_RE.findall(text):
++        word = word.lower()
++        counts[word] = counts.get(word, 0) + 1
++    return counts

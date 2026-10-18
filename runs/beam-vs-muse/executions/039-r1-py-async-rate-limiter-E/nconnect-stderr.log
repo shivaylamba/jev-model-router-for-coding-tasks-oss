@@ -1,0 +1,6 @@
+NConnect ▸ Routing Claude Code → Nebius Token Factory (Muse Spark Open). Not Anthropic.
+[nconnect proxy] daemon: http://127.0.0.1:7897
+[nconnect proxy] session: http://127.0.0.1:7897/session/nconnect-wlL_SnYDlH_n2jzaCj9QTlBrOImlq2m4
+[nconnect claude] model: nebius-muse-spark-open
+[claude-code:unrecognized_model] {"model":"nebius-muse-spark-open[1m]","query_source":"sdk"}
+[nconnect cost] session total: $0.2603 (184,308 in incl 170,624 cached, 7,034 out)

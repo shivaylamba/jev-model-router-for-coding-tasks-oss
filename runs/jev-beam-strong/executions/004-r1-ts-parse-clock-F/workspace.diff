@@ -1,0 +1,53 @@
+ src/clock.ts | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
+
+diff --git a/src/clock.ts b/src/clock.ts
+index e742cdb..905c8b6 100644
+--- a/src/clock.ts
++++ b/src/clock.ts
+@@ -9,3 +9,45 @@ export function formatClock(minutes: number): string {
+   const mins = minutes % 60;
+   return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+ }
++
++const H24_FORMAT = /^(\d{1,2}):(\d{2})$/;
++const H12_FORMAT = /^(\d{1,2})(?::(\d{2}))?\s*([ap]m)$/i;
++
++/**
++ * Parse shift-start text into minutes after midnight.
++ *
++ * Accepts 24-hour "H:MM"/"HH:MM" and 12-hour "9 Am", "7pm", "12:30 pm".
++ * Surrounding whitespace is ignored. Throws a RangeError for valid-shaped
++ * text with an out-of-range value, and a SyntaxError for anything else.
++ */
++export function parseClock(input: string): number {
++  const text = input.trim();
++
++  const twentyFour = H24_FORMAT.exec(text);
++  if (twentyFour !== null) {
++    const hours = Number(twentyFour[1]);
++    const minutes = Number(twentyFour[2]);
++    if (minutes > 59 || hours > 23) {
++      throw new RangeError(`time out of range: ${text}`);
++    }
++    return hours * 60 + minutes;
++  }
++
++  const twelveHour = H12_FORMAT.exec(text);
++  if (twelveHour !== null) {
++    let hours = Number(twelveHour[1]);
++    const minutes = twelveHour[2] === undefined ? 0 : Number(twelveHour[2]);
++    if (minutes > 59 || hours < 1 || hours > 12) {
++      throw new RangeError(`time out of range: ${text}`);
++    }
++    const isAm = twelveHour[3].toLowerCase() === "am";
++    if (isAm) {
++      if (hours === 12) hours = 0;
++    } else if (hours < 12) {
++      hours += 12;
++    }
++    return hours * 60 + minutes;
++  }
++
++  throw new SyntaxError(`unrecognized time format: ${JSON.stringify(text)}`);
++}

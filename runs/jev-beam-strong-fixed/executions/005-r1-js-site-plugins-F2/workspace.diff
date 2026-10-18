@@ -1,0 +1,128 @@
+ src/site.js | 112 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 105 insertions(+), 7 deletions(-)
+
+diff --git a/src/site.js b/src/site.js
+index 410771c..38d7cad 100644
+--- a/src/site.js
++++ b/src/site.js
+@@ -6,15 +6,113 @@ export function outputPath(sourcePath) {
+   return sourcePath.replace(/\.md$/, "") + ".html";
+ }
+ 
++/**
++ * Error thrown when a plugin hook fails.
++ */
++export class PluginError extends Error {
++  constructor(plugin, hook, cause) {
++    super(`Plugin "${plugin}" failed in ${hook}: ${cause.message}`);
++    this.plugin = plugin;
++    this.hook = hook;
++    this.cause = cause;
++  }
++}
++
++/**
++ * Create a site builder with plugin support.
++ */
++export function createSite({ layout = defaultLayout } = {}) {
++  const plugins = [];
++
++  function use(plugin) {
++    if (typeof plugin !== "object" || plugin === null) {
++      throw new TypeError("Plugin must be an object");
++    }
++    if (typeof plugin.name !== "string" || plugin.name.length === 0) {
++      throw new TypeError("Plugin name must be a non-empty string");
++    }
++    for (const hook of ["beforeRender", "afterRender", "onComplete"]) {
++      if (hook in plugin && typeof plugin[hook] !== "function") {
++        throw new TypeError(`Plugin "${plugin.name}" hook "${hook}" must be a function`);
++      }
++    }
++    if (plugins.some((p) => p.name === plugin.name)) {
++      throw new Error(`Plugin "${plugin.name}" is already registered`);
++    }
++    plugins.push(plugin);
++    return this;
++  }
++
++  async function build(pages) {
++    const outputs = new Map();
++    for (const page of pages) {
++      let currentPage = { ...page };
++      for (const plugin of plugins) {
++        if (plugin.beforeRender) {
++          try {
++            const result = await plugin.beforeRender(currentPage);
++            if (result !== undefined) {
++              if (typeof result !== "object" || result === null) {
++                throw new TypeError(
++                  `beforeRender must return undefined or an object, got ${typeof result}`,
++                );
++              }
++              currentPage = result;
++            }
++          } catch (cause) {
++            throw new PluginError(plugin.name, "beforeRender", cause);
++          }
++        }
++      }
++
++      const content = renderMarkdown(currentPage.body);
++      let html = layout({
++        title: currentPage.title,
++        content,
++        path: currentPage.path,
++      });
++
++      for (const plugin of plugins) {
++        if (plugin.afterRender) {
++          try {
++            const result = await plugin.afterRender(html, currentPage);
++            if (result !== undefined) {
++              if (typeof result !== "string") {
++                throw new TypeError(
++                  `afterRender must return undefined or a string, got ${typeof result}`,
++                );
++              }
++              html = result;
++            }
++          } catch (cause) {
++            throw new PluginError(plugin.name, "afterRender", cause);
++          }
++        }
++      }
++
++      outputs.set(outputPath(currentPage.path), html);
++    }
++
++    for (const plugin of plugins) {
++      if (plugin.onComplete) {
++        try {
++          await plugin.onComplete(outputs);
++        } catch (cause) {
++          throw new PluginError(plugin.name, "onComplete", cause);
++        }
++      }
++    }
++
++    return outputs;
++  }
++
++  return { use, build };
++}
++
+ /**
+  * Render every page. Pages are { path, title, body }; the result maps each
+  * output path to its HTML, in page order.
+  */
+-export async function buildSite(pages, { layout = defaultLayout } = {}) {
+-  const outputs = new Map();
+-  for (const page of pages) {
+-    const content = renderMarkdown(page.body);
+-    outputs.set(outputPath(page.path), layout({ title: page.title, content, path: page.path }));
+-  }
+-  return outputs;
++export async function buildSite(pages, options) {
++  return createSite(options).build(pages);
+ }

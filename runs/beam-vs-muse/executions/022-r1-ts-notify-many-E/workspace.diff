@@ -1,0 +1,56 @@
+ src/notifier.ts | 41 ++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 34 insertions(+), 7 deletions(-)
+
+diff --git a/src/notifier.ts b/src/notifier.ts
+index ec3c84d..a277583 100644
+--- a/src/notifier.ts
++++ b/src/notifier.ts
+@@ -19,14 +19,41 @@ export class Notifier {
+   }
+ 
+   /**
+-   * Send `message` to one recipient. The recipient is trimmed before sending.
+-   * Throws TypeError if the recipient is empty or only whitespace.
++   * Send `message` to recipient(s). Each recipient is trimmed before sending.
++   * Throws TypeError if any recipient is empty or only whitespace (before sending anything).
++   * Duplicates (case-insensitive after trimming) are only sent once, keeping first spelling.
++   * Returns number of messages actually sent.
+    */
+-  notify(recipient: string, message: string): void {
+-    const to = recipient.trim();
+-    if (to === "") {
+-      throw new TypeError("recipient must be a non-empty string");
++  notify(recipients: string | readonly string[], message: string): number {
++    if (typeof recipients === "string") {
++      const to = recipients.trim();
++      if (to === "") {
++        throw new TypeError("recipient must be a non-empty string");
++      }
++      this.transport.send(to, message);
++      return 1;
+     }
+-    this.transport.send(to, message);
++
++    // Validate all first to avoid partial sends
++    const trimmed: string[] = [];
++    for (const r of recipients) {
++      const to = r.trim();
++      if (to === "") {
++        throw new TypeError("recipient must be a non-empty string");
++      }
++      trimmed.push(to);
++    }
++
++    // Deduplicate case-insensitively, keep first spelling
++    const seen = new Set<string>();
++    let count = 0;
++    for (const to of trimmed) {
++      const key = to.toLowerCase();
++      if (seen.has(key)) continue;
++      seen.add(key);
++      this.transport.send(to, message);
++      count++;
++    }
++    return count;
+   }
+ }

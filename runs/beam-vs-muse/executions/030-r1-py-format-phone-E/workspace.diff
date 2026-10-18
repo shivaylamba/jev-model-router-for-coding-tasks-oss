@@ -1,0 +1,34 @@
+ contacts.py | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/contacts.py b/contacts.py
+index f36e8f9..165811b 100644
+--- a/contacts.py
++++ b/contacts.py
+@@ -10,3 +10,26 @@ def format_name(first, last):
+ def normalize_email(email):
+     """Trim and lowercase an e-mail address."""
+     return email.strip().lower()
++
++def format_us_phone(raw):
++    allowed_ignore = set(" ()-+.")
++    digits = []
++    for ch in raw:
++        if ch.isdigit():
++            digits.append(ch)
++        elif ch in allowed_ignore:
++            continue
++        else:
++            raise ValueError(f"invalid character: {ch!r}")
++    s = "".join(digits)
++    if len(s) == 11:
++        if s[0] != "1":
++            raise ValueError("11-digit number must start with 1")
++        s = s[1:]
++    elif len(s) != 10:
++        raise ValueError("phone number must have 10 digits (or 11 starting with 1)")
++    if s[0] in "01":
++        raise ValueError("area code may not start with 0 or 1")
++    if s[3] in "01":
++        raise ValueError("exchange may not start with 0 or 1")
++    return f"({s[0:3]}) {s[3:6]}-{s[6:10]}"

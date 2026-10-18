@@ -1,0 +1,170 @@
+ funcutil.py                | 46 ++++++++++++++++++++++
+ scratchpad/test_memoize.py | 98 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 144 insertions(+)
+
+diff --git a/funcutil.py b/funcutil.py
+index f1ca4e7..d8f76f0 100644
+--- a/funcutil.py
++++ b/funcutil.py
+@@ -1,6 +1,10 @@
+ """Function decorators."""
+ 
+ import functools
++from collections import namedtuple
++
++
++CacheInfo = namedtuple("CacheInfo", ("hits", "misses", "size"))
+ 
+ 
+ def once(func):
+@@ -14,3 +18,45 @@ def once(func):
+         return result[0]
+ 
+     return wrapper
++
++
++def _build_wrapper(func):
++    cache = {}
++    hits = 0
++    misses = 0
++
++    @functools.wraps(func)
++    def wrapper(*args, **kwargs):
++        nonlocal hits, misses
++        key = (args, tuple(sorted(kwargs.items())))
++
++        if key in cache:
++            hits += 1
++            return cache[key]
++
++        misses += 1
++        result = func(*args, **kwargs)
++        cache[key] = result
++        return result
++
++    def cache_info():
++        return CacheInfo(hits, misses, len(cache))
++
++    def cache_clear():
++        nonlocal hits, misses
++        cache.clear()
++        hits = 0
++        misses = 0
++
++    wrapper.cache_info = cache_info
++    wrapper.cache_clear = cache_clear
++    return wrapper
++
++
++def memoize(func=None):
++    """Cache the return value of *func* per distinct set of arguments."""
++    if func is None:
++        def decorator(f):
++            return _build_wrapper(f)
++        return decorator
++    return _build_wrapper(func)
+diff --git a/scratchpad/test_memoize.py b/scratchpad/test_memoize.py
+new file mode 100644
+index 0000000..6b4baba
+--- /dev/null
++++ b/scratchpad/test_memoize.py
+@@ -0,0 +1,98 @@
++import unittest, sys
++sys.path.insert(0,'.')
++from funcutil import memoize, CacheInfo
++
++class T(unittest.TestCase):
++    def test_basic(self):
++        calls=[]
++        @memoize
++        def f(x,y=0):
++            calls.append((x,y))
++            return x+y
++        self.assertEqual(f(1),1)
++        self.assertEqual(f(1),1)
++        self.assertEqual(calls,[(1,0)])
++        self.assertEqual(f(1,2),3)
++        self.assertEqual(f(1,y=2),3)
++        self.assertEqual(len(calls),2)
++    def test_kw_order(self):
++        calls=[]
++        @memoize
++        def g(a=0,b=0):
++            calls.append((a,b)); return (a,b)
++        self.assertEqual(g(a=1,b=2), (1,2))
++        self.assertEqual(g(b=2,a=1), (1,2))
++        self.assertEqual(len(calls),1)
++    def test_none(self):
++        calls=[]
++        @memoize
++        def h(x):
++            calls.append(x); return None
++        self.assertIs(h(1),None)
++        self.assertIs(h(1),None)
++        self.assertEqual(len(calls),1)
++        info=h.cache_info()
++        self.assertEqual(info.hits,1)
++        self.assertEqual(info.misses,1)
++        self.assertEqual(info.size,1)
++    def test_exc(self):
++        calls=[]
++        @memoize
++        def bad(x):
++            calls.append(x); raise ValueError("boom")
++        with self.assertRaises(ValueError):
++            bad(1)
++        with self.assertRaises(ValueError):
++            bad(1)
++        self.assertEqual(len(calls),2)
++        self.assertEqual(bad.cache_info().misses,2)
++        self.assertEqual(bad.cache_info().size,0)
++    def test_unhashable(self):
++        calls=[]
++        @memoize
++        def u(x):
++            calls.append(x); return x
++        with self.assertRaises(TypeError):
++            u([1,2])
++        self.assertEqual(calls,[])
++    def test_names(self):
++        @memoize
++        def docfunc(x):
++            """doc"""
++            return x
++        self.assertEqual(docfunc.__name__,"docfunc")
++        self.assertEqual(docfunc.__doc__,"doc")
++    def test_clear(self):
++        @memoize
++        def c(x):
++            return x*2
++        c(1); c(2); c(1)
++        c.cache_clear()
++        info=c.cache_info()
++        self.assertEqual((info.hits,info.misses,info.size),(0,0,0))
++    def test_separate(self):
++        @memoize
++        def f(x): return x
++        @memoize
++        def g(x): return x
++        f(1); g(1)
++        self.assertEqual(f.cache_info().size,1)
++        self.assertEqual(g.cache_info().size,1)
++    def test_positional_keyword_distinct(self):
++        calls=[]
++        @memoize
++        def add(a,b):
++            calls.append((a,b)); return a+b
++        add(1,2)
++        add(1,b=2)
++        self.assertEqual(add.cache_info().size,2)
++        self.assertEqual(len(calls),2)
++    def test_callstyle(self):
++        @memoize()
++        def f(x): return x+1
++        self.assertEqual(f(2),3)
++
++if __name__=="__main__":
++    unittest.main(argv=["x","-v"],exit=False)
++PY
++python3 /private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/njb-jg3jyvkk/workspace/scratchpad/test_memoize.py
+\ No newline at end of file

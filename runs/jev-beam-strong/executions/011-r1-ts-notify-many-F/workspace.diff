@@ -1,0 +1,103 @@
+ src/notifier.ts       | 40 +++++++++++++++++++++++++++++++++-------
+ test/notifier.test.ts | 39 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 72 insertions(+), 7 deletions(-)
+
+diff --git a/src/notifier.ts b/src/notifier.ts
+index ec3c84d..964718f 100644
+--- a/src/notifier.ts
++++ b/src/notifier.ts
+@@ -19,14 +19,40 @@ export class Notifier {
+   }
+ 
+   /**
+-   * Send `message` to one recipient. The recipient is trimmed before sending.
+-   * Throws TypeError if the recipient is empty or only whitespace.
++   * Send `message` to one recipient or to each recipient in a list.
++   *
++   * A `string` recipient is trimmed and sent once. When given an array, each
++   * recipient is trimmed and sent in the order given. Duplicates are sent only
++   * once: two recipients are the same if their trimmed values match
++   * case-insensitively, and the first spelling is the one sent.
++   *
++   * Returns how many messages were actually sent (1 for a single string, the
++   * number of unique recipients for an array, 0 for an empty array).
++   *
++   * Throws TypeError if any recipient is empty or only whitespace. Validation
++   * happens before anything is sent, so a bad list never results in a partial
++   * send.
+    */
+-  notify(recipient: string, message: string): void {
+-    const to = recipient.trim();
+-    if (to === "") {
+-      throw new TypeError("recipient must be a non-empty string");
++  notify(recipients: string | readonly string[], message: string): number {
++    const list = Array.isArray(recipients) ? recipients : [recipients];
++
++    const toSend: string[] = [];
++    const seen = new Set<string>();
++    for (const raw of list) {
++      const to = raw.trim();
++      if (to === "") {
++        throw new TypeError("recipient must be a non-empty string");
++      }
++      const key = to.toLowerCase();
++      if (!seen.has(key)) {
++        seen.add(key);
++        toSend.push(to);
++      }
++    }
++
++    for (const to of toSend) {
++      this.transport.send(to, message);
+     }
+-    this.transport.send(to, message);
++    return toSend.length;
+   }
+ }
+diff --git a/test/notifier.test.ts b/test/notifier.test.ts
+index 90b96c6..70c82e6 100644
+--- a/test/notifier.test.ts
++++ b/test/notifier.test.ts
+@@ -29,3 +29,42 @@ test("digest goes to every subscriber", () => {
+   assert.equal(transport.sent.length, 2);
+   assert.equal(transport.sent[1].message, "- one");
+ });
++
++test("notify accepts an array, sends in order, returns count", () => {
++  const transport = new MemoryTransport();
++  const notifier = new Notifier(transport);
++  const count = notifier.notify(["c@example.com", "a@example.com", "  b@example.com "], "hi");
++  assert.equal(count, 3);
++  assert.deepEqual(transport.sent, [
++    { recipient: "c@example.com", message: "hi" },
++    { recipient: "a@example.com", message: "hi" },
++    { recipient: "b@example.com", message: "hi" },
++  ]);
++});
++
++test("notify dedupes recipients case-insensitively, first spelling wins, returns unique count", () => {
++  const transport = new MemoryTransport();
++  const notifier = new Notifier(transport);
++  const count = notifier.notify(["A@x.com", "a@x.com", " a@X.com "], "hi");
++  assert.equal(count, 1);
++  assert.deepEqual(transport.sent, [{ recipient: "A@x.com", message: "hi" }]);
++});
++
++test("notify of an empty array sends nothing and returns 0", () => {
++  const transport = new MemoryTransport();
++  const notifier = new Notifier(transport);
++  assert.equal(notifier.notify([], "hi"), 0);
++  assert.equal(transport.sent.length, 0);
++});
++
++test("notify throws before sending anything if any recipient is blank", () => {
++  const transport = new MemoryTransport();
++  const notifier = new Notifier(transport);
++  assert.throws(() => notifier.notify(["ok@x.com", "  "], "hi"), TypeError);
++  assert.equal(transport.sent.length, 0);
++});
++
++test("notify single string returns 1", () => {
++  const transport = new MemoryTransport();
++  assert.equal(new Notifier(transport).notify("ops@example.com", "hi"), 1);
++});

@@ -1,0 +1,39 @@
+ contacts.py | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
+
+diff --git a/contacts.py b/contacts.py
+index f36e8f9..22364a1 100644
+--- a/contacts.py
++++ b/contacts.py
+@@ -10,3 +10,31 @@ def format_name(first, last):
+ def normalize_email(email):
+     """Trim and lowercase an e-mail address."""
+     return email.strip().lower()
++
++
++def format_us_phone(raw):
++    """Return a user-typed US phone number formatted as (415) 555-0123.
++
++    Spaces, parentheses, hyphens, dots and a leading ``+`` are ignored; any
++    other non-digit character raises :class:`ValueError`. The remaining digits
++    must be exactly 10, or 11 beginning with the US country code ``1`` (which
++    is dropped). The area code and exchange must not begin with 0 or 1.
++    """
++    digits = []
++    for ch in raw:
++        if ch.isdigit():
++            digits.append(ch)
++        elif ch in " ()-.+":
++            continue
++        else:
++            raise ValueError(f"invalid phone number: {raw!r}")
++
++    s = "".join(digits)
++    if len(s) == 11 and s[0] == "1":
++        s = s[1:]
++    if len(s) != 10:
++        raise ValueError(f"invalid phone number: {raw!r}")
++    if s[0] in "01" or s[3] in "01":
++        raise ValueError(f"invalid area/exchange code: {raw!r}")
++
++    return f"({s[:3]}) {s[3:6]}-{s[6:]}"

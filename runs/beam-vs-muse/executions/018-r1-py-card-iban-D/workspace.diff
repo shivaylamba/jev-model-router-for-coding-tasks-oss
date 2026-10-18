@@ -1,0 +1,122 @@
+ payment_checks.py | 105 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 104 insertions(+), 1 deletion(-)
+
+diff --git a/payment_checks.py b/payment_checks.py
+index 8cf49c1..449f4c0 100644
+--- a/payment_checks.py
++++ b/payment_checks.py
+@@ -1,6 +1,8 @@
+ """Card and bank-account helpers for the checkout service."""
+ 
+-from iban_countries import IBAN_LENGTHS  # noqa: F401  (used by the IBAN check)
++import string
++
++from iban_countries import IBAN_LENGTHS
+ 
+ 
+ def strip_separators(text, separators=" -"):
+@@ -17,3 +19,104 @@ def mask_card(number):
+     if len(digits) < 4 or not digits.isdigit():
+         raise ValueError("not a card number")
+     return "*" * (len(digits) - 4) + digits[-4:]
++
++
++def _luhn_valid(digits):
++    """Return True if `digits` (a string of digits) passes the Luhn check."""
++    if not digits or not digits.isdigit():
++        return False
++    total = 0
++    for index, char in enumerate(reversed(digits)):
++        value = int(char)
++        if index % 2 == 1:
++            value *= 2
++            if value > 9:
++                value -= 9
++        total += value
++    return total % 10 == 0
++
++
++def card_brand(number):
++    """Return the card brand for a number, or None if it is not a valid card."""
++    if not isinstance(number, str):
++        raise TypeError("number must be a str")
++    if number == "":
++        return None
++
++    for ch in number:
++        if ch not in " -" and not (ch in string.digits):
++            return None
++
++    digits = strip_separators(number, " -")
++    if digits == "" or not (digits.isascii() and digits.isdigit()):
++        return None
++    if not _luhn_valid(digits):
++        return None
++
++    length = len(digits)
++
++    if length == 15 and (digits.startswith("34") or digits.startswith("37")):
++        return "amex"
++    if digits.startswith("4") and length in (13, 16, 19):
++        return "visa"
++    if length == 16:
++        first_two = int(digits[:2])
++        first_four = int(digits[:4])
++        if 51 <= first_two <= 55 or 2221 <= first_four <= 2720:
++            return "mastercard"
++    if length in (16, 19):
++        if digits.startswith("6011"):
++            return "discover"
++        if digits.startswith("65"):
++            return "discover"
++        if length >= 3:
++            try:
++                first_three = int(digits[:3])
++            except ValueError:
++                first_three = -1
++            if 644 <= first_three <= 649:
++                return "discover"
++
++    return None
++
++
++def is_valid_iban(iban):
++    """Return True if `iban` is a valid IBAN, False otherwise."""
++    if not isinstance(iban, str):
++        raise TypeError("iban must be a str")
++
++    cleaned = iban.replace(" ", "")
++    if len(cleaned) < 4:
++        return False
++
++    country_code = cleaned[:2]
++    check_digits = cleaned[2:4]
++    rest = cleaned[4:]
++
++    if len(country_code) != 2 or not country_code.isascii() or not all(c in string.ascii_letters for c in country_code):
++        return False
++    if len(check_digits) != 2 or not check_digits.isascii() or not all(c in string.digits for c in check_digits):
++        return False
++    if not rest.isascii():
++        return False
++    for ch in rest:
++        if not (ch in string.ascii_letters or ch in string.digits):
++            return False
++
++    country = country_code.upper()
++    if country not in IBAN_LENGTHS:
++        return False
++    if len(cleaned) != IBAN_LENGTHS[country]:
++        return False
++
++    rearranged = cleaned[4:] + cleaned[:4]
++    converted = []
++    for ch in rearranged:
++        if ch in string.ascii_letters:
++            converted.append(str(ord(ch.upper()) - ord("A") + 10))
++        else:
++            converted.append(ch)
++    numeric = "".join(converted)
++    if not numeric.isdigit():
++        return False
++    return int(numeric) % 97 == 1

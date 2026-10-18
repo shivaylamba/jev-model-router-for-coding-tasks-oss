@@ -1,0 +1,6 @@
+NConnect ▸ Routing Claude Code → Nebius Token Factory (Reflection Beam 1.0). Not Anthropic.
+[nconnect proxy] daemon: http://127.0.0.1:7897
+[nconnect proxy] session: http://127.0.0.1:7897/session/nconnect-uVoK05Ni3gjGRO97cruPUfVrU8oedwbW
+[nconnect claude] model: reflection/beam
+[claude-code:unrecognized_model] {"model":"reflection/beam[1m]","query_source":"sdk"}
+[nconnect cost] session total: $0.0396 (137,272 in, 5,286 out)

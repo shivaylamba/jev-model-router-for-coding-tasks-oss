@@ -1,0 +1,44 @@
+[
+  {
+    "seq": 1,
+    "repetition": 1,
+    "task_id": "smoke-py-word-count",
+    "condition": "D",
+    "pair_position": "first"
+  },
+  {
+    "seq": 2,
+    "repetition": 1,
+    "task_id": "smoke-py-word-count",
+    "condition": "E",
+    "pair_position": "second"
+  },
+  {
+    "seq": 3,
+    "repetition": 1,
+    "task_id": "smoke-ts-initials",
+    "condition": "E",
+    "pair_position": "first"
+  },
+  {
+    "seq": 4,
+    "repetition": 1,
+    "task_id": "smoke-ts-initials",
+    "condition": "D",
+    "pair_position": "second"
+  },
+  {
+    "seq": 5,
+    "repetition": 1,
+    "task_id": "smoke-py-average-bug",
+    "condition": "D",
+    "pair_position": "first"
+  },
+  {
+    "seq": 6,
+    "repetition": 1,
+    "task_id": "smoke-py-average-bug",
+    "condition": "E",
+    "pair_position": "second"
+  }
+]

@@ -1,0 +1,62 @@
+ funcutil.py | 45 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 45 insertions(+)
+
+diff --git a/funcutil.py b/funcutil.py
+index f1ca4e7..86c1a89 100644
+--- a/funcutil.py
++++ b/funcutil.py
+@@ -1,5 +1,6 @@
+ """Function decorators."""
+ 
++import collections
+ import functools
+ 
+ 
+@@ -14,3 +15,47 @@ def once(func):
+         return result[0]
+ 
+     return wrapper
++
++
++CacheInfo = collections.namedtuple("CacheInfo", ["hits", "misses", "size"])
++
++
++def memoize(func):
++    """Cache return value per distinct arguments."""
++    cache = {}
++    hits = [0]
++    misses = [0]
++
++    @functools.wraps(func)
++    def wrapper(*args, **kwargs):
++        # Build hashable key; positional and keyword forms are distinct.
++        # kwargs order-independent via sorted items.
++        try:
++            key = (args, tuple(sorted(kwargs.items())))
++            # Probe hashability early to raise TypeError without calling func
++            hash(key)
++            # Also ensure individual elements hashable (nested unhashable like [1] inside tuple will be caught)
++            # hash(key) already covers this recursively, but explicit check for unhashable containers:
++            # e.g. args contains a list -> hash fails
++        except TypeError:
++            raise
++
++        if key in cache:
++            hits[0] += 1
++            return cache[key]
++        misses[0] += 1
++        result = func(*args, **kwargs)
++        cache[key] = result
++        return result
++
++    def cache_info():
++        return CacheInfo(hits=hits[0], misses=misses[0], size=len(cache))
++
++    def cache_clear():
++        cache.clear()
++        hits[0] = 0
++        misses[0] = 0
++
++    wrapper.cache_info = cache_info
++    wrapper.cache_clear = cache_clear
++    return wrapper

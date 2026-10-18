@@ -1,0 +1,163 @@
+ cron.py | 149 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 147 insertions(+), 2 deletions(-)
+
+diff --git a/cron.py b/cron.py
+index a26cda8..5530cea 100644
+--- a/cron.py
++++ b/cron.py
+@@ -1,8 +1,153 @@
+ """Cron expression evaluation. The supported syntax is described in SPEC.md."""
+ 
+-from datetime import datetime
++from datetime import datetime, timedelta
++import re
+ 
++MACROS = {
++    "@yearly": "0 0 1 1 *",
++    "@annually": "0 0 1 1 *",
++    "@monthly": "0 0 1 * *",
++    "@weekly": "0 0 * * 0",
++    "@daily": "0 0 * * *",
++    "@midnight": "0 0 * * *",
++    "@hourly": "0 * * * *",
++}
++
++MONTH_NAMES = {"jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,"jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12}
++DOW_NAMES = {"sun":0,"mon":1,"tue":2,"wed":3,"thu":4,"fri":5,"sat":6}
++
++FIELD_DEFS = [
++    ("minute", 0, 59, None),
++    ("hour", 0, 23, None),
++    ("dom", 1, 31, None),
++    ("month", 1, 12, MONTH_NAMES),
++    ("dow", 0, 7, DOW_NAMES),
++]
++
++def _parse_value_token(s, lo, hi, names):
++    if not s:
++        raise ValueError("empty value")
++    low = s.lower()
++    if names and low in names:
++        return names[low]
++    if not re.fullmatch(r"-?\d+", s):
++        raise ValueError(f"invalid value {s!r}")
++    v = int(s)
++    if v < lo or v > hi:
++        raise ValueError(f"value {v} out of range [{lo},{hi}]")
++    return v
++
++def _parse_field(text, lo, hi, names):
++    if text == "":
++        raise ValueError("empty field")
++    parts = text.split(",")
++    result = set()
++    for item in parts:
++        if item == "":
++            raise ValueError("empty item")
++        if "/" in item:
++            if item.count("/") != 1:
++                raise ValueError(f"invalid item {item!r}")
++            left, step_s = item.split("/")
++            if not step_s:
++                raise ValueError(f"empty step in {item!r}")
++            if not re.fullmatch(r"\d+", step_s):
++                raise ValueError(f"invalid step {step_s!r}")
++            step = int(step_s)
++            if step == 0:
++                raise ValueError("step cannot be zero")
++            if left == "*":
++                start, end = lo, hi
++            elif "-" in left:
++                a_s, b_s = left.split("-", 1)
++                if not a_s or not b_s:
++                    raise ValueError(f"invalid range {left!r}")
++                if "-" in b_s:
++                    raise ValueError(f"invalid item {item!r}")
++                start = _parse_value_token(a_s, lo, hi, names)
++                end = _parse_value_token(b_s, lo, hi, names)
++                if start > end:
++                    raise ValueError(f"range start > end in {item!r}")
++            else:
++                start = _parse_value_token(left, lo, hi, names)
++                end = hi
++            for v in range(start, end+1, step):
++                result.add(v)
++        else:
++            if item == "*":
++                for v in range(lo, hi+1):
++                    result.add(v)
++            elif "-" in item:
++                a_s, b_s = item.split("-", 1)
++                if not a_s or not b_s:
++                    raise ValueError(f"invalid range {item!r}")
++                if "-" in b_s:
++                    raise ValueError(f"invalid item {item!r}")
++                start = _parse_value_token(a_s, lo, hi, names)
++                end = _parse_value_token(b_s, lo, hi, names)
++                if start > end:
++                    raise ValueError(f"range start > end in {item!r}")
++                for v in range(start, end+1):
++                    result.add(v)
++            else:
++                v = _parse_value_token(item, lo, hi, names)
++                result.add(v)
++    return result
++
++def _expand_and_validate(expr):
++    s = expr.strip()
++    if not s:
++        raise ValueError("empty expression")
++    low = s.lower()
++    if low.startswith("@"):
++        if re.search(r"\s", s):
++            raise ValueError("macro must not have extra fields")
++        if low not in MACROS:
++            raise ValueError(f"unknown macro {s!r}")
++        s = MACROS[low]
++    fields = re.split(r"[ \t]+", s)
++    if len(fields) != 5:
++        raise ValueError(f"expected 5 fields, got {len(fields)}")
++    parsed = []
++    unrestricted = []
++    for field_text, (name, lo, hi, names) in zip(fields, FIELD_DEFS):
++        vals = _parse_field(field_text, lo, hi, names)
++        parsed.append(vals)
++        unrestricted.append(field_text.startswith("*"))
++    return parsed, unrestricted
++
++def _add_years(dt, years):
++    try:
++        return dt.replace(year=dt.year+years)
++    except ValueError:
++        return dt.replace(year=dt.year+years, day=28)
+ 
+ def next_run(expr: str, after: datetime) -> datetime:
+     """The earliest minute strictly after `after` that matches `expr`."""
+-    raise NotImplementedError
++    sets, unrestricted = _expand_and_validate(expr)
++    minute_set, hour_set, dom_set, month_set, dow_set = sets
++    dom_unrestricted = unrestricted[2]
++    dow_unrestricted = unrestricted[4]
++    cur = after.replace(second=0, microsecond=0) + timedelta(minutes=1)
++    limit = _add_years(cur, 8)
++
++    def cron_dow(dt):
++        return (dt.weekday() + 1) % 7
++
++    # For fast checks, keep 7 in dow_set as Sunday alias
++    while cur <= limit:
++        if cur.month in month_set and cur.minute in minute_set and cur.hour in hour_set:
++            # dow match considers both 0 and 7 as Sunday
++            cd = cron_dow(cur)
++            dow_match = cd in dow_set or (cd == 0 and 7 in dow_set)
++            dom_match = cur.day in dom_set
++            if dom_unrestricted and dow_unrestricted:
++                day_ok = True
++            elif not dom_unrestricted and not dow_unrestricted:
++                day_ok = dom_match or dow_match
++            else:
++                day_ok = dom_match and dow_match
++            if day_ok:
++                return cur.replace(tzinfo=after.tzinfo)
++        cur += timedelta(minutes=1)
++    raise ValueError("no matching time within 8 years")

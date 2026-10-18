@@ -206,7 +206,8 @@ def pin_catalog(run_dir: Path, nebius_key: str) -> dict:
 
 
 def all_conditions() -> dict:
-    return {**CONFIG["conditions"], **CONFIG["pipeline_check_conditions"], **CONFIG.get("v2_conditions", {})}
+    return {**CONFIG["conditions"], **CONFIG["pipeline_check_conditions"], **CONFIG.get("v2_conditions", {}),
+            **CONFIG.get("model_conditions", {})}
 
 
 def bundle_for(spec: dict) -> Path:

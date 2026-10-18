@@ -1,0 +1,158 @@
+ shop/orders.py | 114 +++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 110 insertions(+), 4 deletions(-)
+
+diff --git a/shop/orders.py b/shop/orders.py
+index e1abc8f..4325318 100644
+--- a/shop/orders.py
++++ b/shop/orders.py
+@@ -1,40 +1,146 @@
+ """Orders and their lifecycle."""
+ 
++from datetime import datetime, timedelta, timezone
++from typing import NamedTuple
++
++
++class Transition(NamedTuple):
++    """Record of a successful status transition."""
++
++    event: str
++    from_state: str
++    to_state: str
++    at: datetime
++
++
++class InvalidTransition(Exception):
++    """Raised when an Order event is not allowed in the current state."""
++
++    def __init__(self, state, event):
++        super().__init__(f"cannot {event!r} from status {state!r}")
++        self.state = state
++        self.event = event
++
++
++def _default_clock():
++    return datetime.now(timezone.utc)
++
++
++def _require_text(value, what):
++    if not isinstance(value, str) or not value.strip():
++        raise ValueError(f"{what} must be a non-empty string")
++    return value.strip()
++
+ 
+ class Order:
+     """A customer order.
+ 
+     `items` is a list of (sku, quantity, unit_price_cents) tuples.
++
++    `clock` is a zero-argument callable returning the current datetime; it
++    defaults to a function returning the current UTC time.
+     """
+ 
+-    def __init__(self, order_id, items):
++    _EVENTS = ("cancel", "deliver", "pack", "pay", "refund", "ship")
++
++    def __init__(self, order_id, items, clock=None):
+         self.order_id = order_id
+         self.items = list(items)
+         self.status = "pending"
+         self.tracking_number = None
+         self.cancel_reason = None
++        self.delivered_at = None
++        self.history = []
++        self.clock = clock if clock is not None else _default_clock
++        # Backwards-friendly alias for callers/tests that use the private name.
++        self._clock = self.clock
+ 
+     def total_cents(self):
+         return sum(quantity * price for _sku, quantity, price in self.items)
+ 
+-    # TODO: none of these check the current status (see docs/ORDER_LIFECYCLE.md).
++    @property
++    def is_terminal(self):
++        return self.status in ("cancelled", "refunded")
++
++    def _validate_transition(self, event):
++        if not self.can(event):
++            raise InvalidTransition(self.status, event)
++
++    def can(self, event):
++        if event == "pay":
++            return self.status == "pending"
++        if event == "pack":
++            return self.status == "paid"
++        if event == "ship":
++            return self.status == "packed"
++        if event == "deliver":
++            return self.status == "shipped"
++        if event == "cancel":
++            return self.status in ("pending", "paid", "packed")
++        if event == "refund":
++            if self.status in ("paid", "packed"):
++                return True
++            if self.status == "delivered":
++                now = self.clock()
++                return (now - self.delivered_at) <= timedelta(days=30)
++            return False
++        return False
++
++    def allowed_events(self):
++        return sorted(event for event in self._EVENTS if self.can(event))
++
++    def _append(self, event, from_state, to_state, at):
++        self.history.append(Transition(event, from_state, to_state, at))
+ 
+     def pay(self):
++        self._validate_transition("pay")
++        now = self.clock()
++        from_state = self.status
+         self.status = "paid"
++        self._append("pay", from_state, "paid", now)
+ 
+     def pack(self):
++        self._validate_transition("pack")
++        now = self.clock()
++        from_state = self.status
+         self.status = "packed"
++        self._append("pack", from_state, "packed", now)
+ 
+     def ship(self, tracking_number):
+-        self.tracking_number = tracking_number
++        # Status check comes before argument validation.
++        self._validate_transition("ship")
++        tracking = _require_text(tracking_number, "tracking number")
++        now = self.clock()
++        from_state = self.status
++        self.tracking_number = tracking
+         self.status = "shipped"
++        self._append("ship", from_state, "shipped", now)
+ 
+     def deliver(self):
++        self._validate_transition("deliver")
++        now = self.clock()
++        from_state = self.status
++        self.delivered_at = now
+         self.status = "delivered"
++        self._append("deliver", from_state, "delivered", now)
+ 
+     def cancel(self, reason):
+-        self.cancel_reason = reason
++        # Status check comes before argument validation.
++        self._validate_transition("cancel")
++        why = _require_text(reason, "cancel reason")
++        now = self.clock()
++        from_state = self.status
++        self.cancel_reason = why
+         self.status = "cancelled"
++        self._append("cancel", from_state, "cancelled", now)
+ 
+     def refund(self):
++        status = self.status
++        if status not in ("paid", "packed", "delivered"):
++            raise InvalidTransition(status, "refund")
++        now = self.clock()
++        if status == "delivered" and (now - self.delivered_at) > timedelta(days=30):
++            raise InvalidTransition(status, "refund")
+         self.status = "refunded"
++        self._append("refund", status, "refunded", now)
++

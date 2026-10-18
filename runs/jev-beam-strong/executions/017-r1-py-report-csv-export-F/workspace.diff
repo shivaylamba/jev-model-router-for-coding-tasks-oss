@@ -1,0 +1,91 @@
+ README.md                     |  1 +
+ reports/cli.py                |  2 +-
+ reports/exporters/__init__.py |  3 ++-
+ reports/exporters/csv.py      | 33 +++++++++++++++++++++++++++++++++
+ 4 files changed, 37 insertions(+), 2 deletions(-)
+
+diff --git a/README.md b/README.md
+index e107de7..3743032 100644
+--- a/README.md
++++ b/README.md
+@@ -6,6 +6,7 @@ Turns tabular report data (JSON) into human-readable output.
+ python3 -m reports.cli examples/sales.json                 # plain text table
+ python3 -m reports.cli --format markdown examples/sales.json
+ python3 -m reports.cli --format markdown --output out.md examples/sales.json
++python3 -m reports.cli --format csv examples/sales.json     # machine-readable CSV
+ python3 -m reports.cli --list-formats
+ ```
+ 
+diff --git a/reports/cli.py b/reports/cli.py
+index 014f7ba..0f58f11 100644
+--- a/reports/cli.py
++++ b/reports/cli.py
+@@ -10,7 +10,7 @@ from .model import load_report
+ def build_parser():
+     parser = argparse.ArgumentParser(prog="reports")
+     parser.add_argument("report", nargs="?", help="report JSON file")
+-    parser.add_argument("--format", default="text", choices=["text", "markdown"])
++    parser.add_argument("--format", default="text", choices=["text", "markdown", "csv"])
+     parser.add_argument("--output", help="write to this file instead of stdout")
+     parser.add_argument("--list-formats", action="store_true", help="print the available formats and exit")
+     return parser
+diff --git a/reports/exporters/__init__.py b/reports/exporters/__init__.py
+index 43f92f2..b0df6c9 100644
+--- a/reports/exporters/__init__.py
++++ b/reports/exporters/__init__.py
+@@ -1,5 +1,6 @@
+ """Output formats."""
+ 
++from .csv import CsvExporter
+ from .markdown import MarkdownExporter
+ from .text import TextExporter
+ 
+@@ -8,7 +9,7 @@ class UnknownFormatError(LookupError):
+     """Raised by get_exporter for a format name that is not registered."""
+ 
+ 
+-EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter())}
++EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter(), CsvExporter())}
+ 
+ 
+ def get_exporter(name):
+diff --git a/reports/exporters/csv.py b/reports/exporters/csv.py
+new file mode 100644
+index 0000000..816a5a1
+--- /dev/null
++++ b/reports/exporters/csv.py
+@@ -0,0 +1,33 @@
++"""Comma-separated values (for machines, not people)."""
++
++
++def _quote(field):
++    """Apply standard CSV quoting: only quote when the field contains a comma,
++    double quote or line break; double any embedded double quotes."""
++    if "," in field or '"' in field or "\n" in field or "\r" in field:
++        return '"' + field.replace('"', '""') + '"'
++    return field
++
++
++def _cell(value):
++    """Format a raw cell value for CSV."""
++    if value is None:
++        return ""
++    if isinstance(value, bool):
++        return "true" if value else "false"
++    if isinstance(value, int):
++        return str(value)
++    if isinstance(value, float):
++        return format(value, ".2f")
++    return str(value)
++
++
++class CsvExporter:
++    name = "csv"
++    extension = ".csv"
++
++    def export(self, report):
++        lines = [_quote(column.label) for column in report.columns]
++        for row in report.rows:
++            lines.append(",".join(_quote(_cell(report.cell(row, c))) for c in report.columns))
++        return "\n".join(lines) + "\n"
+\ No newline at end of file

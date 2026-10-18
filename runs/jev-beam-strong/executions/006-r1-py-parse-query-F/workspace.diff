@@ -1,0 +1,221 @@
+ tests/test_query.py | 103 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ urlbits.py          |  99 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 202 insertions(+)
+
+diff --git a/tests/test_query.py b/tests/test_query.py
+new file mode 100644
+index 0000000..8b8670e
+--- /dev/null
++++ b/tests/test_query.py
+@@ -0,0 +1,103 @@
++import unittest
++
++from urlbits import build_query, parse_query
++
++
++class ParseQueryTest(unittest.TestCase):
++    def test_leading_question_mark_ignored(self):
++        self.assertEqual(parse_query("?a=1"), {"a": ["1"]})
++        self.assertEqual(parse_query("a=1"), {"a": ["1"]})
++
++    def test_empty_segments_skipped(self):
++        self.assertEqual(parse_query("a=1&&b=2"), {"a": ["1"], "b": ["2"]})
++        self.assertEqual(parse_query(""), {})
++        self.assertEqual(parse_query("&"), {})
++
++    def test_bare_key_and_empty_value(self):
++        self.assertEqual(parse_query("flag&x="), {"flag": [None], "x": [""]})
++
++    def test_repeated_keys_order(self):
++        self.assertEqual(
++            parse_query("a=1&flag&a=2"),
++            {"a": ["1", "2"], "flag": [None]},
++        )
++
++    def test_split_on_first_equals(self):
++        self.assertEqual(parse_query("a=b=c"), {"a": ["b=c"]})
++
++    def test_plus_is_space(self):
++        self.assertEqual(parse_query("q=a+b"), {"q": ["a b"]})
++
++    def test_percent_decoding(self):
++        self.assertEqual(parse_query("q=a%26b"), {"q": ["a&b"]})
++        self.assertEqual(parse_query("q=%C3%A9"), {"q": ["é"]})
++
++    def test_literal_percent_kept(self):
++        self.assertEqual(parse_query("q=100%25"), {"q": ["100%"]})
++        # A '%' without valid hex following is kept as-is.
++        self.assertEqual(parse_query("q=100%"), {"q": ["100%"]})
++        self.assertEqual(parse_query("q=%4"), {"q": ["%4"]})
++
++    def test_invalid_utf8_becomes_replacement(self):
++        self.assertEqual(parse_query("q=%FF"), {"q": ["�"]})
++
++    def test_hex_case_insensitive(self):
++        self.assertEqual(parse_query("q=%41"), {"q": ["A"]})
++        self.assertEqual(parse_query("q=%4a"), {"q": ["J"]})
++
++
++class BuildQueryTest(unittest.TestCase):
++    def test_none_and_empty(self):
++        self.assertEqual(build_query({"flag": None}), "flag")
++        self.assertEqual(build_query({"x": ""}), "x=")
++        self.assertEqual(build_query({"flag": None, "x": ""}), "flag&x=")
++
++    def test_list_order_and_empty_list(self):
++        self.assertEqual(build_query({"a": ["1", "2"]}), "a=1&a=2")
++        self.assertEqual(build_query({"a": [], "b": "1"}), "b=1")
++
++    def test_key_order(self):
++        self.assertEqual(build_query({"b": "1", "a": "2"}), "b=1&a=2")
++
++    def test_encoding(self):
++        self.assertEqual(build_query({"q": "a b&c"}), "q=a+b%26c")
++        self.assertEqual(build_query({"q": "é"}), "q=%C3%A9")
++
++    def test_list_of_none(self):
++        self.assertEqual(build_query({"flag": [None, "x"]}), "flag&flag=x")
++
++    def test_type_error_on_bad_value(self):
++        with self.assertRaises(TypeError):
++            build_query({"a": 1})
++        with self.assertRaises(TypeError):
++            build_query({"a": [1]})
++        with self.assertRaises(TypeError):
++            build_query({"a": object()})
++
++
++class RoundTripTest(unittest.TestCase):
++    def test_build_then_parse(self):
++        for params in [
++            {"a": ["1", "2"], "flag": [None]},
++            {"flag": [None]},
++            {"x": [""]},
++            {"q": ["a b&c"]},
++            {"q": ["a+b", "c"]},  # '+' round-trips to space
++            {"e": ["é"]},
++        ]:
++            self.assertEqual(parse_query(build_query(params)), params)
++
++    def test_parse_then_build(self):
++        # Round-trip eligible: a repeated key's pairs are adjacent (see spec).
++        for s in ["", "a=1", "flag", "a=1&a=2&flag", "q=a+b%26c"]:
++            self.assertEqual(build_query(parse_query(s)), s)
++
++    def test_parse_then_build_normalizes_separated_repeats(self):
++        # Separated repeats reorder so each key's pairs are emitted together.
++        self.assertEqual(
++            build_query(parse_query("a=1&flag&a=2")), "a=1&a=2&flag"
++        )
++
++
++if __name__ == "__main__":
++    unittest.main()
+\ No newline at end of file
+diff --git a/urlbits.py b/urlbits.py
+index aed0ed5..fe8efa0 100644
+--- a/urlbits.py
++++ b/urlbits.py
+@@ -13,3 +13,102 @@ def split_url(url):
+     base, _, fragment = url.partition("#")
+     base, _, query = base.partition("?")
+     return base, query, fragment
++
++
++def _decode(value):
++    """Decode a percent-encoded segment: '+' is space, %XX is UTF-8.
++
++    A '%' not followed by two hex digits is kept as-is. Bytes that don't
++    decode as UTF-8 become U+FFFD.
++    """
++    buf = bytearray()
++    i = 0
++    n = len(value)
++    while i < n:
++        ch = value[i]
++        if ch == "+":
++            buf.append(0x20)  # '+' becomes space
++            i += 1
++        elif ch == "%" and i + 3 <= n and all(
++            c in "0123456789abcdefABCDEF" for c in value[i + 1 : i + 3]
++        ):
++            buf.append(int(value[i + 1 : i + 3], 16))
++            i += 3
++        else:
++            # Keep the raw byte of this char; ascii chars are 1 byte.
++            buf.extend(ch.encode("utf-8", "surrogatepass"))
++            i += 1
++    return buf.decode("utf-8", "replace")
++
++
++def parse_query(query):
++    """Parse a query string into an ordered dict of key -> list of values.
++
++    An optional leading "?" is ignored. Pairs are split on "&" with empty
++    segments skipped. A segment with no "=" is a bare key whose value is None;
++    "x=" gives the value "". Keys keep first-appearance order and each maps to
++    all its values in order.
++    """
++    if query.startswith("?"):
++        query = query[1:]
++    result = {}
++    for segment in query.split("&"):
++        if not segment:
++            continue
++        key, sep, value = segment.partition("=")
++        if sep:
++            value = _decode(value)
++        else:
++            value = None
++        key = _decode(key)
++        result.setdefault(key, []).append(value)
++    return result
++
++
++# Characters left un-escaped by build_query; everything else is percent-encoded.
++_UNRESERVED = frozenset(
++    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
++)
++
++
++def _encode(text):
++    """Percent-encode text for a query component, with space as '+'."""
++    out = []
++    for byte in text.encode("utf-8"):
++        if byte == 0x20:
++            out.append("+")
++        elif chr(byte) in _UNRESERVED:
++            out.append(chr(byte))
++        else:
++            out.append("%%%02X" % byte)
++    return "".join(out)
++
++
++def build_query(params):
++    """Build a query string (no leading '?') from an ordered mapping.
++
++    Values may be a str, None, or a list of str/None. None writes a bare key
++    ("flag"), "" writes "key=". An empty list writes nothing for that key. Keys
++    and list values are emitted in their given order.
++    """
++    pairs = []
++    for key, value in params.items():
++        if isinstance(value, list):
++            if not value:
++                continue
++            for item in value:
++                pairs.append(_pair(key, item))
++        else:
++            pairs.append(_pair(key, value))
++    return "&".join(pairs)
++
++
++def _pair(key, value):
++    """Return the 'key=value' or bare-key text for one (key, value) pair."""
++    if value is None:
++        return _encode(key)
++    if not isinstance(value, str):
++        raise TypeError(
++            "query value must be str, None, or a list of str/None, got %r" % (value,)
++        )
++    return _encode(key) + "=" + _encode(value)

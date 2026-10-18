@@ -1,0 +1,44 @@
+ contacts.py | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
+
+diff --git a/contacts.py b/contacts.py
+index f36e8f9..b3db840 100644
+--- a/contacts.py
++++ b/contacts.py
+@@ -10,3 +10,36 @@ def format_name(first, last):
+ def normalize_email(email):
+     """Trim and lowercase an e-mail address."""
+     return email.strip().lower()
++
++
++def format_us_phone(raw):
++    """Format a US phone number string as '(AAA) EEE-NNNN'.
++
++    Spaces, parentheses, hyphens, dots and '+' are ignored. Any other
++    non-digit character raises ValueError. After stripping, there must be
++    exactly 10 digits, or 11 digits whose first is '1' (country code,
++    dropped). The area code and exchange may not start with 0 or 1.
++    """
++    if not isinstance(raw, str):
++        raise ValueError("phone number must be a string")
++
++    ignored = set(" ()-.+")
++    digits = []
++    for ch in raw:
++        if "0" <= ch <= "9":
++            digits.append(ch)
++        elif ch in ignored:
++            continue
++        else:
++            raise ValueError(f"invalid character in phone number: {ch!r}")
++
++    s = "".join(digits)
++    if len(s) == 11 and s.startswith("1"):
++        s = s[1:]
++    if len(s) != 10:
++        raise ValueError("phone number must contain 10 digits (or 11 with leading 1)")
++
++    if s[0] in "01" or s[3] in "01":
++        raise ValueError("area code and exchange may not start with 0 or 1")
++
++    return f"({s[:3]}) {s[3:6]}-{s[6:]}"

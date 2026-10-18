@@ -1,0 +1,21 @@
+task_id,title,category,difficulty,language,beam_passed,beam_cost_usd,beam_seconds,beam_model_calls,muse_passed,muse_cost_usd,muse_seconds,muse_model_calls,faster,cheaper,jev_beam_strong_passed,jev_beam_strong_cost_usd,jev_beam_strong_seconds,jev_first_tier,earlier_fixed_kimi_k3_passed,earlier_fixed_kimi_k3_cost_usd,earlier_jev_kimi_k3_strong_passed,earlier_jev_kimi_k3_strong_cost_usd
+js-client-options,createClient takes an options object,api-change,medium,javascript,True,0.1283,95.4,28,True,0.0801,22.1,5,Muse Spark,Muse Spark,True,0.076,67.5,fast,True,0.7019,True,0.031
+js-human-duration,Human-readable durations,formatting,medium,javascript,True,0.074,69.3,20,True,0.0743,18.1,5,Muse Spark,Beam,True,0.0265,40.3,fast,True,0.5313,True,0.0363
+js-pick-omit,pick and omit for plain objects,utility,easy,javascript,True,0.0147,24.1,6,True,0.0684,13.1,5,Muse Spark,Beam,True,0.014,27.2,fast,True,0.1324,True,0.024
+js-site-plugins,Plugin hooks for the site builder,feature,medium,javascript,True,0.0891,72.4,24,True,0.1566,24.1,10,Muse Spark,Beam,True,0.0672,13.1,balanced,True,0.5077,True,0.1611
+py-async-rate-limiter,Asyncio rate limiter with per-key buckets and a concurrency cap,state,hard,python,True,0.4193,232.0,54,False,0.2603,67.3,12,Muse Spark,Muse Spark,True,0.2432,816.8,strong,False,2.7393,True,1.317
+py-card-iban,Card brand detection and IBAN validation,validation,medium,python,True,0.0886,84.4,22,True,0.197,33.2,12,Muse Spark,Beam,True,0.0424,61.4,fast,True,0.6005,True,0.0325
+py-cron-next,Next run time for cron expressions,utility,hard,python,True,0.1293,97.5,28,True,0.167,48.3,9,Muse Spark,Beam,True,0.3533,196.7,balanced,True,0.4439,True,1.6626
+py-format-phone,Format US phone numbers,formatting,easy,python,True,0.0219,24.1,9,True,0.1329,25.1,9,Beam,Beam,True,0.0282,138.2,fast,True,0.2789,True,0.3051
+py-inventory-reservations,Reservation holds misbehave,bugfix,hard,python,True,0.0925,65.3,23,True,0.1444,41.2,8,Muse Spark,Beam,True,0.1059,134.7,strong,True,1.3263,False,1.3346
+py-memoize,A memoize decorator with cache stats,state,easy,python,True,0.0878,71.4,25,True,0.1516,27.1,10,Muse Spark,Beam,True,0.109,104.9,fast,True,0.1953,True,0.1501
+py-order-state-machine,Enforce the order lifecycle as a state machine,state,medium,python,True,0.0933,82.4,19,True,0.0923,21.1,6,Muse Spark,Muse Spark,True,0.2329,92.9,balanced,True,0.3068,True,1.1913
+py-parse-query,Parse and build URL query strings,parsing,medium,python,True,0.1197,81.5,28,True,0.099,26.1,6,Muse Spark,Muse Spark,True,0.2293,198.0,fast,True,0.4638,True,0.711
+py-report-csv-export,CSV export for reports,feature,medium,python,True,0.1477,80.4,34,True,0.2805,39.2,16,Muse Spark,Beam,True,0.0319,33.3,fast,True,0.8134,True,0.0574
+py-shared-default-tags,Tags leak from one note into the next,bugfix,easy,python,True,0.018,23.1,8,True,0.1523,27.1,10,Beam,Beam,True,0.0309,9.1,balanced,True,0.388,True,0.0305
+ts-clamp-range,clamp and a Python-style range,utility,easy,typescript,True,0.0153,15.1,7,True,0.0555,12.1,4,Muse Spark,Beam,True,0.0049,12.1,fast,True,0.2306,True,0.0256
+ts-config-promise,Promise-based readConfig with callback support,refactor,easy,typescript,True,0.07,56.2,24,True,0.1479,23.1,10,Muse Spark,Beam,True,0.1395,20.1,balanced,True,0.2523,True,0.11
+ts-notify-many,notify accepts several recipients,api-change,easy,typescript,True,0.0305,30.1,12,True,0.0875,18.1,6,Muse Spark,Beam,True,0.0335,40.2,fast,True,0.3946,True,0.0138
+ts-parse-clock,Parse a time of day into minutes,parsing,easy,typescript,True,0.0396,40.2,14,True,0.0562,14.1,4,Muse Spark,Beam,True,0.0247,27.1,fast,True,0.2456,True,0.0221
+ts-pricing-rules,Split order pricing into a rule pipeline and add bundle discounts,refactor,hard,typescript,True,0.139,105.5,26,True,0.2621,42.2,13,Muse Spark,Beam,True,0.8546,201.7,balanced,False,0.9636,True,0.5011
+ts-signup-validate,Validate a sign-up request,validation,medium,typescript,True,0.0713,90.4,14,True,0.1317,52.2,7,Muse Spark,Beam,True,0.0636,71.4,fast,True,3.8943,True,0.099

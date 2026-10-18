@@ -1,0 +1,83 @@
+ reports/cli.py                |  4 ++--
+ reports/exporters/__init__.py |  3 ++-
+ reports/exporters/csv.py      | 30 ++++++++++++++++++++++++++++++
+ 3 files changed, 34 insertions(+), 3 deletions(-)
+
+diff --git a/reports/cli.py b/reports/cli.py
+index 014f7ba..489b942 100644
+--- a/reports/cli.py
++++ b/reports/cli.py
+@@ -10,7 +10,7 @@ from .model import load_report
+ def build_parser():
+     parser = argparse.ArgumentParser(prog="reports")
+     parser.add_argument("report", nargs="?", help="report JSON file")
+-    parser.add_argument("--format", default="text", choices=["text", "markdown"])
++    parser.add_argument("--format", default="text", choices=format_names())
+     parser.add_argument("--output", help="write to this file instead of stdout")
+     parser.add_argument("--list-formats", action="store_true", help="print the available formats and exit")
+     return parser
+@@ -32,7 +32,7 @@ def main(argv=None, stdout=None):
+         return 2
+     output = get_exporter(args.format).export(load_report(args.report))
+     if args.output:
+-        with open(args.output, "w", encoding="utf-8") as handle:
++        with open(args.output, "w", encoding="utf-8", newline="") as handle:
+             handle.write(output)
+     else:
+         stdout.write(output)
+diff --git a/reports/exporters/__init__.py b/reports/exporters/__init__.py
+index 43f92f2..b0df6c9 100644
+--- a/reports/exporters/__init__.py
++++ b/reports/exporters/__init__.py
+@@ -1,5 +1,6 @@
+ """Output formats."""
+ 
++from .csv import CsvExporter
+ from .markdown import MarkdownExporter
+ from .text import TextExporter
+ 
+@@ -8,7 +9,7 @@ class UnknownFormatError(LookupError):
+     """Raised by get_exporter for a format name that is not registered."""
+ 
+ 
+-EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter())}
++EXPORTERS = {exporter.name: exporter for exporter in (TextExporter(), MarkdownExporter(), CsvExporter())}
+ 
+ 
+ def get_exporter(name):
+diff --git a/reports/exporters/csv.py b/reports/exporters/csv.py
+new file mode 100644
+index 0000000..48dcc99
+--- /dev/null
++++ b/reports/exporters/csv.py
+@@ -0,0 +1,30 @@
++"""CSV output for machines."""
++
++
++def _cell(value):
++    if value is None:
++        return ""
++    if isinstance(value, bool):
++        return "true" if value else "false"
++    if isinstance(value, int):
++        return str(value)
++    if isinstance(value, float):
++        return format(value, ".2f")
++    return str(value)
++
++
++def _quote(field):
++    if ("," in field) or ('"' in field) or ("\n" in field) or ("\r" in field):
++        return '"' + field.replace('"', '""') + '"'
++    return field
++
++
++class CsvExporter:
++    name = "csv"
++    extension = ".csv"
++
++    def export(self, report):
++        lines = [",".join(_quote(column.label) for column in report.columns)]
++        for row in report.rows:
++            lines.append(",".join(_quote(_cell(report.cell(row, column))) for column in report.columns))
++        return "".join(line + "\n" for line in lines)

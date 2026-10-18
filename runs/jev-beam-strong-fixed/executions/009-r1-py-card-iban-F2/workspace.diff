@@ -1,0 +1,71 @@
+ payment_checks.py | 60 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 60 insertions(+)
+
+diff --git a/payment_checks.py b/payment_checks.py
+index 8cf49c1..21f4c42 100644
+--- a/payment_checks.py
++++ b/payment_checks.py
+@@ -17,3 +17,63 @@ def mask_card(number):
+     if len(digits) < 4 or not digits.isdigit():
+         raise ValueError("not a card number")
+     return "*" * (len(digits) - 4) + digits[-4:]
++
++
++def _luhn_valid(digits):
++    """True if the digit string passes the Luhn checksum."""
++    total = 0
++    for i, ch in enumerate(reversed(digits)):
++        d = int(ch)
++        if i % 2 == 1:  # double every second digit from the right
++            d *= 2
++            if d > 9:
++                d -= 9
++        total += d
++    return total % 10 == 0
++
++
++def card_brand(number):
++    """Return the card brand as a string, or None if not a recognized card.
++
++    Spaces and hyphens are ignored; any other non-digit character, a failed
++    Luhn checksum, or a prefix/length that matches no brand yields None.
++    """
++    if not isinstance(number, str):
++        raise TypeError("card number must be a str")
++    digits = strip_separators(number)
++    if not digits or not digits.isdigit() or not _luhn_valid(digits):
++        return None
++    n = len(digits)
++    if digits[:2] in ("34", "37") and n == 15:
++        return "amex"
++    if digits[0] == "4" and n in (13, 16, 19):
++        return "visa"
++    if ("51" <= digits[:2] <= "55" or "2221" <= digits[:4] <= "2720") and n == 16:
++        return "mastercard"
++    if (digits.startswith("6011") or digits.startswith("65")
++            or digits[:3] in ("644", "645", "646", "647", "648", "649")) and n in (16, 19):
++        return "discover"
++    return None
++
++
++def is_valid_iban(iban):
++    """True if `iban` passes the country/length and mod-97 checks."""
++    if not isinstance(iban, str):
++        raise TypeError("iban must be a str")
++    compact = iban.replace(" ", "")
++    # After removing spaces: only letters and digits may remain.
++    if not compact.isalnum() or len(compact) < 5:
++        return False
++    if not (compact[0].isalpha() and compact[1].isalpha()):
++        return False
++    if not (compact[2].isdigit() and compact[3].isdigit()):
++        return False
++    country = compact[:2].upper()
++    if IBAN_LENGTHS.get(country) != len(compact):
++        return False
++    rearranged = compact[4:] + compact[:4]
++    number = "".join(
++        ch if ch.isdigit() else str(ord(ch.upper()) - ord("A") + 10)
++        for ch in rearranged
++    )
++    return int(number) % 97 == 1

@@ -1,0 +1,166 @@
+ src/signup.ts | 156 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 155 insertions(+), 1 deletion(-)
+
+diff --git a/src/signup.ts b/src/signup.ts
+index 0751a59..1dc2dc7 100644
+--- a/src/signup.ts
++++ b/src/signup.ts
+@@ -1,2 +1,156 @@
+ // Sign-up validation. Rules: docs/signup-rules.md
+-export type { SignupErrors, SignupInput, SignupResult } from "./types.ts";
++import { daysInMonth, isLeapYear } from "./dates.ts";
++import type {
++  SignupErrorCode,
++  SignupErrors,
++  SignupInput,
++  SignupResult,
++} from "./types.ts";
++
++export type { SignupErrorCode, SignupErrors, SignupInput, SignupResult };
++
++/** Email with no whitespace, exactly one `@`, a non-empty local part and a dotted domain of at least two non-empty labels. */
++function isValidEmail(email: string): boolean {
++  const at = email.indexOf("@");
++  if (at === -1 || at !== email.lastIndexOf("@")) return false;
++  if (/\s/.test(email)) return false;
++  const local = email.slice(0, at);
++  const domain = email.slice(at + 1);
++  if (local.length === 0) return false;
++  const labels = domain.split(".");
++  return labels.length >= 2 && labels.every((label) => label.length > 0);
++}
++
++interface BirthDate {
++  year: number;
++  month: number;
++  day: number;
++}
++
++/** `YYYY-MM-DD` forming a real calendar date with a year of 1900+ */
++function parseBirthDate(value: string): BirthDate | null {
++  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
++  if (!match) return null;
++  const year = Number(match[1]);
++  const month = Number(match[2]);
++  const day = Number(match[3]);
++  if (year < 1900) return null;
++  if (month < 1 || month > 12) return null;
++  if (day < 1 || day > daysInMonth(year, month)) return null;
++  return { year, month, day };
++}
++
++/** The (month, day) of a birthday in the given year; Feb 29 falls on Mar 1 in non-leap years. */
++function birthdayInYear(born: BirthDate, year: number): { month: number; day: number } {
++  if (born.month === 2 && born.day === 29) {
++    return isLeapYear(year) ? { month: 2, day: 29 } : { month: 3, day: 1 };
++  }
++  return { month: born.month, day: born.day };
++}
++
++/** Whether `born` is strictly after `today` (today uses its UTC calendar date). */
++function isAfter(born: BirthDate, today: Date): boolean {
++  const year = today.getUTCFullYear();
++  const month = today.getUTCMonth() + 1;
++  const day = today.getUTCDate();
++  return (
++    born.year > year ||
++    (born.year === year && born.month > month) ||
++    (born.year === year && born.month === month && born.day > day)
++  );
++}
++
++/** Age in years a person born on `born` has reached on `today` (UTC). */
++function ageOn(born: BirthDate, today: Date): number {
++  const year = today.getUTCFullYear();
++  const month = today.getUTCMonth() + 1;
++  const day = today.getUTCDate();
++  const birthday = birthdayInYear(born, year);
++  let age = year - born.year;
++  if (month < birthday.month || (month === birthday.month && day < birthday.day)) {
++    age -= 1;
++  }
++  return age;
++}
++
++export function validateSignup(input: SignupInput, today: Date): SignupResult {
++  const errors: SignupErrors = {};
++
++  // --- username ---
++  const usernameRaw = input.username;
++  const username = typeof usernameRaw === "string" ? usernameRaw.trim() : usernameRaw;
++
++  if (typeof username !== "string" || username === "") {
++    errors.username = "required";
++  } else if (username.length < 3 || username.length > 20) {
++    errors.username = "length";
++  } else if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(username)) {
++    errors.username = "format";
++  }
++
++  // --- email ---
++  const emailRaw = input.email;
++  const email = typeof emailRaw === "string" ? emailRaw.trim() : emailRaw;
++
++  if (typeof email !== "string" || email === "") {
++    errors.email = "required";
++  } else if (!isValidEmail(email)) {
++    errors.email = "format";
++  }
++
++  // --- password ---
++  const password = input.password;
++
++  if (typeof password !== "string" || password === "") {
++    errors.password = "required";
++  } else if (password.length < 8 || password.length > 64) {
++    errors.password = "length";
++  } else if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
++    errors.password = "weak";
++  } else if (
++    !errors.username &&
++    typeof username === "string" &&
++    password.toLowerCase().includes(username.toLowerCase())
++  ) {
++    errors.password = "contains_username";
++  }
++
++  // --- confirmPassword ---
++  const confirmPassword = input.confirmPassword;
++
++  if (typeof confirmPassword !== "string" || confirmPassword === "") {
++    errors.confirmPassword = "required";
++  } else if (typeof password === "string" && confirmPassword !== password) {
++    errors.confirmPassword = "mismatch";
++  }
++
++  // --- birthDate ---
++  const birthDateRaw = input.birthDate;
++  const birthDate = typeof birthDateRaw === "string" ? birthDateRaw.trim() : birthDateRaw;
++
++  if (typeof birthDate !== "string" || birthDate === "") {
++    errors.birthDate = "required";
++  } else {
++    const born = parseBirthDate(birthDate);
++    if (!born) {
++      errors.birthDate = "format";
++    } else if (isAfter(born, today)) {
++      errors.birthDate = "future";
++    } else if (ageOn(born, today) < 13) {
++      errors.birthDate = "too_young";
++    }
++  }
++
++  if (Object.keys(errors).length > 0) {
++    return { ok: false, errors };
++  }
++
++  return {
++    ok: true,
++    value: {
++      username: username.toLowerCase(),
++      email: email.toLowerCase(),
++      birthDate,
++    },
++  };
++}
+\ No newline at end of file

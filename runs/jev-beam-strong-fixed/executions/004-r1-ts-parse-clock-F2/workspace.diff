@@ -1,0 +1,52 @@
+ src/clock.ts | 41 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
+
+diff --git a/src/clock.ts b/src/clock.ts
+index e742cdb..b9b3926 100644
+--- a/src/clock.ts
++++ b/src/clock.ts
+@@ -9,3 +9,44 @@ export function formatClock(minutes: number): string {
+   const mins = minutes % 60;
+   return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+ }
++
++/**
++ * Parse a clock time into minutes after midnight. Accepts a 24-hour "H:MM" /
++ * "HH:MM" form, or a 12-hour form of an hour (1-12) with optional ":MM" and an
++ * "am"/"pm" suffix (any case, optional whitespace before it). Surrounding
++ * whitespace is ignored. Throws a RangeError when the shape matches but a
++ * number is out of range, and a SyntaxError when nothing matches.
++ */
++export function parseClock(input: string): number {
++  const s = input.trim();
++
++  // 24-hour: H:MM or HH:MM
++  const military = /^(\d{1,2}):(\d{2})$/.exec(s);
++  if (military) {
++    const hours = Number(military[1]);
++    const minutes = Number(military[2]);
++    if (hours > 23 || minutes > 59) {
++      throw new RangeError(`out of range: ${input}`);
++    }
++    return hours * 60 + minutes;
++  }
++
++  // 12-hour: 1-12 [(:MM)] am/pm, with or without a space before the suffix
++  const twelve = /^(\d{1,2})(?::(\d{2}))?\s*([ap]m)$/i.exec(s);
++  if (twelve) {
++    const hours = Number(twelve[1]);
++    const minutes = twelve[2] === undefined ? 0 : Number(twelve[2]);
++    if (hours < 1 || hours > 12 || minutes > 59) {
++      throw new RangeError(`out of range: ${input}`);
++    }
++    // 12am/12pm map to hour 0/12; otherwise the pm flag adds 12.
++    const isPm = twelve[3].toLowerCase() === "pm";
++    let hours24 = hours % 12;
++    if (isPm) {
++      hours24 += 12;
++    }
++    return hours24 * 60 + minutes;
++  }
++
++  throw new SyntaxError(`invalid clock time: ${input}`);
++}

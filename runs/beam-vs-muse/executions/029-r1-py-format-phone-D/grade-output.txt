@@ -1,0 +1,12 @@
+
+test_area_code_or_exchange_starting_with_0_or_1 (acceptance_tests.test_format_phone.FormatUsPhoneTest.test_area_code_or_exchange_starting_with_0_or_1) ... ok
+test_leading_country_code (acceptance_tests.test_format_phone.FormatUsPhoneTest.test_leading_country_code) ... ok
+test_letters_and_other_characters (acceptance_tests.test_format_phone.FormatUsPhoneTest.test_letters_and_other_characters) ... ok
+test_plain_digits (acceptance_tests.test_format_phone.FormatUsPhoneTest.test_plain_digits) ... ok
+test_separators_are_ignored (acceptance_tests.test_format_phone.FormatUsPhoneTest.test_separators_are_ignored) ... ok
+test_wrong_length (acceptance_tests.test_format_phone.FormatUsPhoneTest.test_wrong_length) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.000s
+
+OK

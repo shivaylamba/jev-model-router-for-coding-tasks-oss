@@ -1,0 +1,175 @@
+ cron.py | 161 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 159 insertions(+), 2 deletions(-)
+
+diff --git a/cron.py b/cron.py
+index a26cda8..c6a10f7 100644
+--- a/cron.py
++++ b/cron.py
+@@ -1,8 +1,165 @@
+ """Cron expression evaluation. The supported syntax is described in SPEC.md."""
+ 
++import calendar
++import re
+ from datetime import datetime
+ 
++_MACROS = {
++    "@yearly": "0 0 1 1 *",
++    "@annually": "0 0 1 1 *",
++    "@monthly": "0 0 1 * *",
++    "@weekly": "0 0 * * 0",
++    "@daily": "0 0 * * *",
++    "@midnight": "0 0 * * *",
++    "@hourly": "0 * * * *",
++}
++
++_MONTH_NAMES = {
++    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
++    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
++}
++
++_DOW_NAMES = {
++    "sun": 0, "mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6,
++}
++
++_FIELD_MIN = [0, 0, 1, 1, 0]
++_FIELD_MAX = [59, 23, 31, 12, 7]
++
++
++def _parse_number(token: str, field_idx: int) -> int:
++    token_lower = token.lower()
++    if field_idx == 3 and token_lower in _MONTH_NAMES:
++        return _MONTH_NAMES[token_lower]
++    if field_idx == 4 and token_lower in _DOW_NAMES:
++        return _DOW_NAMES[token_lower]
++    if not token.isdigit():
++        raise ValueError(f"invalid value {token!r}")
++    n = int(token)
++    lo, hi = _FIELD_MIN[field_idx], _FIELD_MAX[field_idx]
++    if not (lo <= n <= hi):
++        raise ValueError(f"value {n} out of range")
++    return n
++
++
++def _parse_item(item: str, field_idx: int) -> set:
++    if not item:
++        raise ValueError("empty item")
++
++    if "/" in item:
++        base, step_str = item.split("/", 1)
++        if not step_str.isdigit():
++            raise ValueError(f"invalid step {step_str!r}")
++        step = int(step_str)
++        if step <= 0:
++            raise ValueError("step must be positive")
++    else:
++        base = item
++        step = 1
++
++    lo, hi = _FIELD_MIN[field_idx], _FIELD_MAX[field_idx]
++
++    if base == "*":
++        start, end = lo, hi
++    elif "-" in base:
++        a_str, b_str = base.split("-", 1)
++        start = _parse_number(a_str, field_idx)
++        end = _parse_number(b_str, field_idx)
++        if start > end:
++            raise ValueError(f"range start {start} > end {end}")
++    else:
++        start = _parse_number(base, field_idx)
++        if step == 1:
++            return {start}
++        end = hi
++
++    return set(range(start, end + 1, step))
++
++
++def _parse_field(text: str, field_idx: int) -> set:
++    if not text:
++        raise ValueError("empty field")
++    values = set()
++    for item in text.split(","):
++        if not item:
++            raise ValueError("empty item in list")
++        values.update(_parse_item(item, field_idx))
++    return values
++
++
++def _parse(expr: str):
++    expr = expr.strip()
++
++    if expr.startswith("@"):
++        macro = expr.lower()
++        if macro not in _MACROS:
++            raise ValueError(f"unknown macro {expr!r}")
++        expr = _MACROS[macro]
++
++    fields_raw = re.split(r"[ \t]+", expr.strip())
++    if len(fields_raw) != 5:
++        raise ValueError(f"expected 5 fields, got {len(fields_raw)}")
++
++    parsed = [_parse_field(f, i) for i, f in enumerate(fields_raw)]
++
++    dom_restricted = not fields_raw[2].startswith("*")
++    dow_restricted = not fields_raw[4].startswith("*")
++
++    return parsed, dom_restricted, dow_restricted
++
++
++def _days_in_month(year: int, month: int) -> int:
++    return calendar.monthrange(year, month)[1]
++
++
++def _dow_to_cron(dt: datetime) -> int:
++    # Monday=0..Sunday=6 -> cron Sunday=0..Saturday=6
++    return (dt.weekday() + 1) % 7
++
+ 
+ def next_run(expr: str, after: datetime) -> datetime:
+-    """The earliest minute strictly after `after` that matches `expr`."""
+-    raise NotImplementedError
++    fields, dom_restricted, dow_restricted = _parse(expr)
++    minutes, hours, dom_set, months, dow_set = fields
++
++    def day_matches(day: int, cron_dow: int) -> bool:
++        dom_ok = day in dom_set
++        dow_ok = (cron_dow in dow_set) or (cron_dow == 0 and 7 in dow_set)
++        if dom_restricted and dow_restricted:
++            return dom_ok or dow_ok
++        return dom_ok and dow_ok
++
++    sorted_hours = sorted(hours)
++    sorted_minutes = sorted(minutes)
++    sorted_months = sorted(months)
++
++    for year in range(after.year, after.year + 9):
++        month_candidates = [
++            m for m in sorted_months
++            if year > after.year or m >= after.month
++        ]
++        for month in month_candidates:
++            dim = _days_in_month(year, month)
++            for day in range(1, dim + 1):
++                if year == after.year and month == after.month and day < after.day:
++                    continue
++                cron_dow = _dow_to_cron(datetime(year, month, day, tzinfo=after.tzinfo))
++                if not day_matches(day, cron_dow):
++                    continue
++
++                hrs = sorted_hours
++                if year == after.year and month == after.month and day == after.day:
++                    hrs = [h for h in hrs if h >= after.hour]
++
++                for hour in hrs:
++                    mins = sorted_minutes
++                    if (year == after.year and month == after.month
++                            and day == after.day and hour == after.hour):
++                        mins = [m for m in mins if m > after.minute]
++                    if not mins:
++                        continue
++                    candidate = datetime(year, month, day, hour, mins[0], 0,
++                                         tzinfo=after.tzinfo)
++                    if candidate > after:
++                        return candidate
++
++    raise ValueError("expression has no matching time within eight years")

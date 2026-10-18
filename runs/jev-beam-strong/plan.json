@@ -1,0 +1,142 @@
+[
+  {
+    "seq": 1,
+    "repetition": 1,
+    "task_id": "py-inventory-reservations",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 2,
+    "repetition": 1,
+    "task_id": "ts-signup-validate",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 3,
+    "repetition": 1,
+    "task_id": "ts-config-promise",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 4,
+    "repetition": 1,
+    "task_id": "ts-parse-clock",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 5,
+    "repetition": 1,
+    "task_id": "js-site-plugins",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 6,
+    "repetition": 1,
+    "task_id": "py-parse-query",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 7,
+    "repetition": 1,
+    "task_id": "js-human-duration",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 8,
+    "repetition": 1,
+    "task_id": "js-pick-omit",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 9,
+    "repetition": 1,
+    "task_id": "py-card-iban",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 10,
+    "repetition": 1,
+    "task_id": "py-shared-default-tags",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 11,
+    "repetition": 1,
+    "task_id": "ts-notify-many",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 12,
+    "repetition": 1,
+    "task_id": "ts-clamp-range",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 13,
+    "repetition": 1,
+    "task_id": "py-order-state-machine",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 14,
+    "repetition": 1,
+    "task_id": "py-cron-next",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 15,
+    "repetition": 1,
+    "task_id": "py-format-phone",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 16,
+    "repetition": 1,
+    "task_id": "py-memoize",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 17,
+    "repetition": 1,
+    "task_id": "py-report-csv-export",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 18,
+    "repetition": 1,
+    "task_id": "ts-pricing-rules",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 19,
+    "repetition": 1,
+    "task_id": "js-client-options",
+    "condition": "F",
+    "pair_position": "first"
+  },
+  {
+    "seq": 20,
+    "repetition": 1,
+    "task_id": "py-async-rate-limiter",
+    "condition": "F",
+    "pair_position": "first"
+  }
+]

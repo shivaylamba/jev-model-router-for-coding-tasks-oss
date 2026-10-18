@@ -1,0 +1,111 @@
+
+test_existing_formats_unchanged (acceptance_tests.test_csv_export.CsvCliTest.test_existing_formats_unchanged) ... ok
+test_list_formats (acceptance_tests.test_csv_export.CsvCliTest.test_list_formats) ... ok
+test_output_file (acceptance_tests.test_csv_export.CsvCliTest.test_output_file) ... FAIL
+test_stdout (acceptance_tests.test_csv_export.CsvCliTest.test_stdout) ... FAIL
+test_booleans_and_nulls (acceptance_tests.test_csv_export.CsvExporterTest.test_booleans_and_nulls) ... FAIL
+test_empty_report_is_header_only (acceptance_tests.test_csv_export.CsvExporterTest.test_empty_report_is_header_only) ... FAIL
+test_floats_two_decimals (acceptance_tests.test_csv_export.CsvExporterTest.test_floats_two_decimals) ... ok
+test_header_labels_quoted_too (acceptance_tests.test_csv_export.CsvExporterTest.test_header_labels_quoted_too) ... FAIL
+test_integers_have_no_separators (acceptance_tests.test_csv_export.CsvExporterTest.test_integers_have_no_separators) ... ok
+test_no_carriage_returns_and_no_title (acceptance_tests.test_csv_export.CsvExporterTest.test_no_carriage_returns_and_no_title) ... ok
+test_quoting (acceptance_tests.test_csv_export.CsvExporterTest.test_quoting) ... ok
+test_registered (acceptance_tests.test_csv_export.CsvExporterTest.test_registered) ... ok
+test_sales_example (acceptance_tests.test_csv_export.CsvExporterTest.test_sales_example) ... FAIL
+
+======================================================================
+FAIL: test_output_file (acceptance_tests.test_csv_export.CsvCliTest.test_output_file)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-mnjolfdu/ws/acceptance_tests/test_csv_export.py", line 103, in test_output_file
+    self.assertEqual(handle.read().decode("utf-8"), SALES_CSV)
+AssertionError: 'Region\nOrders\nRevenue\nTarget met\nNorth,1204[57 chars],,\n' != 'Region,Orders,Revenue,Target met\nNorth,1204,98[54 chars],,\n'
++ Region,Orders,Revenue,Target met
+- Region
+- Orders
+- Revenue
+- Target met
+  North,1204,98213.50,true
+  "South, coastal",87,4410.00,false
+  West,0,,
+
+
+======================================================================
+FAIL: test_stdout (acceptance_tests.test_csv_export.CsvCliTest.test_stdout)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-mnjolfdu/ws/acceptance_tests/test_csv_export.py", line 97, in test_stdout
+    self.assertEqual(buf.getvalue(), SALES_CSV)
+AssertionError: 'Region\nOrders\nRevenue\nTarget met\nNorth,1204[57 chars],,\n' != 'Region,Orders,Revenue,Target met\nNorth,1204,98[54 chars],,\n'
++ Region,Orders,Revenue,Target met
+- Region
+- Orders
+- Revenue
+- Target met
+  North,1204,98213.50,true
+  "South, coastal",87,4410.00,false
+  West,0,,
+
+
+======================================================================
+FAIL: test_booleans_and_nulls (acceptance_tests.test_csv_export.CsvExporterTest.test_booleans_and_nulls)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-mnjolfdu/ws/acceptance_tests/test_csv_export.py", line 62, in test_booleans_and_nulls
+    self.assertEqual(out, "a,b,c\ntrue,false,\n,,\n")
+AssertionError: 'a\nb\nc\ntrue,false,\n,,\n' != 'a,b,c\ntrue,false,\n,,\n'
++ a,b,c
+- a
+- b
+- c
+  true,false,
+  ,,
+
+
+======================================================================
+FAIL: test_empty_report_is_header_only (acceptance_tests.test_csv_export.CsvExporterTest.test_empty_report_is_header_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-mnjolfdu/ws/acceptance_tests/test_csv_export.py", line 81, in test_empty_report_is_header_only
+    self.assertEqual(self.exporter.export(report(["a", "b"], [])), "a,b\n")
+AssertionError: 'a\nb\n' != 'a,b\n'
++ a,b
+- a
+- b
+
+
+======================================================================
+FAIL: test_header_labels_quoted_too (acceptance_tests.test_csv_export.CsvExporterTest.test_header_labels_quoted_too)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-mnjolfdu/ws/acceptance_tests/test_csv_export.py", line 71, in test_header_labels_quoted_too
+    self.assertEqual(self.exporter.export(r), '"Price, EUR",Qty\n1.50,2\n')
+AssertionError: '"Price, EUR"\nQty\n1.50,2\n' != '"Price, EUR",Qty\n1.50,2\n'
+- "Price, EUR"
++ "Price, EUR",Qty
+?             ++++
+- Qty
+  1.50,2
+
+
+======================================================================
+FAIL: test_sales_example (acceptance_tests.test_csv_export.CsvExporterTest.test_sales_example)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/grade-mnjolfdu/ws/acceptance_tests/test_csv_export.py", line 50, in test_sales_example
+    self.assertEqual(self.exporter.export(report_from_dict(SALES)), SALES_CSV)
+AssertionError: 'Region\nOrders\nRevenue\nTarget met\nNorth,1204[57 chars],,\n' != 'Region,Orders,Revenue,Target met\nNorth,1204,98[54 chars],,\n'
++ Region,Orders,Revenue,Target met
+- Region
+- Orders
+- Revenue
+- Target met
+  North,1204,98213.50,true
+  "South, coastal",87,4410.00,false
+  West,0,,
+
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.005s
+
+FAILED (failures=6)

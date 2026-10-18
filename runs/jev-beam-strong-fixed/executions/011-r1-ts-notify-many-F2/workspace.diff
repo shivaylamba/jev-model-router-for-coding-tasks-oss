@@ -1,0 +1,51 @@
+ src/notifier.ts | 36 +++++++++++++++++++++++++++++-------
+ 1 file changed, 29 insertions(+), 7 deletions(-)
+
+diff --git a/src/notifier.ts b/src/notifier.ts
+index ec3c84d..daf134a 100644
+--- a/src/notifier.ts
++++ b/src/notifier.ts
+@@ -19,14 +19,36 @@ export class Notifier {
+   }
+ 
+   /**
+-   * Send `message` to one recipient. The recipient is trimmed before sending.
+-   * Throws TypeError if the recipient is empty or only whitespace.
++   * Send `message` to one or more recipients. A single string behaves as before.
++   * For an array, each recipient is trimmed before sending and the message is
++   * delivered to every recipient in the order given, but duplicates (matching
++   * case-insensitively after trimming) are only sent once, keeping the first
++   * spelling encountered. Throws TypeError if any recipient is empty or only
++   * whitespace, before anything is sent, so a bad list never results in a
++   * partial send.
++   *
++   * @returns the number of messages actually sent (1 for a single string, 0 for
++   * an empty array).
+    */
+-  notify(recipient: string, message: string): void {
+-    const to = recipient.trim();
+-    if (to === "") {
+-      throw new TypeError("recipient must be a non-empty string");
++  notify(recipients: string | readonly string[], message: string): number {
++    const list = Array.isArray(recipients) ? recipients : [recipients];
++
++    for (const recipient of list) {
++      if (recipient.trim() === "") {
++        throw new TypeError("recipient must be a non-empty string");
++      }
++    }
++
++    let count = 0;
++    const seen = new Map<string, string>();
++    for (const recipient of list) {
++      const to = recipient.trim();
++      const key = to.toLowerCase();
++      if (seen.has(key)) continue;
++      seen.set(key, to);
++      this.transport.send(to, message);
++      count += 1;
+     }
+-    this.transport.send(to, message);
++    return count;
+   }
+ }

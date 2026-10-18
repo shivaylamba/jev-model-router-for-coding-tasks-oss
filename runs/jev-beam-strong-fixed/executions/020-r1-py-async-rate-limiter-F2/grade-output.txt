@@ -1,0 +1,22 @@
+
+test_cancel_after_grant_is_undone (acceptance_tests.test_rate_limiter.CancellationTest.test_cancel_after_grant_is_undone) ... ok
+test_cancel_head_waiting_for_token (acceptance_tests.test_rate_limiter.CancellationTest.test_cancel_head_waiting_for_token) ... ok
+test_cancel_while_waiting_for_slot (acceptance_tests.test_rate_limiter.CancellationTest.test_cancel_while_waiting_for_slot) ... ok
+test_refunded_token_goes_to_next_request_of_same_key (acceptance_tests.test_rate_limiter.CancellationTest.test_refunded_token_goes_to_next_request_of_same_key) ... ok
+test_cap_and_release_hands_over (acceptance_tests.test_rate_limiter.ConcurrencyTest.test_cap_and_release_hands_over) ... ok
+test_key_without_token_does_not_block_slot (acceptance_tests.test_rate_limiter.ConcurrencyTest.test_key_without_token_does_not_block_slot) ... ok
+test_limit_context_manager_releases_on_error (acceptance_tests.test_rate_limiter.ConcurrencyTest.test_limit_context_manager_releases_on_error) ... ok
+test_slot_goes_to_earliest_caller_across_keys (acceptance_tests.test_rate_limiter.ConcurrencyTest.test_slot_goes_to_earliest_caller_across_keys) ... ok
+test_fresh_state (acceptance_tests.test_rate_limiter.ConstructionTest.test_fresh_state) ... ok
+test_invalid_arguments (acceptance_tests.test_rate_limiter.ConstructionTest.test_invalid_arguments) ... ok
+test_release_without_slot (acceptance_tests.test_rate_limiter.ConstructionTest.test_release_without_slot) ... ok
+test_bucket_capped_at_burst (acceptance_tests.test_rate_limiter.TokenTest.test_bucket_capped_at_burst) ... ok
+test_fifo_per_key (acceptance_tests.test_rate_limiter.TokenTest.test_fifo_per_key) ... ok
+test_immediate_acquire_does_not_sleep (acceptance_tests.test_rate_limiter.TokenTest.test_immediate_acquire_does_not_sleep) ... ok
+test_other_keys_not_held_up (acceptance_tests.test_rate_limiter.TokenTest.test_other_keys_not_held_up) ... ok
+test_waits_for_refill_with_exact_sleep (acceptance_tests.test_rate_limiter.TokenTest.test_waits_for_refill_with_exact_sleep) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.088s
+
+OK

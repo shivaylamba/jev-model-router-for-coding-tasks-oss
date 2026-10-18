@@ -1,0 +1,214 @@
+{
+ "Beam": {
+  "calls": [
+   [
+    "Bash",
+    "find . -type f -not -path './.git/*' | head -100"
+   ],
+   [
+    "Read",
+    "docs/reservations.md"
+   ],
+   [
+    "Read",
+    "inventory/__init__.py"
+   ],
+   [
+    "Read",
+    "inventory/holds.py"
+   ],
+   [
+    "Read",
+    "inventory/service.py"
+   ],
+   [
+    "Read",
+    "inventory/clock.py"
+   ],
+   [
+    "Read",
+    "inventory/stock.py"
+   ],
+   [
+    "Read",
+    "inventory/errors.py"
+   ],
+   [
+    "Read",
+    "tests/test_reservations.py"
+   ],
+   [
+    "Read",
+    "README.md"
+   ],
+   [
+    "Edit",
+    "inventory/holds.py\"old_string\">     def is_expired(self, now):         return now > self.e"
+   ],
+   [
+    "Edit",
+    "inventory/holds.py"
+   ],
+   [
+    "Edit",
+    "inventory/holds.py"
+   ],
+   [
+    "Write",
+    "inventory/service.py"
+   ],
+   [
+    "Bash",
+    "python3 -m unittest discover -s tests -t ."
+   ],
+   [
+    "Bash",
+    "python3 - <<'PY' from inventory.clock import ManualClock from inventory.errors import * fr"
+   ],
+   [
+    "Write",
+    "tmp_test.py"
+   ],
+   [
+    "Bash",
+    "python3 tmp_test.py"
+   ],
+   [
+    "Bash",
+    "tmp_test.py"
+   ],
+   [
+    "Bash",
+    "head -n 72 tmp_test.py > tmp_test2.py && mv tmp_test2.py tmp_test.py && python3 tmp_test.p"
+   ],
+   [
+    "Bash",
+    "git diff --stat; rm -f tmp_test.py; git diff inventory/holds.py"
+   ],
+   [
+    "Bash",
+    "git diff inventory/service.py"
+   ],
+   [
+    "Edit",
+    "inventory/service.py"
+   ],
+   [
+    "Bash",
+    "inventory/service.py | cat -A"
+   ],
+   [
+    "Bash",
+    "inventory/service.py | od -c | head"
+   ],
+   [
+    "Write",
+    "inventory/service.py"
+   ],
+   [
+    "Bash",
+    "python3 -m unittest discover -s tests -t ."
+   ],
+   [
+    "Bash",
+    "ls; git status --short"
+   ]
+  ],
+  "reads": [
+   "docs/reservations.md",
+   "inventory/__init__.py",
+   "inventory/holds.py",
+   "inventory/service.py",
+   "inventory/clock.py",
+   "inventory/stock.py",
+   "inventory/errors.py",
+   "tests/test_reservations.py",
+   "README.md"
+  ],
+  "grade": {
+   "passed": true,
+   "tests_total": 21,
+   "tests_failed": 0,
+   "duration_s": 0.068,
+   "timed_out": false,
+   "exit_code": 0
+  }
+ },
+ "Muse Spark": {
+  "calls": [
+   [
+    "ToolSearch",
+    ""
+   ],
+   [
+    "Bash",
+    "ls -R /private/var/folders/hq/j39c5kfd1y9dxvlnsrj6p7s40000gn/T/njb-9qeqtu51/workspace 2>&1"
+   ],
+   [
+    "Read",
+    "docs/reservations.md"
+   ],
+   [
+    "Read",
+    "inventory/service.py"
+   ],
+   [
+    "Read",
+    "inventory/stock.py"
+   ],
+   [
+    "Read",
+    "inventory/holds.py"
+   ],
+   [
+    "Read",
+    "inventory/clock.py"
+   ],
+   [
+    "Read",
+    "inventory/errors.py"
+   ],
+   [
+    "Read",
+    "tests/test_reservations.py"
+   ],
+   [
+    "ToolSearch",
+    ""
+   ],
+   [
+    "Edit",
+    "inventory/holds.py"
+   ],
+   [
+    "Edit",
+    "inventory/holds.py"
+   ],
+   [
+    "Write",
+    "inventory/service.py"
+   ],
+   [
+    "Bash",
+    "python -m pytest tests/ -v 2>&1"
+   ]
+  ],
+  "reads": [
+   "docs/reservations.md",
+   "inventory/service.py",
+   "inventory/stock.py",
+   "inventory/holds.py",
+   "inventory/clock.py",
+   "inventory/errors.py",
+   "tests/test_reservations.py"
+  ],
+  "grade": {
+   "passed": true,
+   "tests_total": 21,
+   "tests_failed": 0,
+   "duration_s": 0.064,
+   "timed_out": false,
+   "exit_code": 0
+  }
+ }
+}

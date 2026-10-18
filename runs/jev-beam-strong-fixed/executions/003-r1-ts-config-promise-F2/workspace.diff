@@ -1,0 +1,69 @@
+ src/config.ts | 54 +++++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 37 insertions(+), 17 deletions(-)
+
+diff --git a/src/config.ts b/src/config.ts
+index 80b782b..08f6be8 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -37,24 +37,44 @@ export function applyDefaults(raw: unknown): Config {
+ }
+ 
+ /**
+- * Read and validate a JSON config file.
++ * Read and validate a JSON config file. Returns a Promise when called without a
++ * callback, otherwise delegates to the callback and returns undefined.
+  *
+  * Errors from the file system (for example ENOENT), a SyntaxError for
+- * malformed JSON, or a ConfigError for bad values are passed to the callback.
++ * malformed JSON, or a ConfigError for bad values are passed to the callback
++ * or used to reject the promise.
+  */
+-export function readConfig(path: string, callback: ConfigCallback): void {
+-  readFile(path, "utf8", (err, text) => {
+-    if (err) {
+-      callback(err);
+-      return;
+-    }
+-    let config: Config;
+-    try {
+-      config = applyDefaults(JSON.parse(text));
+-    } catch (parseErr) {
+-      callback(parseErr as Error);
+-      return;
+-    }
+-    callback(null, config);
+-  });
++export function readConfig(path: string): Promise<Config>;
++export function readConfig(path: string, callback: ConfigCallback): void;
++export function readConfig(
++  path: string,
++  callback?: ConfigCallback
++): Promise<Config> | void {
++  const impl = () =>
++    new Promise<Config>((resolve, reject) => {
++      readFile(path, "utf8", (err, text) => {
++        if (err) {
++          reject(err);
++          return;
++        }
++        let config: Config;
++        try {
++          config = applyDefaults(JSON.parse(text));
++        } catch (parseErr) {
++          reject(parseErr as Error);
++          return;
++        }
++        resolve(config);
++      });
++    });
++
++  if (callback) {
++    impl().then(
++      (config) => callback(null, config),
++      (err) => callback(err as Error)
++    );
++    return undefined;
++  }
++
++  return impl();
+ }
