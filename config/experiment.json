@@ -154,7 +154,7 @@
       "nconnect_bundle": "vendor/nconnect-0.26.0.js",
       "nconnect_bundle_sha256": "f99ed86e109c18a32d561c33262a35fcd8b68cc3314b5f07b324cf97f5bb842e",
       "nconnect_source_commit": "9f7a6b7",
-      "nconnect_source_note": "Studio1-OSS/nconnect v0.26.0 (merged to main as e296a51; no tree difference), built with bun build --target=bun --production. Includes Muse Spark open's effort bounds (low..xhigh). nconnect maps provider reasoning_content to Claude thinking blocks and back, which Beam requires on multi-turn tool calls.",
+      "nconnect_source_note": "Studio1-OSS/nconnect v0.26.0 (merged to main as e296a51; no tree difference), built with bun build --target=bun --production. Includes Muse Spark open's effort bounds (low..xhigh). nconnect maps provider reasoning_content to Claude thinking blocks and back, which Beam requires on multi-turn tool calls. No reasoning fix: 4 of this condition's 20 tasks ended on Beam's 400 ('assistant turn ... missing its reasoning') after escalating from DeepSeek or Kimi. Those are adapter failures, recorded in each execution's nconnect-debug.log.gz. Superseded by F2.",
       "env": {
         "NCONNECT_AUTO_DECIDER": "jev",
         "NCONNECT_AUTO_DECIDER_MODEL": "jev-1.13.0",
@@ -184,8 +184,8 @@
       "nconnect_model": "auto",
       "nconnect_bundle": "vendor/nconnect-0.26.0-beamfix.js",
       "nconnect_bundle_sha256": "501e3206c08c7322f7a54917df3babc91df10dd0e0c59139087f965406a81cd4",
-      "nconnect_source_commit": "1b2d03a",
-      "nconnect_source_note": "nconnect v0.26.0 plus branch fix/beam-mixed-model-reasoning: assistant turns with no reasoning get an explicit label when the target model is reflection/beam, so Auto can escalate to Beam mid-task. Condition F ran the same setup without the fix; 4 of its tasks ended on Beam's 400.",
+      "nconnect_source_commit": "1b2d03a4d561676afe35f6cfc28259495b2c7917",
+      "nconnect_source_note": "Built with bun build --target=bun --production from Studio1-OSS/nconnect commit 1b2d03a, the reasoning fix, before the v0.26.1 version bump. v0.26.1 adds only the version number, changelog and site bundle on top, so it behaves the same but its bundle hash differs. The fix: when the target model is reflection/beam, each turn's own reasoning is sent back and an assistant turn with none gets an explicit label, so Auto can escalate into Beam mid-task.",
       "env": {
         "NCONNECT_AUTO_DECIDER": "jev",
         "NCONNECT_AUTO_DECIDER_MODEL": "jev-1.13.0",
@@ -208,7 +208,8 @@
       "secrets": [
         "TYPESAFE_API_KEY"
       ],
-      "decider_through_recorder": true
+      "decider_through_recorder": true,
+      "nconnect_release": "v0.26.1 (release commit 68a90c8, merged to Studio1-OSS/nconnect main as d6995ec via PR #36)"
     }
   }
 }

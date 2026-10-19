@@ -99,3 +99,29 @@ vendor/analysis-venv/bin/python bench/analyze.py --run-id abdul --auto-condition
 vendor/analysis-venv/bin/python bench/report.py --run-id abdul --auto-condition C
 python3 bench/abdul_lenient.py --run-id abdul
 ```
+
+## Beam and Muse Spark (October 17–18, 2026)
+
+Conditions D, E, F and F2 use nconnect builds pinned in `config/experiment.json` (`model_conditions`). The 20 tasks were fixed before any result: `config/selections/beam-vs-muse-20.json`.
+
+| Condition | What | nconnect | Bundle sha256 | Result |
+|---|---|---|---|---|
+| D | Fixed Reflection Beam | v0.26.0 (`9f7a6b7`) | `f99ed86e109c18a32d561c33262a35fcd8b68cc3314b5f07b324cf97f5bb842e` | 20 / 20 |
+| E | Fixed Muse Spark | v0.26.0 (`9f7a6b7`) | `f99ed86e109c18a32d561c33262a35fcd8b68cc3314b5f07b324cf97f5bb842e` | 19 / 20 |
+| F | Jev, Beam as the strong tier, **no fix** | v0.26.0 (`9f7a6b7`) | `f99ed86e109c18a32d561c33262a35fcd8b68cc3314b5f07b324cf97f5bb842e` | 15 / 20: 4 adapter failures, 1 model failure |
+| F2 | Jev, Beam as the strong tier, **with the fix** | commit `1b2d03a`, released as **v0.26.1** | `501e3206c08c7322f7a54917df3babc91df10dd0e0c59139087f965406a81cd4` | 20 / 20, no adapter errors |
+
+The fix is [Studio1-OSS/nconnect#36](https://github.com/Studio1-OSS/nconnect/pull/36): Beam rejects a request when an earlier assistant turn has no reasoning, which happens when Auto escalates into Beam from another model. F's four adapter failures show that error in each execution's `nconnect-debug.log.gz`; the model never got to work. F2's bundle was built from the fix commit before the v0.26.1 version bump, so v0.26.1 behaves the same but has a different hash.
+
+```bash
+# Bundles (vendor/ is gitignored): build each from its commit of Studio1-OSS/nconnect, and check the hash
+git -C nconnect checkout 9f7a6b7 && (cd nconnect && bun build packages/cli/src/bin/nconnect.ts --target=bun --production --outfile ../vendor/nconnect-0.26.0.js)
+git -C nconnect checkout 1b2d03a && (cd nconnect && bun build packages/cli/src/bin/nconnect.ts --target=bun --production --outfile ../vendor/nconnect-0.26.0-beamfix.js)
+shasum -a 256 vendor/nconnect-0.26.0*.js    # must match config/experiment.json
+
+TASKS=$(python3 -c "import json;print(','.join(json.load(open('config/selections/beam-vs-muse-20.json'))['task_ids']))")
+python3 bench/run.py prepare --run-id beam-vs-muse --conditions D,E --tasks "$TASKS"
+python3 bench/run.py run --run-id beam-vs-muse --budget-usd 30 --max-hours 4
+python3 bench/run.py prepare --run-id jev-beam-strong-fixed --conditions F2 --tasks "$TASKS"
+python3 bench/run.py run --run-id jev-beam-strong-fixed --budget-usd 15 --max-hours 3
+```
